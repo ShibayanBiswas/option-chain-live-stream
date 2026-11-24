@@ -21,6 +21,8 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
   const [error, setError] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
   const [socketState, setSocketState] = useState<"idle" | "open" | "closed" | "error">("idle");
+  const [quiet, setQuiet] = useState(false);
+  const lastBeat = useRef(0);
   const esRef = useRef<EventSource | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -130,7 +132,10 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
       });
 
       es.addEventListener("heartbeat", () => {
-        if (!cancelled) setUpdatedAt(Date.now());
+        if (cancelled) return;
+        lastBeat.current = Date.now();
+        setQuiet(false);
+        setUpdatedAt(Date.now());
       });
 
       es.addEventListener("rotate", () => {
@@ -158,6 +163,18 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
     };
 
     let failures = 0;
+    const onHide = () => {
+      if (document.hidden) {
+        esRef.current?.close();
+        stopPoll();
+        return;
+      }
+      connectSse();
+    };
+    document.addEventListener("visibilitychange", onHide);
+    const staleTimer = window.setInterval(() => {
+      if (lastBeat.current > 0 && Date.now() - lastBeat.current > 20_000) setQuiet(true);
+    }, 5_000);
 
     fetchOnce()
       .then(() => {
@@ -173,11 +190,13 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
 
     return () => {
       cancelled = true;
+      document.removeEventListener("visibilitychange", onHide);
+      window.clearInterval(staleTimer);
       esRef.current?.close();
       esRef.current = null;
       stopPoll();
     };
   }, [applyIncomingPatch, applySnapshot, enabled, exchange, expiry, fetchOnce, segment, symbol]);
 
-  return { snapshot, status, error, updatedAt, socketState, refresh: fetchOnce };
+  return { snapshot, status, error, updatedAt, socketState, quiet, refresh: fetchOnce };
 }

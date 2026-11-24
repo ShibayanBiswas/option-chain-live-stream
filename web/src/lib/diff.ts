@@ -35,6 +35,25 @@ export function diffChain(prev: OptionChainSnapshot, next: OptionChainSnapshot):
   };
 }
 
+export type StreamEvent =
+  | { type: "chain"; snapshot: OptionChainSnapshot }
+  | { type: "patch"; patch: ChainPatch }
+  | { type: "idle" };
+
+/** First book is a chain. An unchanged book sends nothing. A changed book sends a patch. */
+export function nextStreamEvent(
+  previous: OptionChainSnapshot | null,
+  next: OptionChainSnapshot,
+  full: boolean,
+): StreamEvent {
+  if (full || !previous || previous.symbol !== next.symbol || previous.expiry !== next.expiry) {
+    return { type: "chain", snapshot: next };
+  }
+  const patch = diffChain(previous, next);
+  if (!patch) return { type: "idle" };
+  return { type: "patch", patch };
+}
+
 export function applyPatch(snapshot: OptionChainSnapshot, patch: ChainPatch): OptionChainSnapshot {
   const byStrike = new Map(snapshot.rows.map((row) => [row.strike, row]));
   for (const row of patch.rows) byStrike.set(row.strike, row);

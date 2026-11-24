@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { atmIv, buildTotals, computeMaxPain, computePCR, findAtmStrike } from "./analytics";
 import { canonicalTapeSymbol, describeExpiry, displayName, groupExpiries, matchTape } from "./display";
-import { applyPatch, diffChain } from "./diff";
+import { applyPatch, diffChain, nextStreamEvent } from "./diff";
 import type { ChainRow, OptionChainSnapshot, OptionQuote } from "./types";
 
 function quote(partial: Partial<OptionQuote> = {}): OptionQuote {
@@ -117,5 +117,12 @@ describe("diff", () => {
     const merged = applyPatch(base, patch!);
     expect(merged.rows).toHaveLength(2);
     expect(merged.rows[0]?.ce.lastPrice).toBe(11);
+  });
+
+  it("sends the chain once and stays idle while the book is unchanged", () => {
+    expect(nextStreamEvent(null, base, true).type).toBe("chain");
+    expect(nextStreamEvent(base, base, false).type).toBe("idle");
+    const next: OptionChainSnapshot = { ...base, rows: [row(100, { lastPrice: 12 })] };
+    expect(nextStreamEvent(base, next, false).type).toBe("patch");
   });
 });

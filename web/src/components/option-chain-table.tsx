@@ -61,24 +61,29 @@ function FlashCell({
   value,
   children,
   className,
+  resetKey,
 }: {
   value: number | null;
   children: ReactNode;
   className?: string;
+  resetKey: string;
 }) {
   const ref = useRef<HTMLTableCellElement>(null);
   const prev = useRef<number | null>(null);
+  const prevKey = useRef(resetKey);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    if (prev.current !== null && value !== null && prev.current !== value) {
+    const sameBook = prevKey.current === resetKey;
+    if (sameBook && prev.current !== null && value !== null && prev.current !== value) {
       el.classList.remove("cell-flash-up", "cell-flash-down");
       void el.offsetWidth;
       el.classList.add(value > prev.current ? "cell-flash-up" : "cell-flash-down");
     }
     prev.current = value;
-  }, [value]);
+    prevKey.current = resetKey;
+  }, [resetKey, value]);
 
   return (
     <td ref={ref} className={className}>
@@ -166,23 +171,14 @@ export function OptionChainTable({
       <table className="chain-table">
         <thead>
           <tr>
-            <th colSpan={callCols.length} className="side-banner call-banner">
-              Calls
-            </th>
-            <th className="strike-cell">Strike</th>
-            <th colSpan={peCols.length} className="side-banner put-banner">
-              Puts
-            </th>
-          </tr>
-          <tr>
             {callCols.map((key) => (
-              <th key={`ce-${key}`} className={cn("ce-zone", `col-${key}`)} title={columnHint(key)}>
+              <th key={`ce-${key}`} scope="col" className={cn("ce-zone", `col-${key}`)} title={columnHint(key)}>
                 {columnLabel(key)}
               </th>
             ))}
-            <th className="strike-cell">Strike</th>
+            <th className="strike-cell" scope="col">Strike</th>
             {peCols.map((key) => (
-              <th key={`pe-${key}`} className={cn("pe-zone", `col-${key}`)} title={columnHint(key)}>
+              <th key={`pe-${key}`} scope="col" className={cn("pe-zone", `col-${key}`)} title={columnHint(key)}>
                 {columnLabel(key)}
               </th>
             ))}
@@ -214,7 +210,11 @@ export function OptionChainTable({
                 ) : null}
                 <tr
                   id={`strike-${row.strike}`}
+                  tabIndex={0}
                   data-volume={callQuiet && putQuiet ? "zero" : "traded"}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") onSelect(row);
+                  }}
                   className={cn(
                     "chain-row",
                     atSpot && "is-atm",
@@ -227,6 +227,7 @@ export function OptionChainTable({
                   {callCols.map((key) => (
                     <SideCell
                       key={`ce-${row.strike}-${key}`}
+                      resetKey={`${snapshot.symbol}:${snapshot.expiry}`}
                       side="ce"
                       field={key}
                       quote={row.ce}
@@ -247,6 +248,7 @@ export function OptionChainTable({
                   {peCols.map((key) => (
                     <SideCell
                       key={`pe-${row.strike}-${key}`}
+                      resetKey={`${snapshot.symbol}:${snapshot.expiry}`}
                       side="pe"
                       field={key}
                       quote={row.pe}
@@ -292,6 +294,7 @@ function SideCell({
   strike,
   spot,
   expiry,
+  resetKey,
 }: {
   side: "ce" | "pe";
   field: ColumnKey;
@@ -303,6 +306,7 @@ function SideCell({
   strike: number;
   spot: number | null;
   expiry: string;
+  resetKey: string;
 }) {
   const days = daysToExpiry(expiry);
   const kind = side === "ce" ? "call" : "put";
@@ -334,6 +338,7 @@ function SideCell({
   return (
     <FlashCell
       value={value}
+      resetKey={resetKey}
       className={cn(
         side === "ce" ? "ce-zone" : "pe-zone",
         `col-${field}`,

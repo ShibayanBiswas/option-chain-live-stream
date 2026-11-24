@@ -95,7 +95,7 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   const density = page.getByTestId("density-select");
   await expect(density).toHaveValue("focus");
   await expect(page.locator(".chain-scroll")).toHaveAttribute("data-density", "focus");
-  const focusHeads = await page.locator(".chain-table thead tr:nth-child(2) th").allTextContents();
+  const focusHeads = await page.locator(".chain-table thead tr th").allTextContents();
   expect(focusHeads.join(" ")).not.toMatch(/Bid Quantity|Ask Quantity/);
 
   await density.selectOption("full");
@@ -105,7 +105,7 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   await expect(page.getByTestId("spot-marker")).toBeVisible();
 
   const headerOrder = await page.evaluate(() => {
-    const heads = [...document.querySelectorAll(".chain-table thead tr:nth-child(2) th")].map((th) =>
+    const heads = [...document.querySelectorAll(".chain-table thead tr th")].map((th) =>
       th.textContent?.trim(),
     );
     const strike = heads.indexOf("Strike");

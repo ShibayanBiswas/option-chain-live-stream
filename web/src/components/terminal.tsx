@@ -8,6 +8,7 @@ import { BrandLogo } from "@/components/brand-logo";
 import { CommandPalette } from "@/components/command-palette";
 import { ExpirySelect } from "@/components/expiry-select";
 import { InstrumentTree } from "@/components/instrument-tree";
+import { OiStrip } from "@/components/oi-strip";
 import { OptionChainTable } from "@/components/option-chain-table";
 import { QuoteSheet } from "@/components/quote-sheet";
 import { Toasts } from "@/components/toasts";
@@ -38,7 +39,10 @@ export function Terminal() {
   const [selected, setSelected] = useState<Instrument | null>(null);
   const [expiry, setExpiry] = useState("");
   const [depth] = useState<"near" | "full">("full");
-  const [density, setDensity] = useState<"focus" | "full">("focus");
+  const [columnOverride, setColumnOverride] = useState<"focus" | "full" | null>(null);
+  const [wide, setWide] = useState(false);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const density = columnOverride ?? (wide ? "full" : "focus");
   const [railOpen, setRailOpen] = useState(false);
   const [picked, setPicked] = useState<ChainRow | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -79,7 +83,7 @@ export function Terminal() {
     };
   }, []);
 
-  const { snapshot, status, error } = useOptionStream({
+  const { snapshot, status, error, quiet } = useOptionStream({
     symbol: selected?.symbol ?? "",
     expiry,
     exchange: selected?.exchange ?? "NSE",
@@ -95,6 +99,12 @@ export function Terminal() {
 
   useLayoutEffect(() => {
     if (window.matchMedia("(min-width: 981px)").matches) setRailOpen(true);
+    const node = stageRef.current;
+    if (!node) return;
+    const watch = new ResizeObserver(() => setWide(node.clientWidth >= 1600));
+    watch.observe(node);
+    setWide(node.clientWidth >= 1600);
+    return () => watch.disconnect();
   }, []);
 
   useEffect(() => {
@@ -185,34 +195,8 @@ export function Terminal() {
 
   return (
     <MotionConfig reducedMotion="user">
-    <div className={cn("terminal bg-mesh", !railOpen && "rail-hidden")}>
-      <aside className={cn("rail", !railOpen && "is-collapsed", railOpen && "is-sheet")} aria-hidden={!railOpen}>
-        <div className="rail-brand">
-          <BrandLogo compact />
-        </div>
-        <button className="rail-back" type="button" onClick={() => setRailOpen(false)}>
-          <ArrowLeft className="h-4 w-4" />
-          Back
-        </button>
-        {book ? (
-          <InstrumentTree
-            indexes={book.indexes}
-            equities={book.equities}
-            selected={selected}
-            query={query}
-            onQuery={setQuery}
-            pins={pins}
-            tape={tape}
-            onSelect={choose}
-            onTogglePin={togglePin}
-          />
-        ) : (
-          <p className="rail-note">{loadError ?? "Loading contracts"}</p>
-        )}
-      </aside>
-
-      <section className="stage">
-        <motion.header
+    <div className={cn("terminal bg-mesh", !railOpen && "rail-hidden")} ref={stageRef}>
+      <motion.header
           className="toolbar"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -240,9 +224,9 @@ export function Terminal() {
           </button>
           </div>
           <div className="toolbar-tools">
-          <div className="feed-chip" data-state={waiting ? "waiting" : status} aria-live="polite">
-            <span className={cn("live-dot", status === "error" && "is-off", waiting && "is-stale")} />
-            <span>{feed}</span>
+          <div className="feed-chip" data-state={waiting ? "waiting" : quiet ? "waiting" : status} aria-live="polite">
+            <span className={cn("live-dot", status === "error" && "is-off", (waiting || quiet) && "is-stale")} />
+            <span>{quiet ? "Stale" : feed}</span>
             <em>{feedTime}</em>
           </div>
           <span
@@ -269,7 +253,7 @@ export function Terminal() {
             className="toolbar-select"
             aria-label="Columns"
             value={density}
-            onChange={(event) => setDensity(event.target.value as "focus" | "full")}
+            onChange={(event) => setColumnOverride(event.target.value as "focus" | "full")}
             data-testid="density-select"
           >
             <option value="focus">Focus</option>
@@ -277,7 +261,32 @@ export function Terminal() {
           </select>
           </div>
         </motion.header>
+      <aside className={cn("rail", !railOpen && "is-collapsed", railOpen && "is-sheet")} aria-hidden={!railOpen}>
+        <div className="rail-brand">
+          <BrandLogo compact />
+        </div>
+        <button className="rail-back" type="button" onClick={() => setRailOpen(false)}>
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </button>
+        {book ? (
+          <InstrumentTree
+            indexes={book.indexes}
+            equities={book.equities}
+            selected={selected}
+            query={query}
+            onQuery={setQuery}
+            pins={pins}
+            tape={tape}
+            onSelect={choose}
+            onTogglePin={togglePin}
+          />
+        ) : (
+          <p className="rail-note">{loadError ?? "Loading contracts"}</p>
+        )}
+      </aside>
 
+      <section className="stage">
         <div className="kpi-row">
           <Kpi index={0} label="PCR" value={snapshot?.totals.pcr != null ? snapshot.totals.pcr.toFixed(2) : "—"} />
           <Kpi index={1} label="Max Pain" value={formatNumber(snapshot?.totals.maxPain ?? null, 0)} />
@@ -288,8 +297,10 @@ export function Terminal() {
 
         {error || loadError ? <p className="banner">{error || loadError}</p> : null}
 
+        {snapshot ? <OiStrip rows={snapshot.rows} atm={snapshot.totals.atm} /> : null}
         <div className="book-tools">
           <span className="range-label" aria-label="Strike range">{strikeRange}</span>
+          <span className="heat-key">High volume is gold. Low volume is blue. Zero volume is grey.</span>
           <button className="icon-btn" type="button" onClick={() => {
             const row = document.getElementById(`strike-${snapshot?.totals.atm ?? ""}`);
             const scroller = row?.closest(".chain-scroll");

@@ -394,10 +394,15 @@ html.dark .bg-mesh::before {
 .terminal {
   display: grid;
   grid-template-columns: 248px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   width: 100%;
   height: 100dvh;
   min-height: 0;
   overflow: hidden;
+}
+
+.terminal > .toolbar {
+  grid-column: 1 / -1;
 }
 
 .terminal:has(.rail.is-collapsed),
@@ -408,7 +413,8 @@ html.dark .bg-mesh::before {
 .rail {
   position: sticky;
   top: 0;
-  height: 100vh;
+  height: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -636,6 +642,48 @@ html.dark .chain-row.is-zero td {
   border-color: rgba(212, 178, 76, 0.55);
   background: rgba(212, 178, 76, 0.16);
   color: var(--ar-gold-dark);
+}
+
+.oi-strip {
+  display: grid;
+  gap: 2px;
+  max-height: 180px;
+  overflow: auto;
+}
+
+.oi-strip-row {
+  display: grid;
+  grid-template-columns: 1fr 72px 1fr;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-data);
+  font-size: 11px;
+}
+
+.oi-strip-row span {
+  text-align: center;
+}
+
+.oi-strip-bar {
+  display: block;
+  height: 8px;
+  opacity: 0.24;
+}
+
+.oi-strip-bar.call {
+  justify-self: end;
+  background: #e5484d;
+}
+
+.oi-strip-bar.put {
+  justify-self: start;
+  background: #30a46c;
+}
+
+.heat-key {
+  color: var(--ar-muted);
+  font-family: var(--font-sans);
+  font-size: 11px;
 }
 
 .book-tools {
@@ -1050,6 +1098,11 @@ html.dark .quote-card.put {
 }
 
 @media (max-width: 700px) {
+  .oi-strip,
+  .heat-key {
+    display: none;
+  }
+
   .sheet-grid {
     grid-template-columns: 1fr;
   }

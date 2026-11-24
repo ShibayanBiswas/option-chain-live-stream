@@ -1,5 +1,5 @@
 import { loadOptionChain, publicChainError } from "@/lib/chain-service";
-import { diffChain } from "@/lib/diff";
+import { nextStreamEvent } from "@/lib/diff";
 import type { OptionChainSnapshot } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -61,14 +61,10 @@ export async function GET(req: Request) {
         const next = await loadOptionChain({ symbol, expiry, exchange, segment });
         next.feed = "polling";
         marketOpen = next.marketOpen;
-        if (!full && snapshot && snapshot.symbol === next.symbol && snapshot.expiry === next.expiry) {
-          const patch = diffChain(snapshot, next);
-          snapshot = next;
-          if (patch) send("patch", patch);
-          return next;
-        }
+        const event = nextStreamEvent(snapshot, next, full);
         snapshot = next;
-        send("chain", snapshot);
+        if (event.type === "chain") send("chain", event.snapshot);
+        if (event.type === "patch") send("patch", event.patch);
         return next;
       };
 
