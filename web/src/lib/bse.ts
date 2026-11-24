@@ -36,7 +36,6 @@ async function prime() {
   const res = await httpsGet(
     `${BSE_WWW}/markets/Derivatives/DeriReports/DeriOptionchain`,
     headers(false),
-    cookie,
   );
   cookie = res.cookies;
   primedAt = Date.now();
@@ -45,7 +44,7 @@ async function prime() {
 async function bseGet<T>(url: string): Promise<T> {
   await prime();
   try {
-    const res = await httpsGetJson<T>(url, headers(true), cookie);
+    const res = await httpsGetJson<T>(url, headers(true));
     cookie = res.cookies;
     return res.data;
   } catch (err) {

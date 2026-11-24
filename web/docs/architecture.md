@@ -7,15 +7,14 @@ Next.js 15 App Router desk in `web/`, deployed on Vercel as **option-chain-live-
 | Layer | Role |
 | --- | --- |
 | `src/app/page.tsx` | Shell that mounts the terminal |
-| `src/components/terminal.tsx` | Desk chrome: sidebar, toolbar, KPIs, magnify, theme |
+| `src/components/terminal.tsx` | Desk chrome: sidebar, toolbar, KPIs, live chip, theme |
 | `src/components/option-chain-table.tsx` | Calls \| Strike \| Puts board with focus/full density |
-| `src/components/oi-chart.tsx` | Animated open-interest pressure chart |
 | `src/components/quote-sheet.tsx` | Strike detail sheet |
 | `src/hooks/use-option-stream.ts` | SSE client with REST fallback |
 | `src/lib/chain-service.ts` | Resolves instrument → NSE/BSE snapshot |
 | `src/lib/universe.ts` | NIFTY, SENSEX, and Anand Rathi Wealth only |
 | `src/lib/nse.ts` / `bse.ts` / `nse-ws.ts` | Exchange transports |
-| `src/app/api/*` | Universe, chain, stream, health, meta |
+| `src/app/api/*` | Universe, chain, stream, tape, health |
 
 ## Data path
 

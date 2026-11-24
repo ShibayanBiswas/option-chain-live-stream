@@ -37,20 +37,15 @@ async function primeSession(force = false): Promise<string> {
   const res = await httpsGet(
     `${NSE_BASE}/option-chain`,
     baseHeaders({ Accept: "text/html,application/xhtml+xml" }),
-    jar?.cookie ?? "",
   );
   jar = { cookie: res.cookies, primedAt: Date.now() };
   return jar.cookie;
 }
 
 async function fetchJson<T>(path: string, attempt = 0): Promise<T> {
-  const cookie = await primeSession(attempt > 0);
+  await primeSession(attempt > 0);
   try {
-    const res = await httpsGetJson<T>(
-      `${NSE_BASE}${path}`,
-      baseHeaders(),
-      cookie,
-    );
+    const res = await httpsGetJson<T>(`${NSE_BASE}${path}`, baseHeaders());
     if (jar) {
       jar.cookie = res.cookies;
       jar.primedAt = Date.now();
@@ -147,11 +142,10 @@ export async function discoverNseBook(): Promise<{
 }> {
   const [page, equities] = await Promise.all([
     (async () => {
-      const cookie = await primeSession();
+      await primeSession();
       const res = await httpsGet(
         `${NSE_BASE}/option-chain`,
         baseHeaders({ Accept: "text/html,application/xhtml+xml" }),
-        cookie,
       );
       return res.body;
     })(),

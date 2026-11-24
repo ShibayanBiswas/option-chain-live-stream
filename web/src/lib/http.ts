@@ -49,7 +49,6 @@ function execCurl(args: string[]): Promise<{ stdout: string; code: number }> {
 export async function httpsGet(
   url: string,
   headers: Record<string, string>,
-  _cookies = "",
 ): Promise<HttpResult> {
   const args = [
     "-sL",
@@ -110,9 +109,8 @@ export async function httpsGet(
 export async function httpsGetJson<T>(
   url: string,
   headers: Record<string, string>,
-  cookies = "",
 ): Promise<{ data: T; cookies: string; status: number }> {
-  const res = await httpsGet(url, headers, cookies);
+  const res = await httpsGet(url, headers);
   if (res.status >= 400) {
     throw new Error(`HTTP ${res.status}: ${res.body.slice(0, 180)}`);
   }

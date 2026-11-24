@@ -1,6 +1,6 @@
 # Option Chain Live Stream
 
-Anand Rathi Wealth derivatives desk for NSE and BSE. Indexes and equities are loaded from the exchanges. The chain streams over server-sent events, and NSE names also merge the exchange websocket. The desk is full width, Spot Focus or Entire Book, with magnify and an animated Strike Pressure open-interest panel.
+Anand Rathi Wealth derivatives desk for NSE NIFTY, BSE SENSEX, and ANANDRATHI. The chain streams over server-sent events, and NSE names also merge the exchange websocket when the market is open. The desk is the summary strip and the option chain: Spot Focus or Entire Book, Focus or All Columns.
 
 ## Run
 
