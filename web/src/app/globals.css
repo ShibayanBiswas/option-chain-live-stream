@@ -1064,7 +1064,7 @@ html.dark .quote-card.put {
   }
 
   .oi-chart {
-    max-height: 132px;
+    max-height: 148px;
   }
 
   .chain-scroll {
@@ -1116,7 +1116,15 @@ html.dark .quote-card.put {
   }
 
   .oi-chart {
-    max-height: 64px;
+    max-height: 120px;
+  }
+
+  .oi-chart-title h2 {
+    font-size: 13px;
+  }
+
+  .oi-track {
+    height: 8px;
   }
 
   .kpi {

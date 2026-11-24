@@ -21,8 +21,8 @@ export const SIDE_COLUMNS: SideColumn[] = [
   { key: "bid", label: "Bid" },
   { key: "ask", label: "Ask" },
   { key: "askQty", label: "Ask Quantity" },
-  { key: "ltp", label: "Last", always: true },
   { key: "chng", label: "Change" },
+  { key: "ltp", label: "Last", always: true },
 ];
 
 function quoteField(q: OptionQuote, key: ColumnKey): number | null {

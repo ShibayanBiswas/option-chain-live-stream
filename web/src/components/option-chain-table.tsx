@@ -92,7 +92,7 @@ export function OptionChainTable({
   const callCols = useMemo(() => {
     const all = visibleColumns(snapshot.rows);
     if (!compact) return all;
-    const preferred: ColumnKey[] = ["ltp", "chng"];
+    const preferred: ColumnKey[] = ["chng", "ltp"];
     const next = preferred.filter((key) => all.includes(key));
     return next.length > 0 ? next : all;
   }, [compact, snapshot.rows]);

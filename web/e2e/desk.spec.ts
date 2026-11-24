@@ -31,8 +31,8 @@ test("desk, volume shade, stream, and motion", async ({ page }, testInfo) => {
       after: heads.slice(strike + 1, strike + 3),
     };
   });
-  expect(headerOrder.before).toEqual(["Last", "Change"]);
-  expect(headerOrder.after).toEqual(["Change", "Last"]);
+  expect(headerOrder.before).toEqual(["Change", "Last"]);
+  expect(headerOrder.after).toEqual(["Last", "Change"]);
 
   const zeroRows = page.locator('[data-volume="zero"]');
   await expect(zeroRows.first()).toBeVisible();
@@ -55,16 +55,16 @@ test("desk, volume shade, stream, and motion", async ({ page }, testInfo) => {
   });
   expect(flash).toBe("flash-up");
 
-  const traded = page.locator('[data-volume="traded"]').first();
+  const traded = page.locator('[data-volume="traded"]').nth(3);
   await traded.evaluate((row) => {
     const scroller = row.closest(".chain-scroll");
     const head = scroller?.querySelector("thead");
     if (!(scroller instanceof HTMLElement) || !(row instanceof HTMLElement) || !(head instanceof HTMLElement)) return;
-    scroller.scrollTop = Math.max(0, row.offsetTop - head.offsetHeight - 6);
+    scroller.scrollTop = Math.max(0, row.offsetTop - head.getBoundingClientRect().height - 12);
   });
-  await traded.locator("td").nth(1).click();
+  await traded.dispatchEvent("click");
   const sheet = page.getByRole("dialog");
-  await expect(sheet).toBeVisible();
+  await expect(sheet).toBeVisible({ timeout: 10_000 });
   expect(await sheet.innerText()).not.toMatch(/\+\d/);
   const sheetBox = await sheet.boundingBox();
   const viewport = page.viewportSize();

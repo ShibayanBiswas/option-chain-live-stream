@@ -51,9 +51,9 @@ Important quote columns sit against the strike. Quiet book columns sit farther a
 
 Call side, reading toward the strike:
 
-Open Interest → Interest Change → Volume → IV → Bid Quantity → Bid → Ask → Ask Quantity → Last → Change → Strike
+Open Interest → Interest Change → Volume → IV → Bid Quantity → Bid → Ask → Ask Quantity → Change → Last → Strike
 
-Put side mirrors that order so Last and Change stay against the strike on both sides.
+Put side mirrors that order so Last sits against the strike on both sides.
 
 Empty bid and ask columns stay hidden when the whole book has no quotes.
 
