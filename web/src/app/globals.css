@@ -1680,6 +1680,10 @@ html.dark .is-itm {
   background: transparent;
 }
 
+.ltp-chng {
+  display: none;
+}
+
 @media (max-width: 700px) {
   .ticker,
   .analytics-row {
@@ -1696,13 +1700,79 @@ html.dark .is-itm {
   }
 
   .kpi-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    overflow: visible;
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 6px;
   }
 
   .kpi {
-    flex: none;
+    flex: 0 0 auto;
+    min-width: 84px;
+    padding: 6px 8px;
+  }
+
+  .kpi p {
+    font-size: 9px;
+  }
+
+  .kpi strong {
+    margin-top: 2px;
+    font-size: 14px;
+  }
+
+  .chain-table .strike-cell {
+    position: static;
+    left: auto;
+  }
+
+  .chain-table thead .strike-cell {
+    position: sticky;
+    top: 28px;
+    left: auto;
+  }
+
+  .chain-scroll[data-density="focus"] .chain-table {
     min-width: 0;
+    width: 100%;
+    table-layout: fixed;
+    font-size: 11px;
+  }
+
+  .chain-scroll[data-density="focus"] .col-volume,
+  .chain-scroll[data-density="focus"] .col-iv,
+  .chain-scroll[data-density="focus"] .col-chng {
+    display: none;
+  }
+
+  .chain-scroll[data-density="focus"] .ltp-chng {
+    display: block;
+    margin-top: 1px;
+    font-family: var(--font-data);
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.1;
+  }
+
+  .chain-scroll[data-density="focus"] .quote-num {
+    font-weight: 650;
+  }
+
+  .chain-scroll[data-density="focus"] .strike-cell {
+    position: static;
+    left: auto;
+    min-width: 0;
+    width: 22%;
+  }
+
+  .chain-scroll[data-density="focus"] thead .strike-cell {
+    position: sticky;
+    top: 28px;
+    left: auto;
+  }
+
+  .chain-scroll[data-density="focus"] th,
+  .chain-scroll[data-density="focus"] td {
+    padding: 7px 3px;
   }
 }

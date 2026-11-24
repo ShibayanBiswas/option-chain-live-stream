@@ -62,18 +62,18 @@ function QuoteCard({
   tone: "call" | "put";
 }) {
   const items = [
-    ["Last", formatPrice(quote.lastPrice)],
-    ["Change", formatSigned(quote.change, 2)],
+    ["LTP", formatPrice(quote.lastPrice)],
+    ["Chng", formatSigned(quote.change, 2)],
     ["IV", formatPrice(quote.iv)],
-    ["Open Interest", formatCompact(quote.oi)],
-    ["Interest Change", formatSigned(quote.oiChg, 0)],
+    ["OI", formatCompact(quote.oi)],
+    ["Chng in OI", formatSigned(quote.oiChg, 0)],
     ["Volume", formatCompact(quote.volume)],
     ["Bid", formatPrice(quote.bid)],
     ["Ask", formatPrice(quote.ask)],
   ] as const;
 
   const visible = items.filter(([, value]) => value !== "—");
-  const rows = visible.length > 0 ? visible : ([["Last", "—"]] as const);
+  const rows = visible.length > 0 ? visible : ([["LTP", "—"]] as const);
 
   return (
     <section className={`quote-card ${tone}`}>

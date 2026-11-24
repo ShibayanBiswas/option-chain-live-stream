@@ -15,16 +15,16 @@ export type SideColumn = {
  * Last sits against the strike.
  */
 export const SIDE_COLUMNS: SideColumn[] = [
-  { key: "oi", label: "Open Interest", always: true, focus: true },
-  { key: "oiChg", label: "Interest Change" },
+  { key: "oi", label: "OI", always: true, focus: true },
+  { key: "oiChg", label: "Chng in OI" },
   { key: "volume", label: "Volume", always: true, focus: true },
   { key: "iv", label: "IV", always: true, focus: true },
-  { key: "bidQty", label: "Bid Quantity" },
+  { key: "bidQty", label: "Bid Qty" },
   { key: "bid", label: "Bid" },
   { key: "ask", label: "Ask" },
-  { key: "askQty", label: "Ask Quantity" },
-  { key: "chng", label: "Change", focus: true },
-  { key: "ltp", label: "Last", always: true, focus: true },
+  { key: "askQty", label: "Ask Qty" },
+  { key: "chng", label: "Chng", focus: true },
+  { key: "ltp", label: "LTP", always: true, focus: true },
 ];
 
 function quoteField(q: OptionQuote, key: ColumnKey): number | null {

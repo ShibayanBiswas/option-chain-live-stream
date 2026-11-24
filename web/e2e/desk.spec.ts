@@ -46,14 +46,14 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
     const heads = [...document.querySelectorAll(".chain-table thead tr:nth-child(2) th")].map((th) =>
       th.textContent?.trim(),
     );
-    const strike = heads.indexOf("Price");
+    const strike = heads.indexOf("Strike");
     return {
       before: heads.slice(Math.max(0, strike - 2), strike),
       after: heads.slice(strike + 1, strike + 3),
     };
   });
-  expect(headerOrder.before).toEqual(["Change", "Last"]);
-  expect(headerOrder.after).toEqual(["Last", "Change"]);
+  expect(headerOrder.before).toEqual(["Chng", "LTP"]);
+  expect(headerOrder.after).toEqual(["LTP", "Chng"]);
 
   const zeroRows = page.locator('[data-volume="zero"]');
   await expect(zeroRows.first()).toBeVisible();

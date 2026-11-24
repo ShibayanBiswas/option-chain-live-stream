@@ -165,13 +165,13 @@ export function OptionChainTable({
           </tr>
           <tr>
             {callCols.map((key) => (
-              <th key={`ce-${key}`} className="ce-zone" title={columnHint(key)}>
+              <th key={`ce-${key}`} className={cn("ce-zone", `col-${key}`)} title={columnHint(key)}>
                 {columnLabel(key)}
               </th>
             ))}
-            <th className="strike-cell">Price</th>
+            <th className="strike-cell">Strike</th>
             {peCols.map((key) => (
-              <th key={`pe-${key}`} className="pe-zone" title={columnHint(key)}>
+              <th key={`pe-${key}`} className={cn("pe-zone", `col-${key}`)} title={columnHint(key)}>
                 {columnLabel(key)}
               </th>
             ))}
@@ -295,6 +295,7 @@ function SideCell({
       value={value}
       className={cn(
         side === "ce" ? "ce-zone" : "pe-zone",
+        `col-${field}`,
         "depth-cell",
         tone,
         itm && "is-itm",
@@ -305,7 +306,12 @@ function SideCell({
       {depth > 0 ? (
         <i className={cn("depth-bar", side === "ce" ? "call" : "put")} style={{ width: `${depth}%` }} />
       ) : null}
-      <span>{renderValue(field, value)}</span>
+      <span className="quote-num">{renderValue(field, value)}</span>
+      {field === "ltp" ? (
+        <span className={cn("ltp-chng", quote.change != null && quote.change < 0 ? "tone-down" : "tone-up")}>
+          {formatSigned(quote.change, 2)}
+        </span>
+      ) : null}
     </FlashCell>
   );
 }
