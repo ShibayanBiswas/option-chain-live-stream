@@ -16,7 +16,8 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   await waitForBook(page);
   fs.mkdirSync(shotDir, { recursive: true });
   if (testInfo.project.name === "phone" || testInfo.project.name === "phone-narrow") {
-    await page.waitForTimeout(700);
+    await expect(page.locator(".feed-chip")).toContainText(/Live|WebSocket|Waiting|Rest/, { timeout: 25_000 });
+    await page.waitForTimeout(400);
     const viewport = page.viewportSize();
     const fitted = await page.evaluate(() => {
       const inside = (selector: string) => {
@@ -42,6 +43,7 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
       const tableWidth = table instanceof HTMLElement ? table.getBoundingClientRect().width : 0;
       return {
         session: inside(".session-pill"),
+        feed: inside(".feed-chip"),
         expiry: inside("[aria-label='Expiry']"),
         strikes: inside("[aria-label='Strikes']"),
         columns: inside("[aria-label='Columns']"),
@@ -53,6 +55,7 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
     });
     expect(fitted).toEqual({
       session: true,
+      feed: true,
       expiry: true,
       strikes: true,
       columns: true,

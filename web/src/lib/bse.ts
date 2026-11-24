@@ -1,4 +1,5 @@
 import { buildTotals } from "./analytics";
+import { upcomingExpiry } from "./display";
 import { parseLooseNumber } from "./format";
 import { httpsGet, httpsGetJson } from "./http";
 import type { ChainRow, OptionChainSnapshot, OptionQuote } from "./types";
@@ -130,10 +131,7 @@ export async function getBseOptionChain(params: {
   const started = Date.now();
   const product = params.segment === "EQUITY" ? "SO" : "IO";
   const expiries = await getBseExpiries(params.scripCd, product);
-  const expiry =
-    params.expiry && expiries.includes(params.expiry)
-      ? params.expiry
-      : (expiries[0] ?? "");
+  const expiry = upcomingExpiry(expiries, params.expiry ?? "");
   if (!expiry) throw new Error(`No BSE expiries for ${params.symbol}`);
 
   const data = await bseGet<{

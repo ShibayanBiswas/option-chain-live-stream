@@ -73,7 +73,7 @@ export function Terminal() {
     };
   }, []);
 
-  const { snapshot, status, error } = useOptionStream({
+  const { snapshot, status, error, socketState } = useOptionStream({
     symbol: selected?.symbol ?? "",
     expiry,
     exchange: selected?.exchange ?? "NSE",
@@ -168,6 +168,17 @@ export function Terminal() {
     [book],
   );
   const session = book?.market?.message ?? (book?.market ? "Market Closed" : "Session");
+  const waiting = status === "connecting" || status === "polling";
+  const feed =
+    socketState === "open" || snapshot?.feed === "websocket"
+      ? "WebSocket"
+      : status === "live"
+        ? "Live"
+        : status === "connecting"
+          ? "Connecting"
+          : status === "polling"
+            ? "Waiting"
+            : "Rest";
 
   return (
     <MotionConfig reducedMotion="user">
@@ -222,6 +233,11 @@ export function Terminal() {
           </button>
           </div>
           <div className="toolbar-tools">
+          <div className="feed-chip" data-state={waiting ? "waiting" : status} aria-live="polite">
+            <span className={cn("live-dot", status === "error" && "is-off", waiting && "is-stale")} />
+            <span>{feed}</span>
+            <em>{snapshot ? `${snapshot.latencyMs} ms` : "…"}</em>
+          </div>
           <span
             className={cn(
               "session-pill",

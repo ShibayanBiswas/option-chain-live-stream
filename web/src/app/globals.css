@@ -145,25 +145,6 @@ html.dark .bg-mesh::before {
   box-shadow: var(--ar-shadow);
 }
 
-.live-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: #16a34a;
-  box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.55);
-  animation: live-pulse 1.8s ease-out infinite;
-}
-
-.live-dot.is-stale {
-  background: #d9a33b;
-  animation: none;
-}
-
-.live-dot.is-off {
-  background: #a8a29e;
-  animation: none;
-}
-
 @keyframes live-pulse {
   0% {
     box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.55);
@@ -351,7 +332,7 @@ html.dark .bg-mesh::before {
   }
 }
 
-@keyframes live-pulse {
+@keyframes session-pulse {
   0%,
   100% {
     box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.35);
@@ -699,7 +680,7 @@ html.dark .chain-row.is-zero td {
 .session-pill.is-open {
   color: #166534;
   background: rgba(22, 163, 74, 0.12);
-  animation: live-pulse 1.8s ease-in-out infinite;
+  animation: session-pulse 1.8s ease-in-out infinite;
 }
 
 .session-pill.is-preopen {
@@ -1167,7 +1148,37 @@ html.dark .quote-card.put {
 
 .feed-chip em {
   font-style: normal;
+  font-family: var(--font-data);
   color: var(--ar-subtle);
+}
+
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #16a34a;
+  box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.55);
+  animation: live-pulse 1.8s ease-out infinite;
+}
+
+.live-dot.is-stale {
+  background: #d9a33b;
+  animation: wait-pulse 1.2s ease-in-out infinite;
+}
+
+.live-dot.is-off {
+  background: #a8a29e;
+  animation: none;
+}
+
+@keyframes wait-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
 }
 
 @media (max-width: 980px) {
@@ -1825,10 +1836,15 @@ html.dark .is-itm {
     min-width: 0;
   }
 
-  .toolbar-tools .session-pill {
+  .toolbar-tools .session-pill,
+  .toolbar-tools .feed-chip {
     justify-self: start;
     width: max-content;
     max-width: 100%;
+  }
+
+  .toolbar-tools .feed-chip {
+    grid-column: 1 / -1;
   }
 
   .identity {

@@ -22,6 +22,8 @@ npm run test:api
 
 Probes `/api/health`, `/api/universe` (indexes are exactly NSE NIFTY and BSE SENSEX, equities are ANANDRATHI only), the NIFTY chain, the Anand Rathi Wealth NSE chain, and SENSEX when BSE is reachable.
 
+`npm run verify:accuracy` fetches the same expiries from NSE and BSE and checks spot, last, open interest, and IV against the desk. When BSE denies the request, SENSEX is checked against the cached book instead.
+
 ## Playwright
 
 ```bash

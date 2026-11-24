@@ -13,7 +13,7 @@
 
 - Full-width terminal: left rail + stage, no page gutters.
 - Floating sidebar control (`rail-fab`) that tracks open/collapsed state without covering the board.
-- Toolbar: contract, spot, session, expiry, strike window, columns, theme. On a phone the name stays on the first row and the controls wrap onto a second row.
+- Toolbar: contract, spot, session, expiry, strike window, columns, theme, and the live sync chip. The chip pulses green while the book is in sync, amber while it is connecting or waiting, and shows the upstream latency in milliseconds. On a phone the name stays on the first row and the controls wrap underneath.
 
 ## Option chain
 

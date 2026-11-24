@@ -1,4 +1,5 @@
 import { buildTotals } from "./analytics";
+import { upcomingExpiry } from "./display";
 import { parseLooseNumber } from "./format";
 import { httpsGet, httpsGetJson } from "./http";
 import type {
@@ -241,10 +242,7 @@ export async function getNseOptionChain(params: {
 }): Promise<OptionChainSnapshot> {
   const started = Date.now();
   const expiries = await getNseContractInfo(params.symbol);
-  const expiry =
-    params.expiry && expiries.includes(params.expiry)
-      ? params.expiry
-      : (expiries[0] ?? "");
+  const expiry = upcomingExpiry(expiries, params.expiry ?? "");
 
   if (!expiry) {
     throw new Error(`No expiries available for ${params.symbol}`);
