@@ -7,6 +7,7 @@ const LABELS: Record<string, string> = {
   SENSEX: "SENSEX",
   BANKEX: "BANKEX",
   SENSEX50: "SENSEX 50",
+  SX50: "SENSEX 50",
   ANANDRATHI: "Anand Rathi Wealth",
 };
 
@@ -72,9 +73,15 @@ export function matchTape<T extends { symbol: string }>(symbol: string, quotes: 
   const key = symbol.replace(/[^A-Z0-9]/gi, "").toUpperCase();
   const aliases: Record<string, string> = {
     NIFTY50: "NIFTY",
+    NIFTYBANK: "BANKNIFTY",
+    NIFTYFINSERVICE: "FINNIFTY",
+    NIFTYMIDSELECT: "MIDCPNIFTY",
     NIFTYNEXT50: "NIFTYNXT50",
+    NIFTYFPI150: "NIFTYFPI",
     MIDCAPNIFTY: "MIDCPNIFTY",
     SNSX50: "SENSEX50",
+    SX50: "SENSEX50",
+    SENSEX50: "SX50",
   };
   return quotes.find((quote) => {
     const compact = quote.symbol.replace(/[^A-Z0-9]/gi, "").toUpperCase();

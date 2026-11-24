@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Columns2, Maximize2, Minimize2, Moon, PanelLeft, RefreshCw, Search, Sun } from "lucide-react";
 
@@ -41,7 +41,7 @@ export function Terminal() {
   const [expiry, setExpiry] = useState("");
   const [depth, setDepth] = useState<"near" | "full">("near");
   const [density, setDensity] = useState<"focus" | "full">("focus");
-  const [railOpen, setRailOpen] = useState(true);
+  const [railOpen, setRailOpen] = useState(false);
   const [railBeforeMagnify, setRailBeforeMagnify] = useState(true);
   const [magnify, setMagnify] = useState(false);
   const [picked, setPicked] = useState<ChainRow | null>(null);
@@ -91,6 +91,10 @@ export function Terminal() {
     if (!snapshot?.expiries?.length) return;
     if (!expiry || !snapshot.expiries.includes(expiry)) setExpiry(snapshot.expiries[0]!);
   }, [expiry, snapshot?.expiries]);
+
+  useLayoutEffect(() => {
+    if (window.matchMedia("(min-width: 981px)").matches) setRailOpen(true);
+  }, []);
 
   useEffect(() => {
     if (window.matchMedia("(max-width: 980px)").matches) setRailOpen(false);
@@ -178,6 +182,7 @@ export function Terminal() {
     setPicked(null);
     setPcrPoints([]);
     window.localStorage.setItem("ocls-last", `${item.exchange}:${item.symbol}`);
+    if (window.matchMedia("(max-width: 980px)").matches) setRailOpen(false);
   }
 
   function togglePin(item: Instrument) {
@@ -217,16 +222,6 @@ export function Terminal() {
 
   return (
     <div className={cn("terminal bg-mesh", magnify && "is-magnified", !railOpen && "rail-hidden")}>
-      <button
-        className="rail-fab icon-btn"
-        type="button"
-        onClick={() => setRailOpen((open) => !open)}
-        aria-label={railOpen ? "Collapse sidebar" : "Expand sidebar"}
-        aria-pressed={railOpen}
-      >
-        <PanelLeft className="h-4 w-4" />
-      </button>
-
       <aside className={cn("rail", !railOpen && "is-collapsed", railOpen && "is-sheet")} aria-hidden={!railOpen}>
         <div className="rail-brand">
           <BrandLogo compact />
@@ -264,6 +259,15 @@ export function Terminal() {
           </div>
         </div>
         <header className="toolbar">
+          <button
+            className="icon-btn"
+            type="button"
+            onClick={() => setRailOpen((open) => !open)}
+            aria-label={railOpen ? "Collapse sidebar" : "Expand sidebar"}
+            aria-pressed={railOpen}
+          >
+            <PanelLeft className="h-4 w-4" />
+          </button>
           <button className="icon-btn" type="button" aria-label="Search contracts" onClick={() => setPaletteOpen(true)}>
             <Search className="h-4 w-4" />
           </button>

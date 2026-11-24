@@ -531,7 +531,7 @@ html.dark .chain-row.is-zero td {
   min-width: 0;
   min-height: 0;
   width: 100%;
-  padding: 10px 12px 10px;
+  padding: 0 0 10px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -544,7 +544,8 @@ html.dark .chain-row.is-zero td {
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  border-radius: 18px;
+  width: 100%;
+  border-radius: 0;
   border: 1px solid var(--ar-border);
   background: color-mix(in srgb, var(--ar-surface) 90%, transparent);
   box-shadow: var(--ar-shadow);
@@ -1171,9 +1172,42 @@ html.dark .quote-card.put {
     touch-action: pan-x pan-y;
   }
 
-  .chain-table {
-    min-width: 980px;
+  .chain-table,
+  .chain-scroll[data-density="focus"] .chain-table {
+    min-width: 720px;
   }
+
+  .chain-table .strike-cell {
+    position: static;
+    left: auto;
+  }
+
+  .chain-table thead .strike-cell {
+    position: sticky;
+    top: 28px;
+    left: auto;
+  }
+
+  .toolbar {
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+  }
+
+  .stage {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+.ticker,
+.kpi-row,
+.analytics-row,
+.oi-chart,
+.board,
+.banner {
+  margin-left: 12px;
+  margin-right: 12px;
+}
 
   .board-meta {
     display: flex;
