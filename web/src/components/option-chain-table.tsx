@@ -129,7 +129,20 @@ export function OptionChainTable({
     const scroller = row?.closest(".chain-scroll");
     if (!row || !(scroller instanceof HTMLElement)) return;
     const top = row.offsetTop - scroller.clientHeight / 2 + row.clientHeight / 2;
-    scroller.scrollTo({ top: Math.max(0, top), behavior: reduce ? "auto" : "smooth" });
+    const cell = row.querySelector(".strike-cell");
+    const delta =
+      cell instanceof HTMLElement
+        ? cell.getBoundingClientRect().left - scroller.getBoundingClientRect().left
+        : 0;
+    const left =
+      cell instanceof HTMLElement
+        ? scroller.scrollLeft + delta - scroller.clientWidth / 2 + cell.clientWidth / 2
+        : scroller.scrollLeft;
+    scroller.scrollTo({
+      top: Math.max(0, top),
+      left: Math.max(0, left),
+      behavior: reduce ? "auto" : "smooth",
+    });
   }, [reduce, snapshot.expiry, snapshot.symbol, spotStrike]);
 
   return (

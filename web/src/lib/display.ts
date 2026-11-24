@@ -4,6 +4,7 @@ const LABELS: Record<string, string> = {
   FINNIFTY: "FIN NIFTY",
   MIDCPNIFTY: "MIDCAP NIFTY",
   NIFTYNXT50: "NIFTY NEXT 50",
+  NIFTYFPI: "NIFTY FPI",
   SENSEX: "SENSEX",
   BANKEX: "BANKEX",
   SENSEX50: "SENSEX 50",
@@ -59,7 +60,7 @@ export function describeExpiry(raw: string, now = new Date()): ExpiryInfo | null
   const days = Math.round((date.getTime() - start.getTime()) / 86_400_000);
   const lateShift = date.getDay() !== 4 && date.getDate() >= 24;
   const bucket: ExpiryInfo["bucket"] = isLastThursday(date) || lateShift ? "monthly" : "weekly";
-  const when = days === 0 ? "today" : days === 1 ? "1 day" : `${days} days`;
+  const when = days < 0 ? "passed" : days === 0 ? "today" : days === 1 ? "1 day" : `${days} days`;
   return {
     raw,
     date,

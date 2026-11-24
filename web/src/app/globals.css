@@ -1074,13 +1074,19 @@ html.dark .quote-card.put {
     background: rgba(8, 6, 4, 0.45);
   }
 
+  .toolbar {
+    position: relative;
+    z-index: 40;
+  }
+
   .rail.is-sheet:not(.is-collapsed) {
     position: fixed;
     z-index: 36;
     left: 8px;
     right: 8px;
+    top: 76px;
     bottom: 12px;
-    height: min(68dvh, 560px);
+    height: auto;
     border-radius: 18px;
     overflow: auto;
     box-shadow: var(--ar-shadow);
@@ -1177,17 +1183,6 @@ html.dark .quote-card.put {
     min-width: 720px;
   }
 
-  .chain-table .strike-cell {
-    position: static;
-    left: auto;
-  }
-
-  .chain-table thead .strike-cell {
-    position: sticky;
-    top: 28px;
-    left: auto;
-  }
-
   .toolbar {
     border-radius: 0;
     border-left: 0;
@@ -1269,9 +1264,12 @@ html.dark .quote-card.put {
   }
 
   .toolbar {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+
+  .field select {
+    max-width: 168px;
   }
 
   .oi-chart {
@@ -1290,17 +1288,6 @@ html.dark .quote-card.put {
 
   .chain-scroll[data-density="full"] .chain-table {
     min-width: 1040px;
-  }
-
-  .chain-table .strike-cell {
-    position: static;
-    left: auto;
-  }
-
-  .chain-table thead .strike-cell {
-    position: sticky;
-    top: 28px;
-    left: auto;
   }
 
   .chain-table thead th,
@@ -1667,4 +1654,26 @@ html.dark .is-itm {
 
 ::-webkit-scrollbar-track {
   background: transparent;
+}
+
+@media (max-width: 700px) {
+  .ticker,
+  .analytics-row {
+    display: none;
+  }
+
+  .chain-scroll {
+    min-height: 320px;
+  }
+
+  .kpi-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    overflow: visible;
+  }
+
+  .kpi {
+    flex: none;
+    min-width: 0;
+  }
 }

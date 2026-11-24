@@ -77,8 +77,7 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   await expect(page.locator(".terminal")).toHaveClass(/is-magnified/);
   await page.getByRole("button", { name: "Exit magnify" }).click();
   await expect(page.locator(".terminal")).not.toHaveClass(/is-magnified/);
-  if (narrow) await page.getByRole("button", { name: "Expand sidebar" }).click();
-  await expect(page.locator(".rail")).not.toHaveClass(/is-collapsed/);
+  if (narrow) await expect(page.locator(".rail")).toHaveClass(/is-collapsed/);
 
   const barWidth = await page.locator(".oi-fill").first().evaluate((el) => parseFloat(getComputedStyle(el).width));
   expect(barWidth).toBeGreaterThan(0);
@@ -113,11 +112,18 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
     const toolbar = document.querySelector(".toolbar") as HTMLElement;
     const stage = document.querySelector(".stage") as HTMLElement;
     chain.scrollTop = 140;
-    if (chain.scrollWidth > chain.clientWidth + 8) chain.scrollLeft = 180;
-    const strike = chain.querySelector(".strike-cell") as HTMLElement;
+    const strike = chain.querySelector("tbody .strike-cell") as HTMLElement;
+    if (chain.scrollWidth > chain.clientWidth + 8 && strike) {
+      const delta = strike.getBoundingClientRect().left - chain.getBoundingClientRect().left;
+      chain.scrollLeft = Math.max(0, chain.scrollLeft + delta - chain.clientWidth / 2 + strike.clientWidth / 2);
+    }
     const cRect = chain.getBoundingClientRect();
     const sRect = strike.getBoundingClientRect();
     return {
+      strikeLeft: Math.round(sRect.left),
+      strikeRight: Math.round(sRect.right),
+      chainLeft: Math.round(cRect.left),
+      chainRight: Math.round(cRect.right),
       pageOverflow: doc.scrollWidth - doc.clientWidth,
       docScroll: doc.scrollTop,
       chainTop: chain.scrollTop,
@@ -143,10 +149,11 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   if (layout.chainOverflows) {
     expect(layout.chainLeft).toBeGreaterThan(0);
     if (testInfo.project.name !== "phone-narrow") {
-      expect(layout.strikeInside).toBe(true);
+      expect(layout.strikeInside, JSON.stringify(layout)).toBe(true);
     }
   }
   if (narrow) {
+    await page.getByRole("button", { name: "Expand sidebar" }).click();
     await expect(page.locator(".rail.is-sheet")).toBeVisible();
     await expect(page.locator(".symbol-main").first()).toBeVisible();
     const expiryBox = await page.getByLabel("Expiry").boundingBox();
@@ -157,6 +164,7 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
     expect(target!.height).toBeGreaterThanOrEqual(44);
   }
 
+  if (narrow) await page.getByRole("button", { name: "Collapse sidebar" }).click();
   fs.mkdirSync(shotDir, { recursive: true });
   await page.screenshot({
     path: path.join(shotDir, `desk-${testInfo.project.name}.png`),
