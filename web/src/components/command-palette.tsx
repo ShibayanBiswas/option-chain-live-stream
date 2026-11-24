@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { ArrowLeft } from "lucide-react";
 
 import { displayName } from "@/lib/display";
 import type { Instrument } from "@/lib/types";
@@ -56,6 +57,10 @@ export function CommandPalette({
             exit={{ y: 8, opacity: 0 }}
             onClick={(event) => event.stopPropagation()}
           >
+            <div className="palette-bar">
+            <button className="icon-btn palette-back" type="button" onClick={onClose} aria-label="Back">
+              <ArrowLeft className="h-4 w-4" />
+            </button>
             <input
               autoFocus
               value={query}
@@ -77,6 +82,7 @@ export function CommandPalette({
                 }
               }}
             />
+            </div>
             <ul>
               {results.map((item, index) => (
                 <li key={`${item.exchange}-${item.symbol}`}>

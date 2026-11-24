@@ -1181,6 +1181,10 @@ html.dark .quote-card.put {
   }
 }
 
+.rail-back {
+  display: none;
+}
+
 @media (max-width: 980px) {
   html,
   body {
@@ -1259,6 +1263,21 @@ html.dark .quote-card.put {
 
   .rail-brand {
     display: none;
+  }
+
+  .rail-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--ar-ink);
+    font-family: var(--font-sans);
+    font-weight: 650;
+    cursor: pointer;
   }
 
   .symbol-list {
@@ -1616,12 +1635,6 @@ html.dark .is-itm {
   background: rgba(212, 178, 76, 0.2);
 }
 
-.is-call-wall .strike-cell,
-.is-put-wall .strike-cell,
-.is-move .strike-cell {
-  box-shadow: inset 0 -2px 0 var(--ar-gold-dark);
-}
-
 .palette-backdrop {
   position: fixed;
   inset: 0;
@@ -1641,13 +1654,26 @@ html.dark .is-itm {
   overflow: hidden;
 }
 
+.palette-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px solid var(--ar-border);
+}
+
+.palette-back {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  margin-left: 8px;
+}
+
 .palette input {
   width: 100%;
   border: 0;
-  border-bottom: 1px solid var(--ar-border);
   background: transparent;
   color: var(--ar-ink);
-  padding: 16px;
+  padding: 16px 16px 16px 8px;
   font-size: 16px;
   outline: none;
 }
@@ -1658,7 +1684,7 @@ html.dark .is-itm {
   padding: 8px;
 }
 
-.palette button {
+.palette ul button {
   width: 100%;
   display: flex;
   justify-content: space-between;
@@ -1672,8 +1698,8 @@ html.dark .is-itm {
   text-align: left;
 }
 
-.palette button.is-active,
-.palette button:hover {
+.palette ul button.is-active,
+.palette ul button:hover {
   background: rgba(212, 178, 76, 0.16);
 }
 
@@ -1932,9 +1958,15 @@ html.dark .is-itm {
 
   .chain-scroll[data-density="focus"] .chain-table thead th,
   .chain-scroll[data-density="focus"] .chain-table tbody td {
-    padding: 5px 2px;
+    padding: 8px 6px;
     overflow: hidden;
     letter-spacing: 0;
+  }
+
+  .chain-scroll[data-density="focus"] .chain-table tbody td {
+    padding-top: 14px;
+    padding-bottom: 14px;
+    line-height: 1.3;
   }
 
   .chain-scroll[data-density="focus"] .col-oi {
@@ -1946,14 +1978,14 @@ html.dark .is-itm {
   }
 
   .chain-scroll[data-density="focus"] .strike-cell {
-    width: 20%;
+    width: 22%;
     min-width: 0;
-    font-size: 12px;
+    font-size: 15px;
   }
 
   .chain-scroll[data-density="focus"] .quote-num {
     display: block;
-    font-size: 12px;
+    font-size: 15px;
   }
 
   .chain-scroll[data-density="focus"] .col-volume,
@@ -1964,9 +1996,9 @@ html.dark .is-itm {
 
   .chain-scroll[data-density="focus"] .ltp-chng {
     display: block;
-    margin-top: 1px;
+    margin-top: 4px;
     font-family: var(--font-data);
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 650;
     line-height: 1.1;
     overflow: hidden;

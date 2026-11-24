@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { MotionConfig, motion } from "framer-motion";
-import { Moon, PanelLeft, Search, Sun } from "lucide-react";
+import { ArrowLeft, Moon, PanelLeft, Search, Sun } from "lucide-react";
 
 import { BrandLogo } from "@/components/brand-logo";
 import { CommandPalette } from "@/components/command-palette";
@@ -187,6 +187,10 @@ export function Terminal() {
         <div className="rail-brand">
           <BrandLogo compact />
         </div>
+        <button className="rail-back" type="button" onClick={() => setRailOpen(false)}>
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </button>
         {book ? (
           <InstrumentTree
             indexes={book.indexes}

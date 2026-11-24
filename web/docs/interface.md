@@ -5,7 +5,7 @@
 - Sidebar tree: Indices and Equity, each split into NSE and BSE. Sections animate open and closed.
 - Rows show last and change. NIFTY comes from the NSE index tape. SENSEX and Anand Rathi Wealth on NSE and BSE come from the live quote supplement, because those names are not on the NSE index tape.
 - Pins and the last contract are stored in the browser.
-- Command palette: Search contracts, or Ctrl/Cmd+K. Arrow keys and Enter select.
+- Command palette: Search contracts, or Ctrl/Cmd+K. Arrow keys and Enter select. Back closes it, and Back also closes a strike and the phone contract list.
 - Expiry menu groups Weekly and Monthly and shows days remaining.
 - On narrow screens the tree starts closed and opens as a bottom sheet.
 

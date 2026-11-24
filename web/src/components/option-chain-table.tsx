@@ -3,7 +3,6 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 
-import { chainHighlights } from "@/lib/analytics";
 import { columnHint, columnLabel, putColumns, visibleColumns } from "@/lib/columns";
 import { cn } from "@/lib/cn";
 import { formatCompact, formatNumber, formatPrice, formatSigned, isEmptyValue } from "@/lib/format";
@@ -107,7 +106,6 @@ export function OptionChainTable({
     return snapshot.rows.slice(Math.max(0, idx - 18), Math.min(snapshot.rows.length, idx + 19));
   }, [depth, snapshot.rows, spotStrike]);
 
-  const highlights = useMemo(() => chainHighlights(rows), [rows]);
   const scales = useMemo(() => {
     const oi = Math.max(1, ...rows.flatMap((row) => [row.ce.oi ?? 0, row.pe.oi ?? 0]));
     const volume = Math.max(1, ...rows.flatMap((row) => [row.ce.volume ?? 0, row.pe.volume ?? 0]));
@@ -207,24 +205,12 @@ export function OptionChainTable({
                 <tr
                   id={`strike-${row.strike}`}
                   data-volume={callQuiet && putQuiet ? "zero" : "traded"}
-                  data-highlight={
-                    row.strike === highlights.maxCallOi
-                      ? "call-oi"
-                      : row.strike === highlights.maxPutOi
-                        ? "put-oi"
-                        : row.strike === highlights.maxMove
-                          ? "move"
-                          : undefined
-                  }
                   className={cn(
                     "chain-row",
                     atSpot && "is-atm",
                     callQuiet && putQuiet && "is-zero",
                     itmCall && "is-itm-call",
                     itmPut && "is-itm-put",
-                    row.strike === highlights.maxCallOi && "is-call-wall",
-                    row.strike === highlights.maxPutOi && "is-put-wall",
-                    row.strike === highlights.maxMove && "is-move",
                   )}
                   onClick={() => onSelect(row)}
                 >

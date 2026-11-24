@@ -74,6 +74,12 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
     await page.waitForTimeout(500);
   }
 
+  const searchDialog = page.getByRole("dialog", { name: "Contract search" });
+  await page.getByRole("button", { name: "Search contracts" }).click();
+  await expect(searchDialog).toBeVisible();
+  await searchDialog.getByRole("button", { name: "Back" }).click();
+  await expect(searchDialog).toBeHidden();
+
   const chainText = await page.locator(".chain-table").innerText();
   expect(chainText).not.toMatch(/\+\d/);
   expect(chainText).not.toMatch(/ATM|±/);
@@ -155,7 +161,7 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   expect(sheetBox).toBeTruthy();
   expect(sheetBox!.x).toBeGreaterThanOrEqual(-1);
   expect(sheetBox!.x + sheetBox!.width).toBeLessThanOrEqual((viewport?.width ?? 0) + 2);
-  await page.getByRole("button", { name: "Close" }).click();
+  await page.getByRole("button", { name: "Back" }).click();
   await expect(sheet).toBeHidden();
 
   const layout = await page.evaluate(() => {

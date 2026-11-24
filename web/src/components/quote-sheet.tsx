@@ -1,6 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
+import { ArrowLeft } from "lucide-react";
 
 import { formatCompact, formatNumber, formatPrice, formatSigned } from "@/lib/format";
 import type { ChainRow, OptionQuote } from "@/lib/types";
@@ -37,8 +38,8 @@ export function QuoteSheet({
                 <p className="eyebrow">Strike</p>
                 <h2>{formatNumber(row.strike, 0)}</h2>
               </div>
-              <button className="icon-btn" type="button" onClick={onClose}>
-                Close
+              <button className="icon-btn" type="button" onClick={onClose} aria-label="Back">
+                <ArrowLeft className="h-4 w-4" />
               </button>
             </header>
             <div className="sheet-grid">
