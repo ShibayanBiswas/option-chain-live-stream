@@ -139,13 +139,44 @@ export async function getNseContractInfo(symbol: string): Promise<string[]> {
   return expiries;
 }
 
-export async function getNseMarketStatus(): Promise<{
-  status: string;
-  tradeDate: string;
-  niftyLast: number | null;
-  message: string;
-  open: boolean;
+export async function discoverNseBook(): Promise<{
+  indexes: string[];
+  equities: string[];
 }> {
+  const [page, equities] = await Promise.all([
+    (async () => {
+      const cookie = await primeSession();
+      const res = await httpsGet(
+        `${NSE_BASE}/option-chain`,
+        baseHeaders({ Accept: "text/html,application/xhtml+xml" }),
+        cookie,
+      );
+      return res.body;
+    })(),
+    fetchJson<string[]>("/api/master-quote"),
+  ]);
+
+  const block = page.match(
+    /<select[^>]*id="equity_optionchain_select"[^>]*>([\s\S]*?)<\/select>/i,
+  );
+  const indexes = block
+    ? [...block[1].matchAll(/<option[^>]*value="([A-Z0-9&-]+)"/g)]
+        .map((m) => m[1])
+        .filter((v): v is string => Boolean(v))
+    : [];
+
+  return {
+    indexes,
+    equities: (equities ?? []).map((s) => String(s).trim()).filter(Boolean),
+  };
+}
+
+let marketCache: {
+  at: number;
+  value: Awaited<ReturnType<typeof readMarketStatus>>;
+} | null = null;
+
+async function readMarketStatus() {
   type MarketStatus = {
     marketState?: Array<{
       market?: string;
@@ -167,6 +198,19 @@ export async function getNseMarketStatus(): Promise<{
     message: capital?.marketStatusMessage ?? "",
     open: String(status).toLowerCase() === "open",
   };
+}
+
+export async function getNseMarketStatus(): Promise<{
+  status: string;
+  tradeDate: string;
+  niftyLast: number | null;
+  message: string;
+  open: boolean;
+}> {
+  if (marketCache && Date.now() - marketCache.at < 15_000) return marketCache.value;
+  const value = await readMarketStatus();
+  marketCache = { at: Date.now(), value };
+  return value;
 }
 
 export async function getNseOptionChain(params: {
@@ -222,19 +266,8 @@ export async function getNseOptionChain(params: {
 
   const rows = Array.from(byStrike.values()).sort((a, b) => a.strike - b.strike);
   const spot = parseLooseNumber(raw.records?.underlyingValue);
-  const istHour = Number(
-    new Intl.DateTimeFormat("en-GB", {
-      timeZone: "Asia/Kolkata",
-      hour: "numeric",
-      hour12: false,
-    }).format(new Date()),
-  );
-  const istDay = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Kolkata",
-    weekday: "short",
-  }).format(new Date());
-  const weekday = !["Sat", "Sun"].includes(istDay);
-  const marketOpen = weekday && istHour >= 9 && istHour < 16;
+  const market = await getNseMarketStatus().catch(() => null);
+  const marketOpen = market?.open ?? false;
 
   return {
     exchange: "NSE",
@@ -249,5 +282,6 @@ export async function getNseOptionChain(params: {
     latencyMs: Date.now() - started,
     source: "nse",
     marketOpen,
+    feed: "rest",
   };
 }

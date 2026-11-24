@@ -49,14 +49,12 @@ export function formatCompact(value: number | null | undefined): string {
 
 export function formatPct(value: number | null | undefined): string {
   if (value === null || value === undefined || !Number.isFinite(value)) return "—";
-  const sign = value > 0 ? "+" : "";
-  return `${sign}${value.toFixed(2)}%`;
+  return `${value.toFixed(2)}%`;
 }
 
 export function formatSigned(value: number | null | undefined, digits = 2): string {
   if (value === null || value === undefined || !Number.isFinite(value) || value === 0) {
     return "—";
   }
-  const sign = value > 0 ? "+" : "";
-  return `${sign}${formatNumber(value, digits)}`;
+  return formatNumber(value, digits);
 }

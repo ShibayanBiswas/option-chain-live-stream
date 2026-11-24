@@ -1,37 +1,32 @@
 import { NextResponse } from "next/server";
 
 import { getNseMarketStatus } from "@/lib/nse";
-import { EQUITIES, listIndexes } from "@/lib/symbols";
-import type { MetaResponse } from "@/lib/types";
+import { loadUniverse } from "@/lib/universe";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const market = await getNseMarketStatus().catch(() => ({
-    status: "Unknown",
-    tradeDate: "",
-    niftyLast: null,
-    message: "Market status unavailable",
-    open: false,
-  }));
+  const [book, market] = await Promise.all([
+    loadUniverse(),
+    getNseMarketStatus().catch(() => null),
+  ]);
 
-  const payload: MetaResponse = {
-    indexes: listIndexes(),
-    equities: EQUITIES,
-    market: {
-      status: market.status,
-      tradeDate: market.tradeDate,
-      niftyLast: market.niftyLast,
-      message: market.message,
+  return NextResponse.json(
+    {
+      indexes: book.indexes,
+      equities: book.equities,
+      market: {
+        status: market?.status ?? "Unknown",
+        tradeDate: market?.tradeDate ?? "",
+        niftyLast: market?.niftyLast ?? null,
+        message: market?.open ? "Market Open" : "Market Closed",
+      },
+      serverTimeIst: new Date().toLocaleString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        hour12: false,
+      }),
     },
-    serverTimeIst: new Date().toLocaleString("en-IN", {
-      timeZone: "Asia/Kolkata",
-      hour12: false,
-    }),
-  };
-
-  return NextResponse.json(payload, {
-    headers: { "Cache-Control": "no-store" },
-  });
+    { headers: { "Cache-Control": "no-store" } },
+  );
 }

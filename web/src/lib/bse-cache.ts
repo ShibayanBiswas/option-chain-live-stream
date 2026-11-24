@@ -53,6 +53,17 @@ function loadCache(): Record<string, CacheEntry> | null {
   return bundledCache as Record<string, CacheEntry>;
 }
 
+export function listCachedBse(): Array<{ symbol: string; scrip: number }> {
+  const cache = loadCache();
+  if (!cache) return [];
+  return Object.values(cache)
+    .map((entry) => ({
+      symbol: entry.symbol,
+      scrip: Number(entry.rows?.[0]?.ScriP_cd ?? entry.scripCd ?? 0),
+    }))
+    .filter((row) => row.symbol && row.scrip > 0);
+}
+
 export function getBseCachedChain(symbol: string, expiry?: string): OptionChainSnapshot | null {
   const started = Date.now();
   const cache = loadCache();
@@ -90,5 +101,6 @@ export function getBseCachedChain(symbol: string, expiry?: string): OptionChainS
     latencyMs: Date.now() - started,
     source: "bse",
     marketOpen: false,
+    feed: "rest",
   };
 }

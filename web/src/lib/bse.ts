@@ -9,7 +9,7 @@ const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36";
 
 export class BseBlockedError extends Error {
-  constructor(message = "BSE API blocked by edge protection from this host") {
+  constructor(message = "Chain unavailable") {
     super(message);
     this.name = "BseBlockedError";
   }
@@ -91,6 +91,24 @@ function mapPe(row: ChainApiRow): OptionQuote {
   };
 }
 
+export async function discoverBseUnderlyings(
+  product: "IO" | "SO",
+): Promise<Array<{ symbol: string; scrip: number }>> {
+  const data = await bseGet<{
+    Table?: Array<{ UlaCODE?: string; scrip_cd?: number }>;
+  }>(
+    `${BSE_API}/BseIndiaAPI/api/ddlUnderlyingAsset/w?ProductType=${product}&scrip_cd=0`,
+  );
+  return (data.Table ?? [])
+    .map((row) => ({
+      symbol: String(row.UlaCODE ?? "")
+        .trim()
+        .replace(/\s+/g, " "),
+      scrip: Number(row.scrip_cd ?? 0),
+    }))
+    .filter((row) => row.symbol && row.scrip > 0);
+}
+
 export async function getBseExpiries(scripCd: number): Promise<string[]> {
   const data = await bseGet<{ Table?: ExpiryRow[] }>(
     `${BSE_API}/BseIndiaAPI/api/ddlExpiry/w?ProductType=IO&scrip_cd=${scripCd}`,
@@ -144,5 +162,6 @@ export async function getBseOptionChain(params: {
     latencyMs: Date.now() - started,
     source: "bse",
     marketOpen: false,
+    feed: "rest",
   };
 }

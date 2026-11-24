@@ -1,45 +1,32 @@
 # Option Chain Live Stream
 
-Anand Rathi Wealth desk — live NSE / BSE option-chain streaming for Indian indexes (Nifty, Sensex, Bank Nifty, …) and equity F&O.
+Anand Rathi Wealth derivatives desk for NSE and BSE. Indexes and equities are loaded from the exchanges. The chain streams over server-sent events, and NSE names also merge the exchange websocket. The desk is full width, Spot Focus or Entire Book, with magnify and an animated Strike Pressure open-interest panel.
 
-## Stack
-
-- Next.js 15 (App Router) · TypeScript · Tailwind · Framer Motion
-- NSE `option-chain-v3` + contract-info (cookie-primed server proxy)
-- BSE Derivatives Option Chain API (Sensex / Bankex / SX50)
-- SSE live stream (`/api/stream`) with REST fallback polling
-- UI language aligned with **Primary SP Dashboard** (gold / maroon ARW brand)
-
-## Features
-
-- Continuous low-latency chain refresh with flash animations on ticks
-- Expiry selector for every underlying
-- PCR · Max Pain · ATM · Call/Put OI KPIs
-- Auto-hides empty Bid / Ask / Bid Qty / Ask Qty / Chng columns
-- Dark / light theme · mobile-friendly horizontal chain scroll
-
-## Local
+## Run
 
 ```bash
 npm install
-npm run dev
+npm run typecheck
+npm run build
+npm run start
 ```
 
 Open http://localhost:3000
 
-```bash
-npm run build
-npm run start
-npm run verify:accuracy   # with server running
-```
-
-## Deploy (Vercel)
-
-Root directory: `web`  
-Region: `bom1` (Mumbai)
+With the server running:
 
 ```bash
-npx vercel --prod
+npm run verify:accuracy
 ```
 
-> **Note:** BSE’s Akamai edge often blocks non-browser cloud IPs. NSE indexes/equities stream from Vercel reliably. Sensex/Bankex work when the host can reach `api.bseindia.com` (local browser-class network or India VPS bridge).
+## Docs
+
+- [Architecture](./docs/architecture.md)
+- [Universe](./docs/universe.md)
+- [Streaming](./docs/streaming.md)
+- [Interface](./docs/interface.md)
+- [Testing](./docs/testing.md)
+
+## Deploy
+
+Vercel project root is this `web` directory. Region intent is Mumbai (`bom1`).

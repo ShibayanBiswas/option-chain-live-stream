@@ -7,18 +7,22 @@ export type SideColumn = {
   always?: boolean;
 };
 
-/** Core columns always shown. Quote columns may be hidden when entirely empty. */
+/**
+ * Call-side order reads toward the strike.
+ * Quiet book columns (OI, volume) sit farthest left.
+ * Last and Change sit against the strike.
+ */
 export const SIDE_COLUMNS: SideColumn[] = [
-  { key: "oi", label: "OI", always: true },
-  { key: "oiChg", label: "OI Chg" },
+  { key: "oi", label: "Open Interest", always: true },
+  { key: "oiChg", label: "Interest Change" },
   { key: "volume", label: "Volume", always: true },
   { key: "iv", label: "IV", always: true },
-  { key: "ltp", label: "LTP", always: true },
-  { key: "chng", label: "Chng" },
-  { key: "bidQty", label: "Bid Qty" },
+  { key: "bidQty", label: "Bid Quantity" },
   { key: "bid", label: "Bid" },
   { key: "ask", label: "Ask" },
-  { key: "askQty", label: "Ask Qty" },
+  { key: "askQty", label: "Ask Quantity" },
+  { key: "ltp", label: "Last", always: true },
+  { key: "chng", label: "Change" },
 ];
 
 function quoteField(q: OptionQuote, key: ColumnKey): number | null {
@@ -55,6 +59,11 @@ export function visibleColumns(rows: ChainRow[]): ColumnKey[] {
         !isEmptyValue(quoteField(row.pe, col.key)),
     );
   }).map((c) => c.key);
+}
+
+/** Put side mirrors the call side so Last and Change stay against the strike. */
+export function putColumns(callCols: ColumnKey[]): ColumnKey[] {
+  return [...callCols].reverse();
 }
 
 export function columnLabel(key: ColumnKey): string {

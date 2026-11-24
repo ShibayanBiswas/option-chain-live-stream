@@ -44,6 +44,7 @@ export type OptionChainSnapshot = {
   latencyMs: number;
   source: "nse" | "bse";
   marketOpen: boolean;
+  feed: "websocket" | "rest";
 };
 
 export type Instrument = {

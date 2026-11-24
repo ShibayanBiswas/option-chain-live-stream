@@ -1,44 +1,46 @@
 import { BseBlockedError, getBseOptionChain } from "./bse";
 import { getBseCachedChain } from "./bse-cache";
-import { getNseOptionChain } from "./nse";
-import { getInstrument } from "./symbols";
+import { getNseMarketStatus, getNseOptionChain } from "./nse";
+import { resolveInstrument } from "./universe";
 import type { OptionChainSnapshot } from "./types";
+
+export function publicChainError(err: unknown): string {
+  const raw = err instanceof Error ? err.message : "Chain unavailable";
+  if (/curl|akamai|access denied|http \d|econn|blocked|timeout/i.test(raw)) {
+    return "Chain unavailable";
+  }
+  return raw;
+}
 
 export async function loadOptionChain(params: {
   symbol: string;
   expiry?: string;
   exchange?: string;
+  segment?: string;
 }): Promise<OptionChainSnapshot> {
-  const instrument = getInstrument(params.symbol);
-  if (!instrument) throw new Error("Unknown symbol");
+  const instrument = await resolveInstrument(params.symbol, params.exchange, params.segment);
+  if (!instrument) {
+    throw new Error(`No listed contract for ${params.symbol}`);
+  }
 
-  const exchange =
-    (params.exchange?.toUpperCase() as "NSE" | "BSE") || instrument.exchange;
+  const market = await getNseMarketStatus().catch(() => null);
 
-  if (exchange === "BSE") {
+  if (instrument.exchange === "BSE") {
     if (!instrument.bseScrip) {
-      throw new Error(`${instrument.symbol} is not a BSE index option underlying`);
+      throw new Error(`No contract code for ${instrument.symbol}`);
     }
     try {
-      return await getBseOptionChain({
+      const live = await getBseOptionChain({
         symbol: instrument.symbol,
         scripCd: instrument.bseScrip,
         expiry: params.expiry,
       });
+      return { ...live, segment: instrument.segment, marketOpen: market?.open ?? false };
     } catch (err) {
-      if (err instanceof BseBlockedError) {
-        const cached = getBseCachedChain(instrument.symbol, params.expiry);
-        if (cached) {
-          return {
-            ...cached,
-            timestamp: `${cached.timestamp} · cached (BSE edge blocked live)`,
-          };
-        }
-        throw new Error(
-          "BSE live API is blocked from this server (Akamai) and no Sensex/Bankex cache is available.",
-        );
-      }
-      throw err;
+      if (!(err instanceof BseBlockedError)) throw err;
+      const cached = getBseCachedChain(instrument.symbol, params.expiry);
+      if (!cached) throw new Error(`Chain unavailable for ${instrument.symbol}`);
+      return { ...cached, segment: instrument.segment, marketOpen: market?.open ?? false };
     }
   }
 

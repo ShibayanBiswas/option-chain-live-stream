@@ -1,5 +1,5 @@
-import { LiveDesk } from "@/components/live-desk";
+import { Terminal } from "@/components/terminal";
 
 export default function HomePage() {
-  return <LiveDesk />;
+  return <Terminal />;
 }

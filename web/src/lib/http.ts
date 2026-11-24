@@ -15,7 +15,18 @@ function curlBin(): string {
   return process.platform === "win32" ? "curl.exe" : "curl";
 }
 
+let curlGate: Promise<unknown> = Promise.resolve();
+
 function runCurl(args: string[]): Promise<{ stdout: string; code: number }> {
+  const run = curlGate.then(() => execCurl(args));
+  curlGate = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  return run;
+}
+
+function execCurl(args: string[]): Promise<{ stdout: string; code: number }> {
   return new Promise((resolve, reject) => {
     const child = spawn(curlBin(), args, { windowsHide: true });
     const out: Buffer[] = [];
