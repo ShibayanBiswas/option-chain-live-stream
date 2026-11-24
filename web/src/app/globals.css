@@ -1065,13 +1065,21 @@ html.dark .quote-card.put {
     display: none;
   }
 
+  .terminal:not(.rail-hidden)::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 34;
+    background: rgba(8, 6, 4, 0.45);
+  }
+
   .rail.is-sheet:not(.is-collapsed) {
     position: fixed;
     z-index: 36;
     left: 8px;
     right: 8px;
-    bottom: 12px;
-    height: min(72dvh, 640px);
+    bottom: 72px;
+    height: min(68dvh, 560px);
     border-radius: 18px;
     overflow: auto;
     box-shadow: var(--ar-shadow);
@@ -1221,14 +1229,53 @@ html.dark .quote-card.put {
     font-size: 16px;
   }
 
-  .chain-table {
-    min-width: 0;
+  .ticker,
+  .analytics-row {
+    display: none;
+  }
+
+  .toolbar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+
+  .oi-chart {
+    max-height: 72px;
+  }
+
+  .board {
+    padding-bottom: 64px;
+  }
+
+  .chain-table,
+  .chain-scroll[data-density="focus"] .chain-table {
+    min-width: 680px;
     font-size: 11px;
+  }
+
+  .chain-scroll[data-density="full"] .chain-table {
+    min-width: 1040px;
+  }
+
+  .chain-table .strike-cell {
+    position: static;
+    left: auto;
+  }
+
+  .chain-table thead .strike-cell {
+    position: sticky;
+    top: 28px;
+    left: auto;
   }
 
   .chain-table thead th,
   .chain-table tbody td {
     padding: 6px 5px;
+  }
+
+  .rail-fab {
+    z-index: 38;
   }
 }
 
