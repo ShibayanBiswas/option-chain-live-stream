@@ -16,7 +16,7 @@ import { Toasts } from "@/components/toasts";
 import { useOptionStream } from "@/hooks/use-option-stream";
 import { atmIv } from "@/lib/analytics";
 import { cn } from "@/lib/cn";
-import { displayName, matchTape } from "@/lib/display";
+import { canonicalTapeSymbol, displayName, matchTape } from "@/lib/display";
 import { formatCompact, formatNumber, formatPrice, formatSigned } from "@/lib/format";
 import { useTheme } from "@/lib/theme";
 import type { ChainRow, Instrument, TapeQuote } from "@/lib/types";
@@ -129,7 +129,7 @@ export function Terminal() {
             const next = { ...current };
             for (const quote of data.quotes ?? []) {
               if (quote.last == null) continue;
-              const key = `NSE:${quote.symbol.replace(/[^A-Z0-9]/gi, "").toUpperCase()}`;
+              const key = `NSE:${canonicalTapeSymbol(quote.symbol)}`;
               const series = next[key] ?? [];
               next[key] = [...series, quote.last].slice(-24);
             }

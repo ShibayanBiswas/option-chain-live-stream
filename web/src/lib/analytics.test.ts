@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { atmIv, buildTotals, chainHighlights, computeMaxPain, computePCR, findAtmStrike } from "./analytics";
-import { describeExpiry, displayName, groupExpiries, matchTape } from "./display";
+import { canonicalTapeSymbol, describeExpiry, displayName, groupExpiries, matchTape } from "./display";
 import { applyPatch, diffChain } from "./diff";
 import type { ChainRow, OptionChainSnapshot, OptionQuote } from "./types";
 
@@ -77,6 +77,8 @@ describe("expiries", () => {
     expect(matchTape("BANKNIFTY", [{ symbol: "NIFTY BANK", last: 1 }])?.last).toBe(1);
     expect(matchTape("FINNIFTY", [{ symbol: "NIFTY FIN SERVICE", last: 2 }])?.last).toBe(2);
     expect(matchTape("NIFTYFPI", [{ symbol: "NIFTY FPI 150", last: 3 }])?.last).toBe(3);
+    expect(canonicalTapeSymbol("NIFTY BANK")).toBe("BANKNIFTY");
+    expect(canonicalTapeSymbol("NIFTY MID SELECT")).toBe("MIDCPNIFTY");
     const info = describeExpiry("26-Nov-2026", now);
     expect(info?.days).toBe(2);
     expect(info?.bucket).toBe("monthly");

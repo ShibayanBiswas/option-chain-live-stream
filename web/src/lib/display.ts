@@ -69,23 +69,29 @@ export function describeExpiry(raw: string, now = new Date()): ExpiryInfo | null
   };
 }
 
+const TAPE_ALIASES: Record<string, string> = {
+  NIFTY50: "NIFTY",
+  NIFTYBANK: "BANKNIFTY",
+  NIFTYFINSERVICE: "FINNIFTY",
+  NIFTYMIDSELECT: "MIDCPNIFTY",
+  NIFTYNEXT50: "NIFTYNXT50",
+  NIFTYFPI150: "NIFTYFPI",
+  MIDCAPNIFTY: "MIDCPNIFTY",
+  SNSX50: "SENSEX50",
+  SX50: "SENSEX50",
+  SENSEX50: "SX50",
+};
+
+export function canonicalTapeSymbol(symbol: string): string {
+  const key = symbol.replace(/[^A-Z0-9]/gi, "").toUpperCase();
+  return TAPE_ALIASES[key] ?? key;
+}
+
 export function matchTape<T extends { symbol: string }>(symbol: string, quotes: T[]): T | undefined {
   const key = symbol.replace(/[^A-Z0-9]/gi, "").toUpperCase();
-  const aliases: Record<string, string> = {
-    NIFTY50: "NIFTY",
-    NIFTYBANK: "BANKNIFTY",
-    NIFTYFINSERVICE: "FINNIFTY",
-    NIFTYMIDSELECT: "MIDCPNIFTY",
-    NIFTYNEXT50: "NIFTYNXT50",
-    NIFTYFPI150: "NIFTYFPI",
-    MIDCAPNIFTY: "MIDCPNIFTY",
-    SNSX50: "SENSEX50",
-    SX50: "SENSEX50",
-    SENSEX50: "SX50",
-  };
   return quotes.find((quote) => {
     const compact = quote.symbol.replace(/[^A-Z0-9]/gi, "").toUpperCase();
-    return compact === key || aliases[compact] === key;
+    return compact === key || TAPE_ALIASES[compact] === key;
   });
 }
 

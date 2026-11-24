@@ -182,7 +182,7 @@ function Row({
         <span>{displayName(item.symbol, item.label)}</span>
         <em className={change != null && change < 0 ? "tone-down" : "tone-up"}>{formatSigned(change, 2)}</em>
         <strong>{formatPrice(last)}</strong>
-        <Spark points={history[key] ?? (last != null ? [last] : [])} />
+        <Spark points={history[key] ?? history[`NSE:${item.symbol}`] ?? (last != null ? [last] : [])} />
       </button>
       <button
         className={cn("pin-btn", pinned && "is-on")}

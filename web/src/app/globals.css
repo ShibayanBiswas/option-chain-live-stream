@@ -1079,7 +1079,7 @@ html.dark .quote-card.put {
     z-index: 36;
     left: 8px;
     right: 8px;
-    bottom: 72px;
+    bottom: 12px;
     height: min(68dvh, 560px);
     border-radius: 18px;
     overflow: auto;
@@ -1279,7 +1279,7 @@ html.dark .quote-card.put {
   }
 
   .board {
-    padding-bottom: 64px;
+    padding-bottom: 12px;
   }
 
   .chain-table,
