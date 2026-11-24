@@ -2,22 +2,20 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Columns2, Maximize2, Minimize2, Moon, PanelLeft, RefreshCw, Search, Sun } from "lucide-react";
+import { Moon, PanelLeft, Search, Sun } from "lucide-react";
 
 import { BrandLogo } from "@/components/brand-logo";
 import { CommandPalette } from "@/components/command-palette";
 import { ExpirySelect } from "@/components/expiry-select";
 import { InstrumentTree } from "@/components/instrument-tree";
-import { OpenInterestChart } from "@/components/oi-chart";
 import { OptionChainTable } from "@/components/option-chain-table";
-import { OiChangeChart, PcrTrend } from "@/components/pcr-trend";
 import { QuoteSheet } from "@/components/quote-sheet";
 import { Toasts } from "@/components/toasts";
 import { useOptionStream } from "@/hooks/use-option-stream";
 import { atmIv } from "@/lib/analytics";
 import { cn } from "@/lib/cn";
-import { canonicalTapeSymbol, displayName, matchTape } from "@/lib/display";
-import { formatCompact, formatNumber, formatPrice, formatSigned } from "@/lib/format";
+import { canonicalTapeSymbol, displayName, upcomingExpiry } from "@/lib/display";
+import { formatCompact, formatNumber, formatPrice } from "@/lib/format";
 import { useTheme } from "@/lib/theme";
 import type { ChainRow, Instrument, TapeQuote } from "@/lib/types";
 
@@ -42,8 +40,6 @@ export function Terminal() {
   const [depth, setDepth] = useState<"near" | "full">("near");
   const [density, setDensity] = useState<"focus" | "full">("focus");
   const [railOpen, setRailOpen] = useState(false);
-  const [railBeforeMagnify, setRailBeforeMagnify] = useState(true);
-  const [magnify, setMagnify] = useState(false);
   const [picked, setPicked] = useState<ChainRow | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const statusRef = useRef<"idle" | "connecting" | "live" | "polling" | "error">("idle");
@@ -52,7 +48,6 @@ export function Terminal() {
   const [tape, setTape] = useState<TapeQuote[]>([]);
   const [history, setHistory] = useState<Record<string, number[]>>({});
   const [toasts, setToasts] = useState<string[]>([]);
-  const [pcrPoints, setPcrPoints] = useState<number[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -79,7 +74,7 @@ export function Terminal() {
     };
   }, []);
 
-  const { snapshot, status, error, updatedAt, socketState, refresh } = useOptionStream({
+  const { snapshot, status, error } = useOptionStream({
     symbol: selected?.symbol ?? "",
     expiry,
     exchange: selected?.exchange ?? "NSE",
@@ -89,7 +84,8 @@ export function Terminal() {
 
   useEffect(() => {
     if (!snapshot?.expiries?.length) return;
-    if (!expiry || !snapshot.expiries.includes(expiry)) setExpiry(snapshot.expiries[0]!);
+    const next = upcomingExpiry(snapshot.expiries, expiry);
+    if (next !== expiry) setExpiry(next);
   }, [expiry, snapshot?.expiries]);
 
   useLayoutEffect(() => {
@@ -155,11 +151,6 @@ export function Terminal() {
   }, [status]);
 
   useEffect(() => {
-    if (snapshot?.totals.pcr == null) return;
-    setPcrPoints((current) => [...current, snapshot.totals.pcr!].slice(-48));
-  }, [snapshot?.timestamp, snapshot?.totals.pcr]);
-
-  useEffect(() => {
     if (!selected || snapshot?.spot == null) return;
     const key = `${selected.exchange}:${selected.symbol}`;
     const spot = snapshot.spot;
@@ -180,7 +171,6 @@ export function Terminal() {
     setSelected(item);
     setExpiry("");
     setPicked(null);
-    setPcrPoints([]);
     window.localStorage.setItem("ocls-last", `${item.exchange}:${item.symbol}`);
     if (window.matchMedia("(max-width: 980px)").matches) setRailOpen(false);
   }
@@ -198,30 +188,10 @@ export function Terminal() {
     () => [...(book?.indexes ?? []), ...(book?.equities ?? [])],
     [book],
   );
-  const tapeRows = useMemo(() => {
-    return (book?.indexes ?? []).slice(0, 8).map((item) => {
-      const quote = matchTape(item.symbol, tape);
-      return {
-        key: `${item.exchange}:${item.symbol}`,
-        name: displayName(item.symbol, item.label),
-        last: quote?.last ?? null,
-        change: quote?.change ?? null,
-      };
-    });
-  }, [book, tape]);
-
   const session = book?.market?.message ?? (book?.market ? "Market Closed" : "Session");
-  const feed =
-    socketState === "open" || snapshot?.feed === "websocket"
-      ? "WebSocket"
-      : status === "live"
-        ? "Live"
-        : status === "connecting"
-          ? "Connecting"
-          : "Rest";
 
   return (
-    <div className={cn("terminal bg-mesh", magnify && "is-magnified", !railOpen && "rail-hidden")}>
+    <div className={cn("terminal bg-mesh", !railOpen && "rail-hidden")}>
       <aside className={cn("rail", !railOpen && "is-collapsed", railOpen && "is-sheet")} aria-hidden={!railOpen}>
         <div className="rail-brand">
           <BrandLogo compact />
@@ -245,19 +215,6 @@ export function Terminal() {
       </aside>
 
       <section className="stage">
-        <div className="ticker" aria-label="Index tape">
-          <div className="ticker-track">
-            {[...tapeRows, ...tapeRows].map((item, index) => (
-              <span key={`${item.key}-${index}`}>
-                {item.name}
-                <strong>{formatPrice(item.last)}</strong>
-                <em className={item.change != null && item.change < 0 ? "tone-down" : "tone-up"}>
-                  {formatSigned(item.change, 2)}
-                </em>
-              </span>
-            ))}
-          </div>
-        </div>
         <header className="toolbar">
           <button
             className="icon-btn"
@@ -272,12 +229,8 @@ export function Terminal() {
             <Search className="h-4 w-4" />
           </button>
           <div className="identity">
-            <p className="eyebrow">{selected ? (selected.segment === "INDEX" ? "Index" : "Equity") : "Desk"}</p>
             <h1>{selected ? displayName(selected.symbol, selected.label) : "Option Chain"}</h1>
-          </div>
-          <div className="spot-block">
-            <p className="eyebrow">Spot</p>
-            <strong>{formatPrice(snapshot?.spot ?? null)}</strong>
+            <strong className="spot-inline">{formatPrice(snapshot?.spot ?? null)}</strong>
           </div>
           <span
             className={cn(
@@ -299,92 +252,39 @@ export function Terminal() {
               pushToast("Expiry updated");
             }}
           />
-          <label className="field">
-            <span>Strikes</span>
-            <select value={depth} onChange={(event) => setDepth(event.target.value as "near" | "full")}>
-              <option value="near">Spot Focus</option>
-              <option value="full">Entire Book</option>
-            </select>
-          </label>
-          <label className="field">
-            <span>Columns</span>
-            <select
-              value={density}
-              onChange={(event) => setDensity(event.target.value as "focus" | "full")}
-              data-testid="density-select"
-            >
-              <option value="focus">Focus Columns</option>
-              <option value="full">All Columns</option>
-            </select>
-          </label>
-          <div className="feed-chip">
-            <span className={cn("live-dot", status === "error" && "is-off", status === "connecting" && "is-stale")} />
-            <span>{feed}</span>
-            <em>{snapshot ? `${snapshot.latencyMs} ms` : ""}</em>
-          </div>
-          <button
-            className={cn("icon-btn", density === "full" && "is-on")}
-            type="button"
-            onClick={() => setDensity((value) => (value === "focus" ? "full" : "focus"))}
-            aria-label={density === "focus" ? "Show all columns" : "Show focus columns"}
-            aria-pressed={density === "full"}
-            data-testid="density-toggle"
+          <select
+            className="toolbar-select"
+            aria-label="Strikes"
+            value={depth}
+            onChange={(event) => setDepth(event.target.value as "near" | "full")}
           >
-            <Columns2 className="h-4 w-4" />
-          </button>
-          <button
-            className={cn("icon-btn", magnify && "is-on")}
-            type="button"
-            onClick={() => {
-              setMagnify((value) => {
-                if (value) {
-                  setRailOpen(railBeforeMagnify);
-                  return false;
-                }
-                setRailBeforeMagnify(railOpen);
-                setRailOpen(false);
-                return true;
-              });
-            }}
-            aria-label={magnify ? "Exit magnify" : "Magnify desk"}
-            aria-pressed={magnify}
+            <option value="near">Spot Focus</option>
+            <option value="full">Entire Book</option>
+          </select>
+          <select
+            className="toolbar-select"
+            aria-label="Columns"
+            value={density}
+            onChange={(event) => setDensity(event.target.value as "focus" | "full")}
+            data-testid="density-select"
           >
-            {magnify ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-          </button>
-          <button className="icon-btn" type="button" onClick={() => refresh().catch(() => undefined)} aria-label="Refresh">
-            <RefreshCw className="h-4 w-4" />
-          </button>
+            <option value="focus">Focus</option>
+            <option value="full">All Columns</option>
+          </select>
           <button className="icon-btn" type="button" onClick={toggle} aria-label="Toggle theme">
             {mounted && theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
         </header>
 
         <div className="kpi-row">
-          <Kpi label="Put Call Ratio" value={snapshot?.totals.pcr != null ? snapshot.totals.pcr.toFixed(2) : "—"} />
+          <Kpi label="PCR" value={snapshot?.totals.pcr != null ? snapshot.totals.pcr.toFixed(2) : "—"} />
           <Kpi label="Max Pain" value={formatNumber(snapshot?.totals.maxPain ?? null, 0)} />
-          <Kpi label="Call Interest" value={formatCompact(snapshot?.totals.ceOi ?? null)} />
-          <Kpi label="Put Interest" value={formatCompact(snapshot?.totals.peOi ?? null)} />
-          <Kpi
-            label="At the Money IV"
-            value={
-              snapshot
-                ? formatNumber(atmIv(snapshot.rows, snapshot.totals.atm), 2)
-                : "—"
-            }
-          />
-        </div>
-        <div className="analytics-row">
-          <PcrTrend points={pcrPoints} />
-          {snapshot ? <OiChangeChart snapshot={snapshot} /> : null}
+          <Kpi label="Call OI" value={formatCompact(snapshot?.totals.ceOi ?? null)} />
+          <Kpi label="Put OI" value={formatCompact(snapshot?.totals.peOi ?? null)} />
+          <Kpi label="ATM IV" value={snapshot ? formatNumber(atmIv(snapshot.rows, snapshot.totals.atm), 2) : "—"} />
         </div>
 
         {error || loadError ? <p className="banner">{error || loadError}</p> : null}
-
-        {snapshot ? (
-          <OpenInterestChart snapshot={snapshot} density={density} magnify={magnify} />
-        ) : (
-          <div className="chart-skeleton" />
-        )}
 
         <div className="board">
           {snapshot ? (
@@ -397,15 +297,6 @@ export function Terminal() {
           ) : (
             <div className="board-wait">Opening the live book</div>
           )}
-          <p className="board-meta">
-            {updatedAt ? `Updated ${new Date(updatedAt).toLocaleTimeString("en-IN")}` : "Waiting for the book"}
-            {book?.market?.tradeDate ? ` · ${book.market.tradeDate}` : ""}
-            <span className="heat-legend">
-              <i className="swatch high" /> High volume
-              <i className="swatch low" /> Low volume
-              <i className="swatch zero" /> No volume
-            </span>
-          </p>
         </div>
       </section>
       <QuoteSheet row={picked} onClose={() => setPicked(null)} />

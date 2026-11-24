@@ -551,11 +551,35 @@ html.dark .chain-row.is-zero td {
   box-shadow: var(--ar-shadow);
 }
 
+.identity {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-width: 0;
+}
+
 .identity h1,
-.spot-block strong {
+.spot-inline {
   margin: 0;
   font-size: 22px;
   line-height: 1.1;
+}
+
+.spot-inline {
+  font-family: var(--font-data);
+  font-weight: 650;
+  color: var(--ar-gold-dark);
+}
+
+.toolbar-select {
+  border-radius: 10px;
+  border: 1px solid var(--ar-border);
+  background: var(--ar-panel);
+  color: var(--ar-ink);
+  padding: 8px 10px;
+  min-height: 40px;
+  max-width: 220px;
+  font-family: var(--font-sans);
 }
 
 .spot-block strong {
@@ -683,10 +707,10 @@ html.dark .chain-row.is-zero td {
 }
 
 .kpi {
-  border-radius: 16px;
+  border-radius: 14px;
   border: 1px solid var(--ar-border);
   background: var(--ar-surface);
-  padding: 12px 14px;
+  padding: 8px 12px;
   box-shadow: var(--ar-shadow);
 }
 
@@ -1663,7 +1687,12 @@ html.dark .is-itm {
   }
 
   .chain-scroll {
-    min-height: 320px;
+    min-height: 0;
+    flex: 1;
+  }
+
+  .toolbar-select {
+    max-width: 100%;
   }
 
   .kpi-row {

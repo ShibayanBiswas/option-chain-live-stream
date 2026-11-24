@@ -7,7 +7,7 @@ const shotDir = path.join(process.cwd(), "docs", "screenshots");
 async function waitForBook(page: Page) {
   await page.goto("/");
   await expect(page.locator("h1")).not.toHaveText("Option Chain", { timeout: 70_000 });
-  await expect(page.locator(".spot-block strong")).not.toHaveText("—", { timeout: 70_000 });
+  await expect(page.locator(".spot-inline")).not.toHaveText("—", { timeout: 70_000 });
   await expect(page.locator(".chain-row").first()).toBeVisible();
   await expect(page.locator(".session-pill")).toHaveText(/Market Open|Market Closed|Pre Open|Market Holiday/);
 }
@@ -35,7 +35,6 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
 
   await density.selectOption("full");
   await expect(page.locator(".chain-scroll")).toHaveAttribute("data-density", "full");
-  await expect(page.locator(".oi-chart")).toHaveAttribute("data-density", "full");
 
   const view = page.locator("select").nth(1);
   await expect(view.locator("option[value='near']")).toHaveText("Spot Focus");
@@ -73,14 +72,8 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   await expect(page.getByTestId("spot-marker")).toBeVisible();
 
   if (narrow) await page.getByRole("button", { name: "Collapse sidebar" }).click();
-  await page.getByRole("button", { name: "Magnify desk" }).click();
-  await expect(page.locator(".terminal")).toHaveClass(/is-magnified/);
-  await page.getByRole("button", { name: "Exit magnify" }).click();
-  await expect(page.locator(".terminal")).not.toHaveClass(/is-magnified/);
   if (narrow) await expect(page.locator(".rail")).toHaveClass(/is-collapsed/);
 
-  const barWidth = await page.locator(".oi-fill").first().evaluate((el) => parseFloat(getComputedStyle(el).width));
-  expect(barWidth).toBeGreaterThan(0);
   const flash = await page.locator(".chain-table tbody td").first().evaluate((el) => {
     el.classList.add("cell-flash-up");
     return getComputedStyle(el).animationName;
@@ -120,10 +113,6 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
     const cRect = chain.getBoundingClientRect();
     const sRect = strike.getBoundingClientRect();
     return {
-      strikeLeft: Math.round(sRect.left),
-      strikeRight: Math.round(sRect.right),
-      chainLeft: Math.round(cRect.left),
-      chainRight: Math.round(cRect.right),
       pageOverflow: doc.scrollWidth - doc.clientWidth,
       docScroll: doc.scrollTop,
       chainTop: chain.scrollTop,
@@ -187,7 +176,7 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   expect(equityLabels.every((label) => /Anand Rathi Wealth|ANANDRATHI/i.test(label))).toBe(true);
   await equityNames.first().click();
   await expect(page.locator("h1")).toHaveText("Anand Rathi Wealth");
-  await expect(page.locator(".spot-block strong")).not.toHaveText("—", { timeout: 60_000 });
+  await expect(page.locator(".spot-inline")).not.toHaveText("—", { timeout: 60_000 });
   const expiry = page.getByLabel("Expiry");
   if ((await expiry.locator("option").count()) > 1) {
     await expiry.selectOption({ index: 1 });
@@ -201,13 +190,12 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   await expect(page.locator("html")).not.toHaveClass(/dark/);
 
   await page.emulateMedia({ reducedMotion: "reduce" });
-  const reduced = await page.locator(".ticker-track").evaluate((el) => getComputedStyle(el).animationDuration);
+  const reduced = await page.locator(".terminal").evaluate((el) => getComputedStyle(el).animationDuration);
   const millis = reduced.endsWith("ms") ? Number.parseFloat(reduced) : Number.parseFloat(reduced) * 1000;
   expect(millis).toBeLessThan(50);
   await page.emulateMedia({ reducedMotion: "no-preference" });
 
   const session = await page.locator(".session-pill").innerText();
-  await expect(page.locator(".feed-chip")).toContainText(/Live|WebSocket|Rest/);
   const events = await page.evaluate(async () => {
     const controller = new AbortController();
     const kill = setTimeout(() => controller.abort(), 25_000);
@@ -243,8 +231,6 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
     expect(events).toContain("chain");
     if (session.includes("Closed")) expect(events).not.toContain("socket");
     if (session.includes("Open")) expect(events).toContain("socket");
-  } else {
-    await expect(page.locator(".feed-chip")).toContainText(/Live|WebSocket/);
   }
 });
 

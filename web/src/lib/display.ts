@@ -60,13 +60,13 @@ export function describeExpiry(raw: string, now = new Date()): ExpiryInfo | null
   const days = Math.round((date.getTime() - start.getTime()) / 86_400_000);
   const lateShift = date.getDay() !== 4 && date.getDate() >= 24;
   const bucket: ExpiryInfo["bucket"] = isLastThursday(date) || lateShift ? "monthly" : "weekly";
-  const when = days < 0 ? "passed" : days === 0 ? "today" : days === 1 ? "1 day" : `${days} days`;
+  const when = days < 0 ? "" : days === 0 ? "0d" : `${days}d`;
   return {
     raw,
     date,
     days,
     bucket,
-    label: `${raw} · ${when}`,
+    label: when ? `${raw} · ${when}` : raw,
   };
 }
 
@@ -106,7 +106,18 @@ export function groupExpiries(expiries: string[], now = new Date()) {
       other.push(raw);
       continue;
     }
+    if (info.days < 0) continue;
     (info.bucket === "monthly" ? monthly : weekly).push(info);
   }
   return { weekly, monthly, other };
+}
+
+export function upcomingExpiry(expiries: string[], current: string, now = new Date()): string {
+  const live = expiries.filter((raw) => {
+    const info = describeExpiry(raw, now);
+    return info == null || info.days >= 0;
+  });
+  const pool = live.length > 0 ? live : expiries;
+  if (current && pool.includes(current)) return current;
+  return pool[0] ?? "";
 }

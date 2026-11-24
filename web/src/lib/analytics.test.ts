@@ -87,9 +87,10 @@ describe("expiries", () => {
   it("treats the last Thursday as monthly", () => {
     expect(describeExpiry("07-Jan-2027", now)?.bucket).toBe("weekly");
     expect(describeExpiry("28-Jan-2027", now)?.bucket).toBe("monthly");
-    const groups = groupExpiries(["07-Jan-2027", "28-Jan-2027"], now);
+    const groups = groupExpiries(["23-Nov-2026", "07-Jan-2027", "28-Jan-2027"], now);
     expect(groups.weekly.map((item) => item.raw)).toEqual(["07-Jan-2027"]);
     expect(groups.monthly.map((item) => item.raw)).toEqual(["28-Jan-2027"]);
+    expect(describeExpiry("23-Nov-2026", now)?.label).toBe("23-Nov-2026");
   });
 });
 

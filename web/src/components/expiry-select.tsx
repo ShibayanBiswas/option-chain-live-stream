@@ -13,9 +13,13 @@ export function ExpirySelect({
 }) {
   const groups = groupExpiries(expiries);
   return (
-    <label className="field">
-      <span>Expiry</span>
-      <select aria-label="Expiry" value={value} onChange={(event) => onChange(event.target.value)}>
+    <select
+      className="toolbar-select"
+      aria-label="Expiry"
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+    >
+      {groups.weekly.length > 0 ? (
         <optgroup label="Weekly">
           {groups.weekly.map((item) => (
             <option key={item.raw} value={item.raw}>
@@ -23,6 +27,8 @@ export function ExpirySelect({
             </option>
           ))}
         </optgroup>
+      ) : null}
+      {groups.monthly.length > 0 ? (
         <optgroup label="Monthly">
           {groups.monthly.map((item) => (
             <option key={item.raw} value={item.raw}>
@@ -30,12 +36,12 @@ export function ExpirySelect({
             </option>
           ))}
         </optgroup>
-        {groups.other.map((item) => (
-          <option key={item} value={item}>
-            {item}
-          </option>
-        ))}
-      </select>
-    </label>
+      ) : null}
+      {groups.other.map((item) => (
+        <option key={item} value={item}>
+          {item}
+        </option>
+      ))}
+    </select>
   );
 }
