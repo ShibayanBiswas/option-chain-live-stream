@@ -1,4 +1,4 @@
-import { BseBlockedError, discoverBseUnderlyings } from "./bse";
+import { BseBlockedError, discoverBseUnderlyings, getBseExpiries } from "./bse";
 import { listCachedBse } from "./bse-cache";
 import { discoverNseBook } from "./nse";
 import type { Exchange, Instrument, Segment } from "./types";
@@ -12,6 +12,9 @@ export type DeskUniverse = {
 let cache: { at: number; value: DeskUniverse } | null = null;
 const TTL_MS = 10 * 60 * 1000;
 
+/** Equity option book is restricted to Anand Rathi Wealth only. */
+const WEALTH_EQUITY = "ANANDRATHI";
+
 function asInstrument(
   symbol: string,
   exchange: Exchange,
@@ -20,7 +23,7 @@ function asInstrument(
 ): Instrument {
   return {
     symbol,
-    label: symbol,
+    label: segment === "EQUITY" && symbol === WEALTH_EQUITY ? "Anand Rathi Wealth" : symbol,
     exchange,
     segment,
     nseType: exchange === "NSE" ? (segment === "INDEX" ? "Indices" : "Equity") : undefined,
@@ -28,12 +31,17 @@ function asInstrument(
   };
 }
 
+function isWealthEquity(symbol: string): boolean {
+  const key = symbol.replace(/\s+/g, "").toUpperCase();
+  return key === WEALTH_EQUITY || key === "ANANDRATHIWEALTH";
+}
+
 export async function loadUniverse(force = false): Promise<DeskUniverse> {
   if (!force && cache && Date.now() - cache.at < TTL_MS) return cache.value;
 
   const nse = await discoverNseBook();
   let bseIndexes: Instrument[] = [];
-  let bseEquities: Instrument[] = [];
+  let bseWealth: Instrument | null = null;
 
   try {
     const [indexes, stocks] = await Promise.all([
@@ -43,9 +51,13 @@ export async function loadUniverse(force = false): Promise<DeskUniverse> {
     bseIndexes = indexes.map((row) =>
       asInstrument(row.symbol.replace(/\s+/g, ""), "BSE", "INDEX", row.scrip),
     );
-    bseEquities = stocks.map((row) =>
-      asInstrument(row.symbol.replace(/\s+/g, ""), "BSE", "EQUITY", row.scrip),
-    );
+    const wealth = stocks.find((row) => isWealthEquity(row.symbol));
+    if (wealth) {
+      const expiries = await getBseExpiries(wealth.scrip, "SO").catch(() => []);
+      if (expiries.length > 0) {
+        bseWealth = asInstrument(WEALTH_EQUITY, "BSE", "EQUITY", wealth.scrip);
+      }
+    }
   } catch (err) {
     if (!(err instanceof BseBlockedError)) {
       console.error("bse universe", err);
@@ -55,15 +67,17 @@ export async function loadUniverse(force = false): Promise<DeskUniverse> {
     );
   }
 
+  const nseWealth = nse.equities.find((symbol) => isWealthEquity(symbol));
+  const equities: Instrument[] = [];
+  if (nseWealth) equities.push(asInstrument(WEALTH_EQUITY, "NSE", "EQUITY"));
+  if (bseWealth) equities.push(bseWealth);
+
   const value: DeskUniverse = {
     indexes: [
       ...nse.indexes.map((symbol) => asInstrument(symbol, "NSE", "INDEX")),
       ...bseIndexes,
     ],
-    equities: [
-      ...nse.equities.map((symbol) => asInstrument(symbol, "NSE", "EQUITY")),
-      ...bseEquities,
-    ],
+    equities,
     refreshedAt: new Date().toISOString(),
   };
 
@@ -77,16 +91,19 @@ export async function resolveInstrument(
   segment?: string,
 ): Promise<Instrument | undefined> {
   const book = await loadUniverse();
-  const key = symbol.trim().toUpperCase();
+  const key = symbol.trim().toUpperCase().replace(/\s+/g, "");
+  const normalized = isWealthEquity(key) ? WEALTH_EQUITY : key;
   const ex = exchange?.toUpperCase();
   const seg = segment?.toUpperCase();
   const all = [...book.indexes, ...book.equities];
   return (
     all.find(
       (item) =>
-        item.symbol.toUpperCase() === key &&
+        item.symbol.toUpperCase() === normalized &&
         (!ex || item.exchange === ex) &&
         (!seg || item.segment === seg),
-    ) ?? all.find((item) => item.symbol.toUpperCase() === key && (!ex || item.exchange === ex))
+    ) ?? all.find((item) => item.symbol.toUpperCase() === normalized && (!ex || item.exchange === ex))
   );
 }
+
+export { WEALTH_EQUITY };

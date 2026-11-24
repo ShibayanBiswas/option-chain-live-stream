@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Maximize2, Minimize2, Moon, PanelLeft, RefreshCw, Search, Sun } from "lucide-react";
+import { Columns2, Maximize2, Minimize2, Moon, PanelLeft, RefreshCw, Search, Sun } from "lucide-react";
 
 import { BrandLogo } from "@/components/brand-logo";
 import { OpenInterestChart } from "@/components/oi-chart";
@@ -17,7 +17,13 @@ import type { ChainRow, Instrument } from "@/lib/types";
 type Book = {
   indexes: Instrument[];
   equities: Instrument[];
-  market: { status: string; tradeDate: string; open: boolean; message: string } | null;
+  market: {
+    status: string;
+    tradeDate: string;
+    open: boolean;
+    phase?: string;
+    message: string;
+  } | null;
 };
 
 export function Terminal() {
@@ -30,6 +36,7 @@ export function Terminal() {
   const [selected, setSelected] = useState<Instrument | null>(null);
   const [expiry, setExpiry] = useState("");
   const [depth, setDepth] = useState<"near" | "full">("near");
+  const [density, setDensity] = useState<"focus" | "full">("focus");
   const [railOpen, setRailOpen] = useState(true);
   const [railBeforeMagnify, setRailBeforeMagnify] = useState(true);
   const [magnify, setMagnify] = useState(false);
@@ -80,7 +87,7 @@ export function Terminal() {
     });
   }, [book, exchange, query, segment]);
 
-  const session = book?.market?.open ? "Market Open" : book?.market ? "Market Closed" : "Session";
+  const session = book?.market?.message ?? (book?.market ? "Market Closed" : "Session");
   const feed =
     socketState === "open" || snapshot?.feed === "websocket"
       ? "WebSocket"
@@ -92,7 +99,17 @@ export function Terminal() {
 
   return (
     <div className={cn("terminal bg-mesh", magnify && "is-magnified", !railOpen && "rail-hidden")}>
-      <aside className={cn("rail", !railOpen && "is-collapsed")}>
+      <button
+        className="rail-fab icon-btn"
+        type="button"
+        onClick={() => setRailOpen((open) => !open)}
+        aria-label={railOpen ? "Collapse sidebar" : "Expand sidebar"}
+        aria-pressed={railOpen}
+      >
+        <PanelLeft className="h-4 w-4" />
+      </button>
+
+      <aside className={cn("rail", !railOpen && "is-collapsed")} aria-hidden={!railOpen}>
         <div className="rail-brand">
           <BrandLogo compact />
         </div>
@@ -116,7 +133,7 @@ export function Terminal() {
                 }
               }}
             >
-              {item === "INDEX" ? "Indexes" : "Equities"}
+              {item === "INDEX" ? "Indices" : "Equity"}
             </button>
           ))}
         </div>
@@ -137,7 +154,7 @@ export function Terminal() {
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder={segment === "INDEX" ? "Find an index" : "Find an equity"}
+            placeholder={segment === "INDEX" ? "Find an index" : "Find Anand Rathi Wealth"}
           />
         </label>
         <div className="symbol-list">
@@ -158,7 +175,7 @@ export function Terminal() {
                   initial={reduce ? false : { opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
                 >
-                  <span>{item.symbol}</span>
+                  <span>{item.label}</span>
                   <em>{item.exchange}</em>
                 </motion.button>
               );
@@ -171,18 +188,26 @@ export function Terminal() {
 
       <section className="stage">
         <header className="toolbar">
-          <button className="icon-btn" type="button" onClick={() => setRailOpen((open) => !open)} aria-label="Toggle sidebar">
-            <PanelLeft className="h-4 w-4" />
-          </button>
           <div className="identity">
             <p className="eyebrow">{selected ? (selected.segment === "INDEX" ? "Index" : "Equity") : "Desk"}</p>
-            <h1>{selected?.symbol ?? "Option Chain"}</h1>
+            <h1>{selected?.label ?? selected?.symbol ?? "Option Chain"}</h1>
           </div>
           <div className="spot-block">
             <p className="eyebrow">Spot</p>
             <strong>{formatPrice(snapshot?.spot ?? null)}</strong>
           </div>
-          <span className={cn("session-pill", book?.market?.open ? "is-open" : "is-closed")}>{session}</span>
+          <span
+            className={cn(
+              "session-pill",
+              book?.market?.open
+                ? "is-open"
+                : book?.market?.phase === "preopen"
+                  ? "is-preopen"
+                  : "is-closed",
+            )}
+          >
+            {session}
+          </span>
           <label className="field">
             <span>Expiry</span>
             <select value={expiry} onChange={(event) => setExpiry(event.target.value)}>
@@ -194,10 +219,21 @@ export function Terminal() {
             </select>
           </label>
           <label className="field">
-            <span>View</span>
+            <span>Strikes</span>
             <select value={depth} onChange={(event) => setDepth(event.target.value as "near" | "full")}>
               <option value="near">Spot Focus</option>
               <option value="full">Entire Book</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>Columns</span>
+            <select
+              value={density}
+              onChange={(event) => setDensity(event.target.value as "focus" | "full")}
+              data-testid="density-select"
+            >
+              <option value="focus">Focus Columns</option>
+              <option value="full">All Columns</option>
             </select>
           </label>
           <div className="feed-chip">
@@ -205,6 +241,16 @@ export function Terminal() {
             <span>{feed}</span>
             <em>{snapshot ? `${snapshot.latencyMs} ms` : ""}</em>
           </div>
+          <button
+            className={cn("icon-btn", density === "full" && "is-on")}
+            type="button"
+            onClick={() => setDensity((value) => (value === "focus" ? "full" : "focus"))}
+            aria-label={density === "focus" ? "Show all columns" : "Show focus columns"}
+            aria-pressed={density === "full"}
+            data-testid="density-toggle"
+          >
+            <Columns2 className="h-4 w-4" />
+          </button>
           <button
             className={cn("icon-btn", magnify && "is-on")}
             type="button"
@@ -242,11 +288,20 @@ export function Terminal() {
 
         {error || loadError ? <p className="banner">{error || loadError}</p> : null}
 
-        {snapshot ? <OpenInterestChart snapshot={snapshot} magnify={magnify} /> : <div className="chart-skeleton" />}
+        {snapshot ? (
+          <OpenInterestChart snapshot={snapshot} density={density} magnify={magnify} />
+        ) : (
+          <div className="chart-skeleton" />
+        )}
 
         <div className="board">
           {snapshot ? (
-            <OptionChainTable snapshot={snapshot} depth={depth} onSelect={setPicked} />
+            <OptionChainTable
+              snapshot={snapshot}
+              depth={depth}
+              density={density}
+              onSelect={setPicked}
+            />
           ) : (
             <div className="board-wait">Opening the live book</div>
           )}

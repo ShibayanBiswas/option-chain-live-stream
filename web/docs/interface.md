@@ -1,72 +1,35 @@
 # Interface
 
-The terminal is one full-width trading desk. There are no secondary product tabs.
+## Chrome
 
-## Layout
+- Full-width terminal: left rail + stage, no page gutters.
+- Floating sidebar control (`rail-fab`) that tracks open/collapsed state without covering the board.
+- Toolbar: identity, spot, session phase, expiry, strike window, column density, feed latency, magnify, refresh, theme.
 
-The viewport is locked to the desk. The page itself does not scroll. The left rail, toolbar, open-interest panel, and option chain share the full horizontal width. Scrollbars are hidden; panels still scroll with trackpad or touch.
+## Option chain
 
-## Sidebar
-
-- Indexes or Equities
-- Both exchanges, NSE, or BSE
-- Search
-- The contract list is the live book from `/api/universe`
-
-On phones and tablets the rail collapses into a horizontal chip strip so symbols stay reachable without eating the chain.
-
-## Toolbar
-
-- Sidebar toggle
-- Selected symbol and spot
-- Session pill from the exchange status
-- Expiry dropdown
-- View dropdown: **Spot Focus** or **Entire Book**
-- Feed chip: WebSocket when ticks are merging, otherwise Live or Rest, plus the last snapshot latency
-- Magnify, refresh, and theme
-
-### Spot Focus and Entire Book
-
-Spot Focus centres the chain on the at-the-money strike and keeps a tight window around spot. Entire Book shows every listed strike. The labels never mention plus or minus windows.
-
-### Magnify
-
-Magnify enlarges the stage, deepens the open-interest window, and enlarges the chain type so the desk reads like a professional chart board. Magnify also collapses the rail so the book can use the full width.
-
-## Key figures
-
-Put Call Ratio, Max Pain, Call Interest, Put Interest, and At the Money sit in one row across the desk.
+- Layout: **Calls | Strike | Puts**.
+- Sticky dual header and sticky strike column; tabular figures; ATM / ITM tinting.
+- Important metrics sit against the strike (Last, Change).
+- Default **Focus Columns**; **All Columns** reveals every non-empty field.
+- Zero-volume strikes shaded; high/low volume last prices highlighted.
+- Strike window controls are **Spot Focus** and **Entire Book** — never “ATM ±N”.
+- Live cells flash without layout shift.
 
 ## Open interest
 
-The Strike Pressure panel is a mirrored call and put histogram. Bars spring in, the spot row is washed in gold, and a soft sheen runs across the panel. Call bars grow toward the centre from the left. Put bars grow toward the centre from the right.
+- Same focus / full density behaviour.
+- Animated dual-sided bars with sheen, spot highlight, and optional metric labels in full density.
+- Magnify raises the chart height with the board.
 
-## Chain
+## Mobile
 
-Calls sit on the left. Puts sit on the right. The strike column is centred.
+- Rail collapses into a horizontal symbol strip; toggle moves to a bottom FAB.
+- Touch targets ≥ 44px.
+- Tables scroll inside their panes; the page itself does not overflow horizontally.
 
-### Column order
+## Copy rules
 
-Important quote columns sit against the strike. Quiet book columns sit farther away.
-
-Call side, reading toward the strike:
-
-Open Interest → Interest Change → Volume → IV → Bid Quantity → Bid → Ask → Ask Quantity → Change → Last → Strike
-
-Put side mirrors that order so Last sits against the strike on both sides.
-
-Empty bid and ask columns stay hidden when the whole book has no quotes.
-
-### Volume heat
-
-- Gold wash on Last: high traded volume
-- Blue wash on Last: low traded volume among strikes that actually traded
-- Grey shade: no volume on that side, or on the whole strike when both sides are quiet
-
-A price tick flashes green or red.
-
-Click a strike to open the quote sheet. The sheet only renders fields that have a value. On phones the sheet rises from the bottom of the screen.
-
-## Themes
-
-Light is the default. Dark is stored in `option-chain-live-theme` and applied before paint so the first frame matches the last choice.
+- Full words in chrome (Indices, Equity, Open Interest) except established derivatives terms (IV, NSE, BSE).
+- No plus signs on gains — colour only.
+- No disclaimer banners in the desk.

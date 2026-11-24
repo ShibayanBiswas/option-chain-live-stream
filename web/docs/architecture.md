@@ -1,26 +1,41 @@
 # Architecture
 
-Option Chain Live Stream is a Next.js desk. The browser never calls the exchanges directly. Every quote, expiry, and symbol list comes from a server route so cookies, redirects, and websocket headers stay on the server.
+Next.js 15 App Router desk in `web/`, deployed on Vercel as **option-chain-live-stream**.
 
-## Surfaces
+## Layers
 
-| Route | Role |
+| Layer | Role |
 | --- | --- |
-| `/` | Full-width trading terminal with Spot Focus / Entire Book, magnify, and Strike Pressure |
-| `/api/universe` | Live index and equity books for NSE and BSE |
-| `/api/chain` | One option-chain snapshot |
-| `/api/stream` | Server-sent events. NSE also opens the exchange websocket and merges ticks into the snapshot |
-| `/api/meta` | Same book plus session status |
-| `/api/health` | Exchange reachability |
-
-The desk never hardcodes the contract list. Indexes and equities come from the exchanges. Column order puts Last and Change against the strike on both sides.
+| `src/app/page.tsx` | Shell that mounts the terminal |
+| `src/components/terminal.tsx` | Desk chrome: sidebar, toolbar, KPIs, magnify, theme |
+| `src/components/option-chain-table.tsx` | Calls \| Strike \| Puts board with focus/full density |
+| `src/components/oi-chart.tsx` | Animated open-interest pressure chart |
+| `src/components/quote-sheet.tsx` | Strike detail sheet |
+| `src/hooks/use-option-stream.ts` | SSE client with REST fallback |
+| `src/lib/chain-service.ts` | Resolves instrument → NSE/BSE snapshot |
+| `src/lib/universe.ts` | Dynamic indices + Anand Rathi Wealth equity lock |
+| `src/lib/nse.ts` / `bse.ts` / `nse-ws.ts` | Exchange transports |
+| `src/app/api/*` | Universe, chain, stream, health, meta |
 
 ## Data path
 
-1. `loadUniverse` reads the NSE option-chain page for index names and `/api/master-quote` for the equity future-and-options book. BSE names come from the exchange underlying list. If that edge blocks the server, the last captured BSE book in `src/data/bse-cache.json` is used. Nothing in the sidebar is a handwritten symbol list.
-2. `loadOptionChain` resolves the clicked symbol against that book, then calls NSE `option-chain-v3` or the BSE derivatives chain.
-3. `/api/stream` publishes the snapshot, then keeps a websocket to `wss://streamer.nseindia.com/streams/fo/mbp` for the selected NSE symbol and expiry. Ticks patch last, change, bid, ask, interest, and volume. A full snapshot refresh still runs every few seconds so open interest and totals stay aligned with the exchange.
+1. Browser loads `/api/universe` once.
+2. Selecting a contract opens `/api/stream` (SSE). The server pushes `chain` snapshots and, when the NSE market is open, mirrors WebSocket ticks.
+3. REST `/api/chain` remains available for one-shot refresh and smoke tests.
 
-## Session
+## Density model
 
-Market open and market closed follow the NSE capital-market status payload. The label is `Market Open` or `Market Closed`. It is not inferred from a clock hardcoded in the interface.
+- **Focus Columns** (default): open interest, volume, IV, change, last — the metrics that sit against the strike.
+- **All Columns**: every non-empty book field, including interest change and bid/ask when the exchange publishes them.
+- **Spot Focus / Entire Book**: strike window around ATM versus the full ladder (no “ATM ±N” labels).
+
+## Layout rules
+
+- Full-bleed terminal grid (sidebar + stage). No centered `max-width` gutters.
+- Sidebar toggle is a floating control that never sits on top of table cells.
+- Magnify collapses the rail, enlarges the board and OI chart, and restores the prior rail state on exit.
+- Scrollbars are visually hidden; scroll still works inside the chain and OI panes.
+
+## Theme
+
+Light and dark tokens live in `globals.css`. The theme toggle flips `html.dark`.

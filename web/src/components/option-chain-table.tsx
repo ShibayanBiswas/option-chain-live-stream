@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 
 import { columnLabel, putColumns, visibleColumns } from "@/lib/columns";
@@ -81,31 +81,21 @@ function FlashCell({
 export function OptionChainTable({
   snapshot,
   depth,
+  density,
   onSelect,
 }: {
   snapshot: OptionChainSnapshot;
   depth: "near" | "full";
+  density: "focus" | "full";
   onSelect: (row: ChainRow) => void;
 }) {
   const reduce = useReducedMotion();
-  const [compact, setCompact] = useState(false);
-  const callCols = useMemo(() => {
-    const all = visibleColumns(snapshot.rows);
-    if (!compact) return all;
-    const preferred: ColumnKey[] = ["chng", "ltp"];
-    const next = preferred.filter((key) => all.includes(key));
-    return next.length > 0 ? next : all;
-  }, [compact, snapshot.rows]);
+  const callCols = useMemo(
+    () => visibleColumns(snapshot.rows, density),
+    [density, snapshot.rows],
+  );
   const peCols = useMemo(() => putColumns(callCols), [callCols]);
   const spotStrike = snapshot.totals.atm;
-
-  useEffect(() => {
-    const query = window.matchMedia("(max-width: 700px)");
-    const sync = () => setCompact(query.matches);
-    sync();
-    query.addEventListener("change", sync);
-    return () => query.removeEventListener("change", sync);
-  }, []);
 
   const rows = useMemo(() => {
     if (depth === "full" || spotStrike == null) return snapshot.rows;
@@ -137,7 +127,8 @@ export function OptionChainTable({
   return (
     <motion.div
       className="chain-scroll"
-      initial={reduce ? false : { opacity: 0, y: 10 }}
+      data-density={density}
+      initial={reduce ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
     >
       <table className="chain-table">
@@ -170,12 +161,20 @@ export function OptionChainTable({
             const atSpot = row.strike === spotStrike;
             const callQuiet = !row.ce.volume;
             const putQuiet = !row.pe.volume;
+            const itmCall = snapshot.spot != null && row.strike < snapshot.spot;
+            const itmPut = snapshot.spot != null && row.strike > snapshot.spot;
             return (
               <tr
                 key={row.strike}
                 id={`strike-${row.strike}`}
                 data-volume={callQuiet && putQuiet ? "zero" : "traded"}
-                className={cn("chain-row", atSpot && "is-atm", callQuiet && putQuiet && "is-zero")}
+                className={cn(
+                  "chain-row",
+                  atSpot && "is-atm",
+                  callQuiet && putQuiet && "is-zero",
+                  itmCall && "is-itm-call",
+                  itmPut && "is-itm-put",
+                )}
                 onClick={() => onSelect(row)}
               >
                 {callCols.map((key) => (

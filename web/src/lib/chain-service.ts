@@ -34,6 +34,7 @@ export async function loadOptionChain(params: {
         symbol: instrument.symbol,
         scripCd: instrument.bseScrip,
         expiry: params.expiry,
+        segment: instrument.segment,
       });
       return { ...live, segment: instrument.segment, marketOpen: market?.open ?? false };
     } catch (err) {

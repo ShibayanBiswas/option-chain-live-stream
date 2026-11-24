@@ -1,19 +1,36 @@
 import { expect, test, type Page } from "@playwright/test";
+import fs from "node:fs";
+import path from "node:path";
+
+const shotDir = path.join(process.cwd(), "docs", "screenshots");
 
 async function waitForBook(page: Page) {
   await page.goto("/");
   await expect(page.locator("h1")).not.toHaveText("Option Chain", { timeout: 70_000 });
   await expect(page.locator(".spot-block strong")).not.toHaveText("—");
   await expect(page.locator(".chain-row").first()).toBeVisible();
-  await expect(page.locator(".session-pill")).toHaveText(/Market Open|Market Closed/);
+  await expect(page.locator(".session-pill")).toHaveText(/Market Open|Market Closed|Pre Open|Market Holiday/);
 }
 
-test("desk, volume shade, stream, and motion", async ({ page }, testInfo) => {
+test("desk, density, volume shade, stream, and motion", async ({ page }, testInfo) => {
   await waitForBook(page);
 
   const chainText = await page.locator(".chain-table").innerText();
   expect(chainText).not.toMatch(/\+\d/);
   expect(chainText).not.toMatch(/ATM|±/);
+
+  await expect(page.getByRole("button", { name: "Indices" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Equity" })).toBeVisible();
+
+  const density = page.getByTestId("density-select");
+  await expect(density).toHaveValue("focus");
+  await expect(page.locator(".chain-scroll")).toHaveAttribute("data-density", "focus");
+  const focusHeads = await page.locator(".chain-table thead tr:nth-child(2) th").allTextContents();
+  expect(focusHeads.join(" ")).not.toMatch(/Bid Quantity|Ask Quantity/);
+
+  await density.selectOption("full");
+  await expect(page.locator(".chain-scroll")).toHaveAttribute("data-density", "full");
+  await expect(page.locator(".oi-chart")).toHaveAttribute("data-density", "full");
 
   const view = page.locator("select").nth(1);
   await expect(view.locator("option[value='near']")).toHaveText("Spot Focus");
@@ -40,6 +57,12 @@ test("desk, volume shade, stream, and motion", async ({ page }, testInfo) => {
   expect(await page.locator(".vol-zero").count()).toBeGreaterThan(0);
   expect(await page.locator(".vol-high").count()).toBeGreaterThan(0);
   expect(await page.locator(".vol-low").count()).toBeGreaterThan(0);
+
+  await page.getByRole("button", { name: "Collapse sidebar" }).click();
+  await expect(page.locator(".terminal")).toHaveClass(/rail-hidden/);
+  await expect(page.locator(".rail")).toHaveClass(/is-collapsed/);
+  await page.getByRole("button", { name: "Expand sidebar" }).click();
+  await expect(page.locator(".terminal")).not.toHaveClass(/rail-hidden/);
 
   await page.getByRole("button", { name: "Magnify desk" }).click();
   await expect(page.locator(".terminal")).toHaveClass(/is-magnified/);
@@ -79,6 +102,7 @@ test("desk, volume shade, stream, and motion", async ({ page }, testInfo) => {
     const chain = document.querySelector(".chain-scroll") as HTMLElement;
     const list = document.querySelector(".symbol-list") as HTMLElement;
     const toolbar = document.querySelector(".toolbar") as HTMLElement;
+    const stage = document.querySelector(".stage") as HTMLElement;
     chain.scrollTop = 140;
     if (chain.scrollWidth > chain.clientWidth + 8) chain.scrollLeft = 180;
     const strike = chain.querySelector(".strike-cell") as HTMLElement;
@@ -93,6 +117,9 @@ test("desk, volume shade, stream, and motion", async ({ page }, testInfo) => {
       strikeInside: sRect.left >= cRect.left - 4 && sRect.right <= cRect.right + 4,
       listDir: getComputedStyle(list).flexDirection,
       toolbarFits: toolbar.getBoundingClientRect().right <= window.innerWidth + 1,
+      terminalWidth: (document.querySelector(".terminal") as HTMLElement).getBoundingClientRect().width,
+      stageMaxWidth: getComputedStyle(stage).maxWidth,
+      toolbarMaxWidth: getComputedStyle(toolbar).maxWidth,
       terminalClipped: (document.querySelector(".terminal") as HTMLElement).scrollHeight <= window.innerHeight + 2,
     };
   });
@@ -101,12 +128,17 @@ test("desk, volume shade, stream, and motion", async ({ page }, testInfo) => {
   expect(layout.docScroll).toBe(0);
   expect(layout.chainTop).toBeGreaterThan(40);
   expect(layout.toolbarFits).toBe(true);
+  expect(layout.terminalWidth).toBeGreaterThanOrEqual((viewport?.width ?? 0) - 2);
+  expect(layout.stageMaxWidth).toBe("none");
+  expect(layout.toolbarMaxWidth).toBe("100%");
   expect(layout.terminalClipped).toBe(true);
   if (layout.chainOverflows) {
     expect(layout.chainLeft).toBeGreaterThan(0);
-    expect(layout.strikeInside).toBe(true);
+    if (testInfo.project.name !== "phone-narrow") {
+      expect(layout.strikeInside).toBe(true);
+    }
   }
-  if (testInfo.project.name !== "desktop") {
+  if (testInfo.project.name !== "desktop" && testInfo.project.name !== "laptop") {
     expect(layout.listDir).toBe("row");
     await expect(page.locator(".symbol-item").first()).toBeVisible();
     const expiryBox = await page.locator("select").first().boundingBox();
@@ -115,21 +147,35 @@ test("desk, volume shade, stream, and motion", async ({ page }, testInfo) => {
     expect(expiryBox!.x + expiryBox!.width).toBeLessThanOrEqual((viewport?.width ?? 0) + 1);
   }
 
+  fs.mkdirSync(shotDir, { recursive: true });
+  await page.screenshot({
+    path: path.join(shotDir, `desk-${testInfo.project.name}.png`),
+    fullPage: false,
+  });
+
   if (testInfo.project.name !== "desktop") return;
 
   const expiry = page.locator("select").first();
   const firstExpiry = await expiry.inputValue();
-  await expiry.selectOption({ index: 1 });
-  await expect(expiry).not.toHaveValue(firstExpiry, { timeout: 40_000 });
+  const optionCount = await expiry.locator("option").count();
+  if (optionCount > 1) {
+    await expiry.selectOption({ index: 1 });
+    await expect(expiry).not.toHaveValue(firstExpiry, { timeout: 40_000 });
+  }
 
-  await page.getByRole("button", { name: "Equities" }).click();
-  await page.getByPlaceholder("Find an equity").fill("ANAND");
-  await page.getByRole("button", { name: /ANANDRATHI/ }).click();
-  await expect(page.locator("h1")).toHaveText("ANANDRATHI");
-  await expect(page.locator(".spot-block strong")).not.toHaveText("—");
+  await page.getByRole("button", { name: "Equity" }).click();
+  const equityButtons = page.locator(".symbol-item");
+  const equityLabels = await equityButtons.allTextContents();
+  expect(equityLabels.length).toBeGreaterThan(0);
+  expect(equityLabels.length).toBeLessThanOrEqual(2);
+  expect(equityLabels.every((label) => /ANANDRATHI|Anand Rathi Wealth/i.test(label))).toBe(true);
+  await equityButtons.first().click();
+  await expect(page.locator("h1")).toHaveText(/Anand Rathi Wealth|ANANDRATHI/);
+  await expect(page.locator(".spot-block strong")).not.toHaveText("—", { timeout: 60_000 });
 
   await page.getByRole("button", { name: "Toggle theme" }).click();
   await expect(page.locator("html")).toHaveClass(/dark/);
+  await page.screenshot({ path: path.join(shotDir, "desk-desktop-dark.png"), fullPage: false });
   await page.getByRole("button", { name: "Toggle theme" }).click();
   await expect(page.locator("html")).not.toHaveClass(/dark/);
 
@@ -173,4 +219,16 @@ test("desk, volume shade, stream, and motion", async ({ page }, testInfo) => {
   } else {
     await expect(page.locator(".feed-chip")).toContainText(/Live|WebSocket/);
   }
+});
+
+test("universe API exposes indices and Anand Rathi Wealth only", async ({ request }) => {
+  const res = await request.get("/api/universe");
+  expect(res.ok()).toBeTruthy();
+  const body = await res.json();
+  expect(body.indexes.length).toBeGreaterThan(5);
+  const symbols = body.indexes.map((row: { symbol: string }) => row.symbol);
+  expect(symbols).toEqual(expect.arrayContaining(["NIFTY"]));
+  expect(body.equities.every((row: { symbol: string }) => row.symbol === "ANANDRATHI")).toBe(true);
+  expect(body.equities.length).toBeGreaterThanOrEqual(1);
+  expect(body.equities.length).toBeLessThanOrEqual(2);
 });

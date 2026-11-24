@@ -580,8 +580,60 @@ html.dark .chain-row.is-zero td {
   background: rgba(22, 163, 74, 0.12);
 }
 
+.session-pill.is-preopen {
+  color: #92400e;
+  background: rgba(245, 158, 11, 0.16);
+}
+
 .session-pill.is-closed {
   color: var(--ar-muted);
+}
+
+.rail-fab {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 30;
+  height: 44px;
+  min-width: 44px;
+  box-shadow: var(--ar-shadow);
+}
+
+.terminal:not(.rail-hidden) .rail-fab {
+  left: 256px;
+}
+
+.oi-metric {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-style: normal;
+  font-family: var(--font-data);
+  font-size: 9px;
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+.oi-track.call .oi-metric {
+  right: 6px;
+}
+
+.oi-track.put .oi-metric {
+  left: 6px;
+}
+
+.oi-chart[data-density="full"] {
+  max-height: 280px;
+}
+
+.chain-scroll[data-density="focus"] .chain-table {
+  min-width: 720px;
+}
+
+.chain-scroll[data-density="focus"] .chain-table thead th,
+.chain-scroll[data-density="focus"] .chain-table tbody td {
+  padding-left: 6px;
+  padding-right: 6px;
 }
 
 .field {
@@ -779,6 +831,7 @@ html.dark .oi-legend-put {
 }
 
 .oi-track {
+  position: relative;
   height: 11px;
   border-radius: 999px;
   background: rgba(120, 113, 108, 0.12);
@@ -1000,6 +1053,24 @@ html.dark .quote-card.put {
     height: 100dvh;
     max-height: 100dvh;
     overflow: hidden;
+  }
+
+  .terminal:not(.rail-hidden) .rail-fab,
+  .terminal.rail-hidden .rail-fab {
+    left: 12px;
+    top: auto;
+    bottom: 16px;
+  }
+
+  .rail.is-collapsed {
+    display: none;
+  }
+
+  .segmented button,
+  .icon-btn,
+  .symbol-item,
+  .field select {
+    min-height: 44px;
   }
 
   .rail {

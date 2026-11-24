@@ -1,49 +1,50 @@
 # Testing
 
-## Local
+## Unit
 
 ```bash
-cd web
-npm install
-npx playwright install chromium
-npm run typecheck
+npm test
+```
+
+Node’s built-in test runner (with TypeScript strip types) covers:
+
+- Focus vs full column sets and put-side mirroring (`columns.test.ts`)
+- Signed formatting without plus signs (`format.test.ts`)
+- Wealth equity symbol lock (`universe.test.ts`)
+
+## API smoke
+
+With the app running on port 3000:
+
+```bash
+npm run test:api
+```
+
+Probes `/api/health`, `/api/universe` (indices present, equities = ANANDRATHI only), NIFTY chain, Anand Rathi Wealth NSE chain, and SENSEX when BSE is reachable.
+
+## Playwright
+
+```bash
 npm run build
 npm run start
-npm run verify:accuracy
 npm run test:e2e
 ```
 
-`verify:accuracy` checks sorted strikes, expiry membership, open-interest totals, and put-call ratio against the rows for Nifty, Bank Nifty, Fin Nifty, Reliance, and Sensex.
+Projects: desktop 1440, laptop 1280, tablet 768, phone 390, phone-narrow 360.
 
-`test:e2e` runs Playwright against the local server on desktop, tablet, and phone. It checks:
+Coverage includes live feed / motion, focus vs full density for chain and OI, zero-volume shading, sidebar toggle, full-width chrome, magnify, light/dark, mobile collapsed rail, index list presence, and Anand Rathi Wealth as the only equity.
 
-- live book load and Market Open / Market Closed
-- Spot Focus and Entire Book
-- zero-volume shading plus high and low volume marks
-- Last and Change sitting against the strike
-- quote sheet open and close
-- magnify mode
-- open-interest motion and price-flash animation
-- equity search for Anand Rathi
-- light and dark theme
-- stream channel events
-- no page overflow and chain scrolling inside the desk
+Screenshots land in `docs/screenshots/`.
 
-## What to click
+## Production gates
 
-1. Indexes, then Equities. Confirm the list changes and search finds a live symbol such as the wealth name returned by the exchange book.
-2. Switch NSE and BSE. BSE indexes must load a chain.
-3. Change expiry from the dropdown and confirm the strike book changes.
-4. Switch Spot Focus and Entire Book.
-5. Toggle Magnify. The rail should collapse and the desk should enlarge.
-6. Click a strike. The quote sheet opens and closes.
-7. Toggle dark mode. Gold, ink, and the chain must stay readable.
-8. Watch the feed chip. During the cash session it should read WebSocket after the socket opens. Outside the session the socket stays quiet while the snapshot still loads.
+```bash
+npm run lint
+npm run typecheck
+npm run build
+npm test
+npm run test:api
+npm run test:e2e
+```
 
-## Session
-
-`/api/health` returns the exchange status string. The toolbar must say Market Open only when that status is open, and Market Closed otherwise.
-
-## Production
-
-After deploy, open the Vercel URL and repeat the click path above on a laptop and a phone. Confirm `/api/health`, `/api/universe`, and a Nifty chain load without protection walls.
+All of the above must pass before merge.

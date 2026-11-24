@@ -23,6 +23,10 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
     },
     {
+      name: "laptop",
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1280, height: 800 } },
+    },
+    {
       name: "tablet",
       use: {
         browserName: "chromium",
@@ -35,8 +39,21 @@ export default defineConfig({
     {
       name: "phone",
       use: {
-        ...devices["Pixel 5"],
         browserName: "chromium",
+        viewport: { width: 390, height: 844 },
+        isMobile: true,
+        hasTouch: true,
+        deviceScaleFactor: 2,
+      },
+    },
+    {
+      name: "phone-narrow",
+      use: {
+        browserName: "chromium",
+        viewport: { width: 360, height: 740 },
+        isMobile: true,
+        hasTouch: true,
+        deviceScaleFactor: 2,
       },
     },
   ],
