@@ -109,9 +109,12 @@ export async function discoverBseUnderlyings(
     .filter((row) => row.symbol && row.scrip > 0);
 }
 
-export async function getBseExpiries(scripCd: number): Promise<string[]> {
+export async function getBseExpiries(
+  scripCd: number,
+  product: "IO" | "SO" = "IO",
+): Promise<string[]> {
   const data = await bseGet<{ Table?: ExpiryRow[] }>(
-    `${BSE_API}/BseIndiaAPI/api/ddlExpiry/w?ProductType=IO&scrip_cd=${scripCd}`,
+    `${BSE_API}/BseIndiaAPI/api/ddlExpiry/w?ProductType=${product}&scrip_cd=${scripCd}`,
   );
   return (data.Table ?? [])
     .map((r) => r.eXPIRY)
@@ -122,9 +125,11 @@ export async function getBseOptionChain(params: {
   symbol: string;
   scripCd: number;
   expiry?: string;
+  segment?: "INDEX" | "EQUITY";
 }): Promise<OptionChainSnapshot> {
   const started = Date.now();
-  const expiries = await getBseExpiries(params.scripCd);
+  const product = params.segment === "EQUITY" ? "SO" : "IO";
+  const expiries = await getBseExpiries(params.scripCd, product);
   const expiry =
     params.expiry && expiries.includes(params.expiry)
       ? params.expiry
@@ -152,7 +157,7 @@ export async function getBseOptionChain(params: {
   return {
     exchange: "BSE",
     symbol: params.symbol,
-    segment: "INDEX",
+    segment: params.segment ?? "INDEX",
     expiry,
     expiries,
     spot,

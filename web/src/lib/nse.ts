@@ -59,6 +59,7 @@ async function fetchJson<T>(path: string, attempt = 0): Promise<T> {
     const msg = err instanceof Error ? err.message : "";
     if ((/HTTP 401|HTTP 403/.test(msg) || /ECONNRESET/.test(msg)) && attempt < 2) {
       jar = null;
+      await new Promise((resolve) => setTimeout(resolve, 300 * (attempt + 1)));
       return fetchJson<T>(path, attempt + 1);
     }
     throw err;
@@ -191,12 +192,30 @@ async function readMarketStatus() {
     data.marketState?.find((m) => m.market === "Capital Market") ??
     data.marketState?.[0];
   const status = capital?.marketStatus ?? "Unknown";
+  const statusKey = String(status).toLowerCase().replace(/\s+/g, "");
+  const open = statusKey === "open";
+  let phase: "open" | "preopen" | "closed" | "holiday" | "unknown" = "unknown";
+  if (statusKey === "open") phase = "open";
+  else if (statusKey.includes("preopen") || statusKey.includes("pre-open")) phase = "preopen";
+  else if (statusKey.includes("holiday")) phase = "holiday";
+  else if (statusKey === "close" || statusKey === "closed") phase = "closed";
+  const message =
+    phase === "open"
+      ? "Market Open"
+      : phase === "preopen"
+        ? "Pre Open"
+        : phase === "holiday"
+          ? "Market Holiday"
+          : capital?.marketStatusMessage?.includes("Closed")
+            ? "Market Closed"
+            : capital?.marketStatusMessage || "Market Closed";
   return {
     status,
     tradeDate: capital?.tradeDate ?? "",
     niftyLast: parseLooseNumber(capital?.last),
-    message: capital?.marketStatusMessage ?? "",
-    open: String(status).toLowerCase() === "open",
+    message,
+    open,
+    phase,
   };
 }
 
@@ -206,6 +225,7 @@ export async function getNseMarketStatus(): Promise<{
   niftyLast: number | null;
   message: string;
   open: boolean;
+  phase: "open" | "preopen" | "closed" | "holiday" | "unknown";
 }> {
   if (marketCache && Date.now() - marketCache.at < 15_000) return marketCache.value;
   const value = await readMarketStatus();
@@ -284,4 +304,15 @@ export async function getNseOptionChain(params: {
     marketOpen,
     feed: "rest",
   };
+}
+
+export async function getNseTape(): Promise<Array<{ symbol: string; last: number | null; change: number | null }>> {
+  const data = await fetchJson<{ data?: Array<Record<string, unknown>> }>("/api/allIndices");
+  return (data.data ?? [])
+    .map((row) => ({
+      symbol: String(row.indexSymbol ?? row.index ?? ""),
+      last: parseLooseNumber(row.last),
+      change: parseLooseNumber(row.variation ?? row.change),
+    }))
+    .filter((row) => row.symbol);
 }

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { applyPatch, type ChainPatch } from "@/lib/diff";
 import type { OptionChainSnapshot } from "@/lib/types";
 
 type Status = "idle" | "connecting" | "live" | "polling" | "error";
@@ -25,6 +26,12 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
 
   const applySnapshot = useCallback((next: OptionChainSnapshot) => {
     setSnapshot(next);
+    setUpdatedAt(Date.now());
+    setError(null);
+  }, []);
+
+  const applyIncomingPatch = useCallback((patch: ChainPatch) => {
+    setSnapshot((current) => (current ? applyPatch(current, patch) : current));
     setUpdatedAt(Date.now());
     setError(null);
   }, []);
@@ -92,6 +99,16 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
         }
       });
 
+      es.addEventListener("patch", (evt) => {
+        if (cancelled) return;
+        try {
+          applyIncomingPatch(JSON.parse((evt as MessageEvent).data) as ChainPatch);
+          setStatus("live");
+        } catch {
+          /* ignore parse */
+        }
+      });
+
       es.addEventListener("socket", (evt) => {
         if (cancelled) return;
         try {
@@ -143,7 +160,7 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
       esRef.current = null;
       stopPoll();
     };
-  }, [applySnapshot, enabled, exchange, expiry, fetchOnce, segment, symbol]);
+  }, [applyIncomingPatch, applySnapshot, enabled, exchange, expiry, fetchOnce, segment, symbol]);
 
   return { snapshot, status, error, updatedAt, socketState, refresh: fetchOnce };
 }

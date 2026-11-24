@@ -1,4 +1,5 @@
 import { loadOptionChain, publicChainError } from "@/lib/chain-service";
+import { diffChain } from "@/lib/diff";
 import { openNseOptionSocket, type OptionTick } from "@/lib/nse-ws";
 import type { OptionChainSnapshot, OptionQuote } from "@/lib/types";
 
@@ -61,16 +62,18 @@ export async function GET(req: Request) {
         if (!closed) controller.enqueue(encoder.encode(`: ping ${Date.now()}\n\n`));
       }, 8000);
 
-      const pull = async () => {
+      const pull = async (full: boolean) => {
         const next = await loadOptionChain({ symbol, expiry, exchange, segment });
         if (snapshot?.feed === "websocket") next.feed = "websocket";
+        const patch = !full && snapshot ? diffChain(snapshot, next) : null;
         snapshot = next;
-        send("chain", snapshot);
+        if (patch) send("patch", patch);
+        else send("chain", snapshot);
         return next;
       };
 
       try {
-        const first = await pull();
+        const first = await pull(true);
         if (first.exchange === "NSE" && first.marketOpen) {
           socket = openNseOptionSocket(
             first.symbol,
@@ -88,7 +91,7 @@ export async function GET(req: Request) {
         while (!closed && Date.now() - started < 50_000) {
           await new Promise((resolve) => setTimeout(resolve, 4000));
           if (closed) break;
-          await pull().catch((err) => {
+          await pull(false).catch((err) => {
             send("notice", { message: publicMessage(err) });
           });
         }

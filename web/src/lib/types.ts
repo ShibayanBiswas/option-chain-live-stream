@@ -54,6 +54,14 @@ export type Instrument = {
   segment: Segment;
   nseType?: "Indices" | "Equity";
   bseScrip?: number;
+  last?: number | null;
+  change?: number | null;
+};
+
+export type TapeQuote = {
+  symbol: string;
+  last: number | null;
+  change: number | null;
 };
 
 export type MetaResponse = {

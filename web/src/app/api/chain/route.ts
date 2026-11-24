@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { loadOptionChain, publicChainError } from "@/lib/chain-service";
+import { assertChainSnapshot } from "@/lib/schema";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,7 +18,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const snapshot = await loadOptionChain({ symbol, expiry, exchange, segment });
+    const snapshot = assertChainSnapshot(await loadOptionChain({ symbol, expiry, exchange, segment }));
     return NextResponse.json(snapshot, {
       headers: {
         "Cache-Control": "no-store, max-age=0",

@@ -21,7 +21,8 @@ export async function GET() {
               status: market.status,
               tradeDate: market.tradeDate,
               open: market.open,
-              message: market.open ? "Market Open" : "Market Closed",
+              phase: market.phase,
+              message: market.message,
             }
           : null,
       },

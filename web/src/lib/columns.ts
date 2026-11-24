@@ -5,24 +5,26 @@ export type SideColumn = {
   key: ColumnKey;
   label: string;
   always?: boolean;
+  /** Present in the collapsed focus view. */
+  focus?: boolean;
 };
 
 /**
  * Call-side order reads toward the strike.
- * Quiet book columns (OI, volume) sit farthest left.
- * Last and Change sit against the strike.
+ * Quiet book columns sit farthest left.
+ * Last sits against the strike.
  */
 export const SIDE_COLUMNS: SideColumn[] = [
-  { key: "oi", label: "Open Interest", always: true },
+  { key: "oi", label: "Open Interest", always: true, focus: true },
   { key: "oiChg", label: "Interest Change" },
-  { key: "volume", label: "Volume", always: true },
-  { key: "iv", label: "IV", always: true },
+  { key: "volume", label: "Volume", always: true, focus: true },
+  { key: "iv", label: "IV", always: true, focus: true },
   { key: "bidQty", label: "Bid Quantity" },
   { key: "bid", label: "Bid" },
   { key: "ask", label: "Ask" },
   { key: "askQty", label: "Ask Quantity" },
-  { key: "chng", label: "Change" },
-  { key: "ltp", label: "Last", always: true },
+  { key: "chng", label: "Change", focus: true },
+  { key: "ltp", label: "Last", always: true, focus: true },
 ];
 
 function quoteField(q: OptionQuote, key: ColumnKey): number | null {
@@ -50,8 +52,12 @@ function quoteField(q: OptionQuote, key: ColumnKey): number | null {
   }
 }
 
-export function visibleColumns(rows: ChainRow[]): ColumnKey[] {
+export function visibleColumns(
+  rows: ChainRow[],
+  density: "focus" | "full" = "full",
+): ColumnKey[] {
   return SIDE_COLUMNS.filter((col) => {
+    if (density === "focus" && !col.focus) return false;
     if (col.always) return true;
     return rows.some(
       (row) =>
@@ -61,11 +67,28 @@ export function visibleColumns(rows: ChainRow[]): ColumnKey[] {
   }).map((c) => c.key);
 }
 
-/** Put side mirrors the call side so Last and Change stay against the strike. */
+/** Put side mirrors the call side so Last stays against the strike. */
 export function putColumns(callCols: ColumnKey[]): ColumnKey[] {
   return [...callCols].reverse();
 }
 
 export function columnLabel(key: ColumnKey): string {
   return SIDE_COLUMNS.find((c) => c.key === key)?.label ?? key;
+}
+
+const HINTS: Record<ColumnKey, string> = {
+  oi: "Open interest, contracts outstanding",
+  oiChg: "Change in open interest",
+  volume: "Contracts traded",
+  iv: "Implied volatility",
+  ltp: "Last traded price",
+  chng: "Change from the previous close",
+  bidQty: "Quantity at the best bid",
+  bid: "Best bid",
+  ask: "Best ask",
+  askQty: "Quantity at the best ask",
+};
+
+export function columnHint(key: ColumnKey): string {
+  return HINTS[key];
 }

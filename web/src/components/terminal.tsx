@@ -1,40 +1,58 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Maximize2, Minimize2, Moon, PanelLeft, RefreshCw, Search, Sun } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { motion } from "framer-motion";
+import { Columns2, Maximize2, Minimize2, Moon, PanelLeft, RefreshCw, Search, Sun } from "lucide-react";
 
 import { BrandLogo } from "@/components/brand-logo";
+import { CommandPalette } from "@/components/command-palette";
+import { ExpirySelect } from "@/components/expiry-select";
+import { InstrumentTree } from "@/components/instrument-tree";
 import { OpenInterestChart } from "@/components/oi-chart";
 import { OptionChainTable } from "@/components/option-chain-table";
+import { OiChangeChart, PcrTrend } from "@/components/pcr-trend";
 import { QuoteSheet } from "@/components/quote-sheet";
+import { Toasts } from "@/components/toasts";
 import { useOptionStream } from "@/hooks/use-option-stream";
+import { atmIv } from "@/lib/analytics";
 import { cn } from "@/lib/cn";
-import { formatCompact, formatNumber, formatPrice } from "@/lib/format";
+import { displayName, matchTape } from "@/lib/display";
+import { formatCompact, formatNumber, formatPrice, formatSigned } from "@/lib/format";
 import { useTheme } from "@/lib/theme";
-import type { ChainRow, Instrument } from "@/lib/types";
+import type { ChainRow, Instrument, TapeQuote } from "@/lib/types";
 
 type Book = {
   indexes: Instrument[];
   equities: Instrument[];
-  market: { status: string; tradeDate: string; open: boolean; message: string } | null;
+  market: {
+    status: string;
+    tradeDate: string;
+    open: boolean;
+    phase?: string;
+    message: string;
+  } | null;
 };
 
 export function Terminal() {
-  const reduce = useReducedMotion();
   const { theme, toggle, mounted } = useTheme();
   const [book, setBook] = useState<Book | null>(null);
-  const [segment, setSegment] = useState<"INDEX" | "EQUITY">("INDEX");
-  const [exchange, setExchange] = useState<"ALL" | "NSE" | "BSE">("ALL");
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Instrument | null>(null);
   const [expiry, setExpiry] = useState("");
   const [depth, setDepth] = useState<"near" | "full">("near");
+  const [density, setDensity] = useState<"focus" | "full">("focus");
   const [railOpen, setRailOpen] = useState(true);
   const [railBeforeMagnify, setRailBeforeMagnify] = useState(true);
   const [magnify, setMagnify] = useState(false);
   const [picked, setPicked] = useState<ChainRow | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const statusRef = useRef<"idle" | "connecting" | "live" | "polling" | "error">("idle");
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [pins, setPins] = useState<string[]>([]);
+  const [tape, setTape] = useState<TapeQuote[]>([]);
+  const [history, setHistory] = useState<Record<string, number[]>>({});
+  const [toasts, setToasts] = useState<string[]>([]);
+  const [pcrPoints, setPcrPoints] = useState<number[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,7 +65,11 @@ export function Terminal() {
       .then((data) => {
         if (cancelled) return;
         setBook(data);
-        setSelected((current) => current ?? data.indexes[0] ?? data.equities[0] ?? null);
+        const saved = window.localStorage.getItem("ocls-last");
+        const all = [...data.indexes, ...data.equities];
+        const remembered = all.find((item) => `${item.exchange}:${item.symbol}` === saved);
+        const nifty = all.find((item) => item.symbol === "NIFTY" && item.exchange === "NSE");
+        setSelected((current) => current ?? remembered ?? nifty ?? data.indexes[0] ?? data.equities[0] ?? null);
       })
       .catch((err) => {
         if (!cancelled) setLoadError(err instanceof Error ? err.message : "Universe unavailable");
@@ -70,17 +92,120 @@ export function Terminal() {
     if (!expiry || !snapshot.expiries.includes(expiry)) setExpiry(snapshot.expiries[0]!);
   }, [expiry, snapshot?.expiries]);
 
-  const list = useMemo(() => {
-    const source = segment === "INDEX" ? book?.indexes ?? [] : book?.equities ?? [];
-    const q = query.trim().toUpperCase();
-    return source.filter((item) => {
-      if (exchange !== "ALL" && item.exchange !== exchange) return false;
-      if (!q) return true;
-      return item.symbol.includes(q) || item.label.toUpperCase().includes(q);
-    });
-  }, [book, exchange, query, segment]);
+  useEffect(() => {
+    if (window.matchMedia("(max-width: 980px)").matches) setRailOpen(false);
+    try {
+      const stored = JSON.parse(window.localStorage.getItem("ocls-pins") || "[]");
+      if (Array.isArray(stored)) setPins(stored.filter((item) => typeof item === "string"));
+    } catch {
+      setPins([]);
+    }
+  }, []);
 
-  const session = book?.market?.open ? "Market Open" : book?.market ? "Market Closed" : "Session";
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setPaletteOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  useEffect(() => {
+    let stop = false;
+    const pull = () => {
+      fetch("/api/tape", { cache: "no-store" })
+        .then((res) => res.json())
+        .then((data: { quotes?: TapeQuote[] }) => {
+          if (stop || !data.quotes) return;
+          setTape(data.quotes);
+          setHistory((current) => {
+            const next = { ...current };
+            for (const quote of data.quotes ?? []) {
+              if (quote.last == null) continue;
+              const key = `NSE:${quote.symbol.replace(/[^A-Z0-9]/gi, "").toUpperCase()}`;
+              const series = next[key] ?? [];
+              next[key] = [...series, quote.last].slice(-24);
+            }
+            return next;
+          });
+        })
+        .catch(() => undefined);
+    };
+    pull();
+    const timer = window.setInterval(pull, 20_000);
+    return () => {
+      stop = true;
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (statusRef.current !== "error" && status === "error") pushToast("Connection lost");
+    if (statusRef.current === "error" && (status === "live" || status === "polling")) {
+      pushToast("Connection restored");
+    }
+    statusRef.current = status;
+  }, [status]);
+
+  useEffect(() => {
+    if (snapshot?.totals.pcr == null) return;
+    setPcrPoints((current) => [...current, snapshot.totals.pcr!].slice(-48));
+  }, [snapshot?.timestamp, snapshot?.totals.pcr]);
+
+  useEffect(() => {
+    if (!selected || snapshot?.spot == null) return;
+    const key = `${selected.exchange}:${selected.symbol}`;
+    const spot = snapshot.spot;
+    setHistory((current) => ({
+      ...current,
+      [key]: [...(current[key] ?? []), spot].slice(-24),
+    }));
+  }, [selected, snapshot?.spot, snapshot?.timestamp]);
+
+  function pushToast(message: string) {
+    setToasts((current) => [...current, message].slice(-3));
+    window.setTimeout(() => {
+      setToasts((current) => current.filter((item) => item !== message));
+    }, 3200);
+  }
+
+  function choose(item: Instrument) {
+    setSelected(item);
+    setExpiry("");
+    setPicked(null);
+    setPcrPoints([]);
+    window.localStorage.setItem("ocls-last", `${item.exchange}:${item.symbol}`);
+  }
+
+  function togglePin(item: Instrument) {
+    const key = `${item.exchange}:${item.symbol}`;
+    setPins((current) => {
+      const next = current.includes(key) ? current.filter((pin) => pin !== key) : [...current, key];
+      window.localStorage.setItem("ocls-pins", JSON.stringify(next));
+      return next;
+    });
+  }
+
+  const instruments = useMemo(
+    () => [...(book?.indexes ?? []), ...(book?.equities ?? [])],
+    [book],
+  );
+  const tapeRows = useMemo(() => {
+    return (book?.indexes ?? []).slice(0, 8).map((item) => {
+      const quote = matchTape(item.symbol, tape);
+      return {
+        key: `${item.exchange}:${item.symbol}`,
+        name: displayName(item.symbol, item.label),
+        last: quote?.last ?? null,
+        change: quote?.change ?? null,
+      };
+    });
+  }, [book, tape]);
+
+  const session = book?.market?.message ?? (book?.market ? "Market Closed" : "Session");
   const feed =
     socketState === "open" || snapshot?.feed === "websocket"
       ? "WebSocket"
@@ -92,112 +217,100 @@ export function Terminal() {
 
   return (
     <div className={cn("terminal bg-mesh", magnify && "is-magnified", !railOpen && "rail-hidden")}>
-      <aside className={cn("rail", !railOpen && "is-collapsed")}>
+      <button
+        className="rail-fab icon-btn"
+        type="button"
+        onClick={() => setRailOpen((open) => !open)}
+        aria-label={railOpen ? "Collapse sidebar" : "Expand sidebar"}
+        aria-pressed={railOpen}
+      >
+        <PanelLeft className="h-4 w-4" />
+      </button>
+
+      <aside className={cn("rail", !railOpen && "is-collapsed", railOpen && "is-sheet")} aria-hidden={!railOpen}>
         <div className="rail-brand">
           <BrandLogo compact />
         </div>
-        <div className="segmented">
-          {(["INDEX", "EQUITY"] as const).map((item) => (
-            <button
-              key={item}
-              className={cn(segment === item && "is-on")}
-              type="button"
-              onClick={() => {
-                setSegment(item);
-                setQuery("");
-                const next =
-                  item === "INDEX"
-                    ? book?.indexes.find((row) => exchange === "ALL" || row.exchange === exchange)
-                    : book?.equities.find((row) => exchange === "ALL" || row.exchange === exchange);
-                if (next) {
-                  setSelected(next);
-                  setExpiry("");
-                  setPicked(null);
-                }
-              }}
-            >
-              {item === "INDEX" ? "Indexes" : "Equities"}
-            </button>
-          ))}
-        </div>
-        <div className="segmented slim">
-          {(["ALL", "NSE", "BSE"] as const).map((item) => (
-            <button
-              key={item}
-              className={cn(exchange === item && "is-on")}
-              type="button"
-              onClick={() => setExchange(item)}
-            >
-              {item === "ALL" ? "Both" : item}
-            </button>
-          ))}
-        </div>
-        <label className="search-box">
-          <Search className="h-4 w-4" />
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={segment === "INDEX" ? "Find an index" : "Find an equity"}
+        {book ? (
+          <InstrumentTree
+            indexes={book.indexes}
+            equities={book.equities}
+            selected={selected}
+            query={query}
+            onQuery={setQuery}
+            pins={pins}
+            history={history}
+            tape={tape}
+            onSelect={choose}
+            onTogglePin={togglePin}
           />
-        </label>
-        <div className="symbol-list">
-          <AnimatePresence initial={false}>
-            {list.map((item) => {
-              const active = selected?.symbol === item.symbol && selected.exchange === item.exchange;
-              return (
-                <motion.button
-                  key={`${item.exchange}-${item.symbol}`}
-                  type="button"
-                  className={cn("symbol-item", active && "is-active")}
-                  onClick={() => {
-                    setSelected(item);
-                    setExpiry("");
-                    setPicked(null);
-                  }}
-                  layout
-                  initial={reduce ? false : { opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                >
-                  <span>{item.symbol}</span>
-                  <em>{item.exchange}</em>
-                </motion.button>
-              );
-            })}
-          </AnimatePresence>
-          {!book && !loadError ? <p className="rail-note">Loading contracts</p> : null}
-          {book && list.length === 0 ? <p className="rail-note">No contracts in this view</p> : null}
-        </div>
+        ) : (
+          <p className="rail-note">{loadError ?? "Loading contracts"}</p>
+        )}
       </aside>
 
       <section className="stage">
+        <div className="ticker" aria-label="Index tape">
+          <div className="ticker-track">
+            {[...tapeRows, ...tapeRows].map((item, index) => (
+              <span key={`${item.key}-${index}`}>
+                {item.name}
+                <strong>{formatPrice(item.last)}</strong>
+                <em className={item.change != null && item.change < 0 ? "tone-down" : "tone-up"}>
+                  {formatSigned(item.change, 2)}
+                </em>
+              </span>
+            ))}
+          </div>
+        </div>
         <header className="toolbar">
-          <button className="icon-btn" type="button" onClick={() => setRailOpen((open) => !open)} aria-label="Toggle sidebar">
-            <PanelLeft className="h-4 w-4" />
+          <button className="icon-btn" type="button" aria-label="Search contracts" onClick={() => setPaletteOpen(true)}>
+            <Search className="h-4 w-4" />
           </button>
           <div className="identity">
             <p className="eyebrow">{selected ? (selected.segment === "INDEX" ? "Index" : "Equity") : "Desk"}</p>
-            <h1>{selected?.symbol ?? "Option Chain"}</h1>
+            <h1>{selected ? displayName(selected.symbol, selected.label) : "Option Chain"}</h1>
           </div>
           <div className="spot-block">
             <p className="eyebrow">Spot</p>
             <strong>{formatPrice(snapshot?.spot ?? null)}</strong>
           </div>
-          <span className={cn("session-pill", book?.market?.open ? "is-open" : "is-closed")}>{session}</span>
+          <span
+            className={cn(
+              "session-pill",
+              book?.market?.open
+                ? "is-open"
+                : book?.market?.phase === "preopen"
+                  ? "is-preopen"
+                  : "is-closed",
+            )}
+          >
+            {session}
+          </span>
+          <ExpirySelect
+            expiries={snapshot?.expiries ?? []}
+            value={expiry}
+            onChange={(next) => {
+              setExpiry(next);
+              pushToast("Expiry updated");
+            }}
+          />
           <label className="field">
-            <span>Expiry</span>
-            <select value={expiry} onChange={(event) => setExpiry(event.target.value)}>
-              {(snapshot?.expiries ?? []).map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
-            <span>View</span>
+            <span>Strikes</span>
             <select value={depth} onChange={(event) => setDepth(event.target.value as "near" | "full")}>
               <option value="near">Spot Focus</option>
               <option value="full">Entire Book</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>Columns</span>
+            <select
+              value={density}
+              onChange={(event) => setDensity(event.target.value as "focus" | "full")}
+              data-testid="density-select"
+            >
+              <option value="focus">Focus Columns</option>
+              <option value="full">All Columns</option>
             </select>
           </label>
           <div className="feed-chip">
@@ -205,6 +318,16 @@ export function Terminal() {
             <span>{feed}</span>
             <em>{snapshot ? `${snapshot.latencyMs} ms` : ""}</em>
           </div>
+          <button
+            className={cn("icon-btn", density === "full" && "is-on")}
+            type="button"
+            onClick={() => setDensity((value) => (value === "focus" ? "full" : "focus"))}
+            aria-label={density === "focus" ? "Show all columns" : "Show focus columns"}
+            aria-pressed={density === "full"}
+            data-testid="density-toggle"
+          >
+            <Columns2 className="h-4 w-4" />
+          </button>
           <button
             className={cn("icon-btn", magnify && "is-on")}
             type="button"
@@ -237,16 +360,36 @@ export function Terminal() {
           <Kpi label="Max Pain" value={formatNumber(snapshot?.totals.maxPain ?? null, 0)} />
           <Kpi label="Call Interest" value={formatCompact(snapshot?.totals.ceOi ?? null)} />
           <Kpi label="Put Interest" value={formatCompact(snapshot?.totals.peOi ?? null)} />
-          <Kpi label="At the Money" value={formatNumber(snapshot?.totals.atm ?? null, 0)} />
+          <Kpi
+            label="At the Money IV"
+            value={
+              snapshot
+                ? formatNumber(atmIv(snapshot.rows, snapshot.totals.atm), 2)
+                : "—"
+            }
+          />
+        </div>
+        <div className="analytics-row">
+          <PcrTrend points={pcrPoints} />
+          {snapshot ? <OiChangeChart snapshot={snapshot} /> : null}
         </div>
 
         {error || loadError ? <p className="banner">{error || loadError}</p> : null}
 
-        {snapshot ? <OpenInterestChart snapshot={snapshot} magnify={magnify} /> : <div className="chart-skeleton" />}
+        {snapshot ? (
+          <OpenInterestChart snapshot={snapshot} density={density} magnify={magnify} />
+        ) : (
+          <div className="chart-skeleton" />
+        )}
 
         <div className="board">
           {snapshot ? (
-            <OptionChainTable snapshot={snapshot} depth={depth} onSelect={setPicked} />
+            <OptionChainTable
+              snapshot={snapshot}
+              depth={depth}
+              density={density}
+              onSelect={setPicked}
+            />
           ) : (
             <div className="board-wait">Opening the live book</div>
           )}
@@ -262,6 +405,13 @@ export function Terminal() {
         </div>
       </section>
       <QuoteSheet row={picked} onClose={() => setPicked(null)} />
+      <CommandPalette
+        open={paletteOpen}
+        instruments={instruments}
+        onClose={() => setPaletteOpen(false)}
+        onSelect={choose}
+      />
+      <Toasts messages={toasts} />
     </div>
   );
 }
