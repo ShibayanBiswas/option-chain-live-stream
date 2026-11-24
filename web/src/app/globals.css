@@ -25,8 +25,8 @@
   --ar-mesh-top: #ffffff;
   --ar-mesh-mid: #f7f7f7;
   --ar-mesh-bottom: #f2f2f2;
-  --ce-tint: rgba(22, 163, 74, 0.08);
-  --pe-tint: rgba(194, 65, 12, 0.08);
+  --ce-tint: transparent;
+  --pe-tint: transparent;
   --atm-tint: rgba(212, 178, 76, 0.22);
   --flash-up: rgba(22, 163, 74, 0.35);
   --flash-down: rgba(194, 65, 12, 0.35);
@@ -53,8 +53,8 @@ html.dark {
   --ar-mesh-top: #140e10;
   --ar-mesh-mid: #080605;
   --ar-mesh-bottom: #030202;
-  --ce-tint: rgba(34, 197, 94, 0.12);
-  --pe-tint: rgba(248, 113, 113, 0.12);
+  --ce-tint: transparent;
+  --pe-tint: transparent;
   --atm-tint: rgba(212, 178, 76, 0.18);
   --flash-up: rgba(34, 197, 94, 0.4);
   --flash-down: rgba(248, 113, 113, 0.4);
@@ -402,7 +402,7 @@ html.dark .bg-mesh::before {
 
 .terminal:has(.rail.is-collapsed),
 .terminal.rail-hidden {
-  grid-template-columns: 0 minmax(0, 1fr);
+  grid-template-columns: 56px minmax(0, 1fr);
 }
 
 .rail {
@@ -636,6 +636,23 @@ html.dark .chain-row.is-zero td {
   border-color: rgba(212, 178, 76, 0.55);
   background: rgba(212, 178, 76, 0.16);
   color: var(--ar-gold-dark);
+}
+
+.book-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.range-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-data);
+  font-size: 12px;
 }
 
 .kpi-row {
@@ -1147,20 +1164,33 @@ html.dark .quote-card.put {
 
 .depth-bar {
   position: absolute;
-  left: 0;
-  top: 3px;
-  bottom: 3px;
-  border-radius: 999px;
-  opacity: 0.28;
+  top: 0;
+  bottom: 0;
+  border-radius: 0;
+  opacity: 0.22;
   pointer-events: none;
 }
 
 .depth-bar.call {
-  background: #ef4444;
+  right: 0;
+  left: auto;
+  background: #e5484d;
 }
 
 .depth-bar.put {
-  background: #22c55e;
+  left: 0;
+  right: auto;
+  background: #30a46c;
+}
+
+.wall-badge {
+  display: block;
+  font-style: normal;
+  font-family: var(--font-sans);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ar-gold-dark);
 }
 
 .depth-cell > span {

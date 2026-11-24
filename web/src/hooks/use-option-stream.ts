@@ -129,7 +129,11 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
         }
       });
 
-      es.addEventListener("end", () => {
+      es.addEventListener("heartbeat", () => {
+        if (!cancelled) setUpdatedAt(Date.now());
+      });
+
+      es.addEventListener("rotate", () => {
         if (cancelled) return;
         es.close();
         connectSse();
@@ -138,9 +142,22 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
       es.onerror = () => {
         if (cancelled) return;
         es.close();
-        startPoll();
+        failures += 1;
+        if (failures >= 3) {
+          startPoll();
+          window.setTimeout(() => {
+            if (!cancelled) connectSse();
+          }, 60_000);
+          return;
+        }
+        const delay = Math.min(30_000, 1000 * 2 ** (failures - 1));
+        window.setTimeout(() => {
+          if (!cancelled) connectSse();
+        }, delay);
       };
     };
+
+    let failures = 0;
 
     fetchOnce()
       .then(() => {

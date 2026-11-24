@@ -4,6 +4,9 @@ import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type R
 import { motion, useReducedMotion } from "framer-motion";
 
 import { columnHint, columnLabel, putColumns, visibleColumns } from "@/lib/columns";
+import { chainMarks } from "@/lib/depth";
+import { daysToExpiry } from "@/lib/expiry";
+import { blackScholes, deltaFromIv } from "@/lib/greeks";
 import { cn } from "@/lib/cn";
 import { formatCompact, formatNumber, formatPrice, formatSigned, isEmptyValue } from "@/lib/format";
 import type { ChainRow, ColumnKey, OptionChainSnapshot, OptionQuote } from "@/lib/types";
@@ -30,6 +33,11 @@ function readField(q: OptionQuote, key: ColumnKey): number | null {
       return q.ask;
     case "askQty":
       return q.askQty;
+    case "pChg":
+      return q.pChange;
+    case "delta":
+    case "theta":
+      return null;
   }
 }
 
@@ -38,6 +46,7 @@ function renderValue(key: ColumnKey, value: number | null) {
   if (key === "ltp" || key === "bid" || key === "ask" || key === "iv") return formatPrice(value);
   if (key === "chng" || key === "oiChg") return formatSigned(value, key === "chng" ? 2 : 0);
   if (key === "oi" || key === "volume") return formatCompact(value);
+  if (key === "delta" || key === "theta" || key === "pChg") return formatNumber(value, 2);
   return formatNumber(value, 0);
 }
 
@@ -92,12 +101,13 @@ export function OptionChainTable({
   const reduce = useReducedMotion();
   const narrow = useNarrow();
   const callCols = useMemo(() => {
-    const cols = visibleColumns(snapshot.rows, density);
+    const cols = visibleColumns(snapshot.rows, density, { marketOpen: snapshot.marketOpen });
     if (narrow && density === "focus") return cols.filter((key) => key === "oi" || key === "ltp");
     return cols;
-  }, [density, narrow, snapshot.rows]);
+  }, [density, narrow, snapshot.marketOpen, snapshot.rows]);
   const peCols = useMemo(() => putColumns(callCols), [callCols]);
   const spotStrike = snapshot.totals.atm;
+  const marks = useMemo(() => chainMarks(snapshot.rows), [snapshot.rows]);
 
   const rows = useMemo(() => {
     if (depth === "full" || spotStrike == null) return snapshot.rows;
@@ -220,19 +230,29 @@ export function OptionChainTable({
                       side="ce"
                       field={key}
                       quote={row.ce}
+                      strike={row.strike}
+                      spot={spot}
+                      expiry={snapshot.expiry}
                       high={bands.high}
                       low={bands.low}
                       scale={key === "oi" || key === "volume" ? (key === "oi" ? scales.oi : scales.volume) : 0}
                       itm={itmCall}
                     />
                   ))}
-                  <td className="strike-cell">{formatNumber(row.strike, 0)}</td>
+                  <td className="strike-cell">
+                    {formatNumber(row.strike, 0)}
+                    {marks.callWall === row.strike ? <em className="wall-badge">Resistance</em> : null}
+                    {marks.putWall === row.strike ? <em className="wall-badge">Support</em> : null}
+                  </td>
                   {peCols.map((key) => (
                     <SideCell
                       key={`pe-${row.strike}-${key}`}
                       side="pe"
                       field={key}
                       quote={row.pe}
+                      strike={row.strike}
+                      spot={spot}
+                      expiry={snapshot.expiry}
                       high={bands.high}
                       low={bands.low}
                       scale={key === "oi" || key === "volume" ? (key === "oi" ? scales.oi : scales.volume) : 0}
@@ -269,6 +289,9 @@ function SideCell({
   low,
   scale,
   itm,
+  strike,
+  spot,
+  expiry,
 }: {
   side: "ce" | "pe";
   field: ColumnKey;
@@ -277,8 +300,25 @@ function SideCell({
   low: number;
   scale: number;
   itm: boolean;
+  strike: number;
+  spot: number | null;
+  expiry: string;
 }) {
-  const value = readField(quote, field);
+  const days = daysToExpiry(expiry);
+  const kind = side === "ce" ? "call" : "put";
+  const value =
+    field === "delta"
+      ? deltaFromIv({ spot, strike, ivPercent: quote.iv, days, type: kind })
+      : field === "theta"
+        ? blackScholes({
+            spot: spot ?? 0,
+            strike,
+            rate: 0.065,
+            sigma: (quote.iv ?? 0) / 100,
+            timeYears: (days ?? 0) / 365,
+            type: kind,
+          })?.theta ?? null
+        : readField(quote, field);
   const tone =
     field === "chng" || field === "oiChg"
       ? value && value > 0

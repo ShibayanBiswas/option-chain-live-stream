@@ -59,7 +59,8 @@ describe("expiries", () => {
   const now = new Date(2026, 10, 24);
 
   it("labels known symbols and counts days", () => {
-    expect(displayName("BANKNIFTY")).toBe("BANK NIFTY");
+    expect(displayName("BANKNIFTY")).toBe("NIFTY BANK");
+    expect(displayName("BSEFOCUSEDIT")).toBe("BSE Focused IT");
     expect(displayName("ANANDRATHI")).toBe("Anand Rathi Wealth");
     expect(displayName("SX50")).toBe("SENSEX 50");
     expect(matchTape("BANKNIFTY", [{ symbol: "NIFTY BANK", last: 1 }])?.last).toBe(1);

@@ -1,5 +1,6 @@
 import { BseBlockedError, discoverBseUnderlyings, getBseExpiries } from "./bse";
 import { listCachedBse } from "./bse-cache";
+import { indexLabel } from "./index-match";
 import { discoverNseBook } from "./nse";
 import type { Exchange, Instrument, Segment } from "./types";
 
@@ -15,26 +16,40 @@ const TTL_MS = 10 * 60 * 1000;
 /** Equity option book is restricted to Anand Rathi Wealth only. */
 const WEALTH_EQUITY = "ANANDRATHI";
 
-/** The desk lists these two index contracts and nothing else. */
-export const DESK_INDEXES = [
-  { symbol: "NIFTY", exchange: "NSE" as const },
-  { symbol: "SENSEX", exchange: "BSE" as const },
-];
-
 function asInstrument(
   symbol: string,
   exchange: Exchange,
   segment: Segment,
   bseScrip?: number,
 ): Instrument {
+  const compact = symbol.replace(/[^A-Z0-9]/gi, "").toUpperCase();
   return {
-    symbol,
-    label: segment === "EQUITY" && symbol === WEALTH_EQUITY ? "Anand Rathi Wealth" : symbol,
+    symbol: segment === "EQUITY" ? WEALTH_EQUITY : compact,
+    label: indexLabel(compact),
     exchange,
     segment,
     nseType: exchange === "NSE" ? (segment === "INDEX" ? "Indices" : "Equity") : undefined,
     bseScrip,
   };
+}
+
+export function selectDesk(input: {
+  nseIndexes: string[];
+  nseEquities: string[];
+  bseIndexes: Array<{ symbol: string; scrip: number }>;
+  bseEquities: Array<{ symbol: string; scrip: number }>;
+}): DeskUniverse {
+  const indexes = [
+    ...input.nseIndexes.map((symbol) => asInstrument(symbol, "NSE", "INDEX")),
+    ...input.bseIndexes.map((row) => asInstrument(row.symbol, "BSE", "INDEX", row.scrip)),
+  ];
+  const equities: Instrument[] = [];
+  if (input.nseEquities.some((symbol) => isWealthEquity(symbol))) {
+    equities.push(asInstrument(WEALTH_EQUITY, "NSE", "EQUITY"));
+  }
+  const bseWealth = input.bseEquities.find((row) => isWealthEquity(row.symbol));
+  if (bseWealth) equities.push(asInstrument(WEALTH_EQUITY, "BSE", "EQUITY", bseWealth.scrip));
+  return { indexes, equities, refreshedAt: new Date().toISOString() };
 }
 
 function isWealthEquity(symbol: string): boolean {
@@ -73,22 +88,16 @@ export async function loadUniverse(force = false): Promise<DeskUniverse> {
     );
   }
 
-  const nseWealth = nse.equities.find((symbol) => isWealthEquity(symbol));
-  const equities: Instrument[] = [];
-  if (nseWealth) equities.push(asInstrument(WEALTH_EQUITY, "NSE", "EQUITY"));
-  if (bseWealth) equities.push(bseWealth);
+  if (!bseIndexes.some((item) => item.symbol === "SENSEX")) {
+    bseIndexes.push(asInstrument("SENSEX", "BSE", "INDEX", 1));
+  }
 
-  const sensex =
-    bseIndexes.find((item) => item.symbol.replace(/\s+/g, "").toUpperCase() === "SENSEX") ??
-    asInstrument("SENSEX", "BSE", "INDEX", 1);
-
-  const value: DeskUniverse = {
-    indexes: DESK_INDEXES.map((item) =>
-      item.symbol === "SENSEX" ? sensex : asInstrument(item.symbol, item.exchange, "INDEX"),
-    ),
-    equities,
-    refreshedAt: new Date().toISOString(),
-  };
+  const value = selectDesk({
+    nseIndexes: nse.indexes,
+    nseEquities: nse.equities,
+    bseIndexes: bseIndexes.map((item) => ({ symbol: item.symbol, scrip: item.bseScrip ?? 1 })),
+    bseEquities: bseWealth ? [{ symbol: bseWealth.symbol, scrip: bseWealth.bseScrip ?? 0 }] : [],
+  });
 
   cache = { at: Date.now(), value };
   return value;

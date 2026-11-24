@@ -15,15 +15,50 @@ function curlBin(): string {
   return process.platform === "win32" ? "curl.exe" : "curl";
 }
 
-let curlGate: Promise<unknown> = Promise.resolve();
+/**
+ * Node fetch is undici. NSE/Akamai often resets that TLS handshake, so curl
+ * remains the last resort after a short undici attempt. Cookies live in memory
+ * per host. Curl still writes a jar because the curl binary cannot see the
+ * in-memory jar. Concurrency is capped per host.
+ */
+const HOST_LIMIT = 3;
+const slots = new Map<string, number>();
+const waiters = new Map<string, Array<() => void>>();
+const memoryCookies = new Map<string, string>();
+const breaker = new Map<string, { failures: number; openUntil: number }>();
 
-function runCurl(args: string[]): Promise<{ stdout: string; code: number }> {
-  const run = curlGate.then(() => execCurl(args));
-  curlGate = run.then(
-    () => undefined,
-    () => undefined,
-  );
-  return run;
+async function withHostSlot<T>(host: string, run: () => Promise<T>): Promise<T> {
+  while ((slots.get(host) ?? 0) >= HOST_LIMIT) {
+    await new Promise<void>((resolve) => {
+      const queue = waiters.get(host) ?? [];
+      queue.push(resolve);
+      waiters.set(host, queue);
+    });
+  }
+  slots.set(host, (slots.get(host) ?? 0) + 1);
+  try {
+    return await run();
+  } finally {
+    slots.set(host, Math.max(0, (slots.get(host) ?? 1) - 1));
+    const next = waiters.get(host)?.shift();
+    next?.();
+  }
+}
+
+function noteFailure(host: string) {
+  const row = breaker.get(host) ?? { failures: 0, openUntil: 0 };
+  row.failures += 1;
+  if (row.failures >= 4) row.openUntil = Date.now() + 20_000;
+  breaker.set(host, row);
+}
+
+function noteSuccess(host: string) {
+  breaker.set(host, { failures: 0, openUntil: 0 });
+}
+
+export function hostBreaker(host: string): { open: boolean; failures: number } {
+  const row = breaker.get(host);
+  return { open: Boolean(row && row.openUntil > Date.now()), failures: row?.failures ?? 0 };
 }
 
 function execCurl(args: string[]): Promise<{ stdout: string; code: number }> {
@@ -43,18 +78,70 @@ function execCurl(args: string[]): Promise<{ stdout: string; code: number }> {
   });
 }
 
+async function fetchOnce(url: string, headers: Record<string, string>, host: string): Promise<HttpResult> {
+  const cookie = memoryCookies.get(host);
+  const response = await fetch(url, {
+    headers: {
+      ...headers,
+      ...(cookie ? { cookie } : {}),
+    },
+    signal: AbortSignal.timeout(5_000),
+    redirect: "follow",
+  });
+  const setCookie = response.headers.get("set-cookie");
+  if (setCookie) memoryCookies.set(host, setCookie.split(",").map((part) => part.split(";")[0]).join("; "));
+  return { status: response.status, body: await response.text(), cookies: memoryCookies.get(host) ?? "" };
+}
+
 /**
- * Reliable exchange GET via system curl (Node fetch/undici gets reset by NSE/Akamai).
+ * Undici first. Curl is only the fallback when NSE resets the Node TLS socket.
  */
 export async function httpsGet(
   url: string,
   headers: Record<string, string>,
 ): Promise<HttpResult> {
+  const host = new URL(url).host;
+  const gate = breaker.get(host);
+  if (gate && gate.openUntil > Date.now()) {
+    throw new Error(`breaker open for ${host}`);
+  }
+  return withHostSlot(host, async () => {
+    let lastError: unknown;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const viaFetch = await fetchOnce(url, headers, host);
+        if (viaFetch.status === 403 || viaFetch.status === 429 || viaFetch.status >= 500) {
+          throw new Error(`HTTP ${viaFetch.status}`);
+        }
+        if (/Access Denied/i.test(viaFetch.body)) throw new Error("HTTP 403: Access Denied");
+        noteSuccess(host);
+        return viaFetch;
+      } catch (err) {
+        lastError = err;
+        try {
+          const viaCurl = await curlGet(url, headers);
+          if (viaCurl.cookies) memoryCookies.set(host, viaCurl.cookies);
+          if (viaCurl.status === 429 || viaCurl.status >= 500) throw new Error(`HTTP ${viaCurl.status}`);
+          noteSuccess(host);
+          return viaCurl;
+        } catch (curlErr) {
+          lastError = curlErr;
+          noteFailure(host);
+          const wait = Math.min(4_000, 250 * 2 ** attempt) + Math.floor(Math.random() * 150);
+          await new Promise((resolve) => setTimeout(resolve, wait));
+        }
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error("upstream failed");
+  });
+}
+
+async function curlGet(url: string, headers: Record<string, string>): Promise<HttpResult> {
   const args = [
     "-sL",
     "--compressed",
     "--max-time",
-    "35",
+    "6",
     "-c",
     JAR_PATH,
     "-b",
@@ -73,7 +160,7 @@ export async function httpsGet(
   }
   args.push(url);
 
-  const { stdout, code } = await runCurl(args);
+  const { stdout, code } = await execCurl(args);
   if (code !== 0) {
     throw new Error(`curl failed (${code}) for ${url}`);
   }

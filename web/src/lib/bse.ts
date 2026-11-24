@@ -1,5 +1,7 @@
 import { buildTotals } from "./analytics";
 import { upcomingExpiry } from "./display";
+import { expiryIso, toIstIso } from "./expiry";
+import { assertBookShape } from "./schema";
 import { parseLooseNumber } from "./format";
 import { httpsGet, httpsGetJson } from "./http";
 import type { ChainRow, OptionChainSnapshot, OptionQuote } from "./types";
@@ -150,20 +152,30 @@ export async function getBseOptionChain(params: {
     .sort((a, b) => a.strike - b.strike);
 
   const spot = parseLooseNumber(data.Table?.[0]?.UlaValue);
+  const segment = params.segment ?? "INDEX";
+  assertBookShape({
+    strikes: rows.map((row) => row.strike),
+    spot,
+    expiry,
+    expiries,
+    segment,
+  });
 
   return {
     exchange: "BSE",
     symbol: params.symbol,
-    segment: params.segment ?? "INDEX",
+    segment,
     expiry,
+    expiryIso: expiryIso(expiry),
     expiries,
     spot,
-    timestamp: data.ASON?.DT_TM?.trim() || new Date().toISOString(),
+    timestamp: toIstIso(data.ASON?.DT_TM?.trim() || ""),
     rows,
     totals: buildTotals(rows, spot),
     latencyMs: Date.now() - started,
     source: "bse",
     marketOpen: false,
+    stale: false,
     feed: "rest",
   };
 }

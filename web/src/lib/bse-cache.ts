@@ -1,6 +1,7 @@
 import bundledCache from "@/data/bse-cache.json";
 
 import { buildTotals } from "./analytics";
+import { expiryIso, toIstIso } from "./expiry";
 import { parseLooseNumber } from "./format";
 import type { ChainRow, OptionChainSnapshot, OptionQuote } from "./types";
 
@@ -90,17 +91,17 @@ export function getBseCachedChain(symbol: string, expiry?: string): OptionChainS
     symbol: entry.symbol,
     segment: "INDEX",
     expiry: selected,
+    expiryIso: expiryIso(selected),
     expiries: entry.expiries?.length ? entry.expiries : [entry.expiry],
     spot,
-    timestamp:
-      entry.ason?.DT_TM?.trim() ||
-      entry.fetchedAt ||
-      new Date().toISOString(),
+    timestamp: toIstIso(entry.ason?.DT_TM?.trim() || entry.fetchedAt || ""),
     rows,
     totals: buildTotals(rows, spot),
     latencyMs: Date.now() - started,
     source: "bse",
     marketOpen: false,
+    stale: true,
+    asOf: entry.ason?.DT_TM?.trim() || entry.fetchedAt || null,
     feed: "rest",
   };
 }

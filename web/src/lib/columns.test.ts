@@ -31,16 +31,21 @@ function row(strike: number, extras: Partial<ChainRow> = {}): ChainRow {
 
 describe("visibleColumns", () => {
   it("keeps focus metrics in collapsed density", () => {
-    expect(visibleColumns([row(100)], "focus")).toEqual(["oi", "volume", "iv", "chng", "ltp"]);
+    expect(visibleColumns([row(100)], "focus")).toEqual(["volume", "oiChg", "oi", "chng", "ltp"]);
   });
 
-  it("hides empty bid ask change in full density when blank", () => {
-    const cols = visibleColumns([row(100)], "full");
+  it("shows bid and ask in expanded mode when the market is closed", () => {
+    const cols = visibleColumns([row(100)], "full", { marketOpen: false });
+    expect(cols).toContain("bid");
+    expect(cols).toContain("ask");
+    expect(cols).toContain("delta");
+  });
+
+  it("hides empty bid ask in full density when the market is open", () => {
+    const cols = visibleColumns([row(100)], "full", { marketOpen: true });
     expect(cols).not.toContain("bid");
     expect(cols).not.toContain("ask");
-    expect(cols).not.toContain("bidQty");
-    expect(cols).not.toContain("askQty");
-    expect(cols).not.toContain("oiChg");
+    expect(cols).toContain("oiChg");
   });
 
   it("includes populated book columns in full density", () => {
@@ -58,12 +63,12 @@ describe("visibleColumns", () => {
   });
 
   it("mirrors puts so Last stays against the strike", () => {
-    expect(putColumns(["oi", "volume", "iv", "chng", "ltp"])).toEqual([
+    expect(putColumns(["volume", "oiChg", "oi", "chng", "ltp"])).toEqual([
       "ltp",
       "chng",
-      "iv",
-      "volume",
       "oi",
+      "oiChg",
+      "volume",
     ]);
   });
 });

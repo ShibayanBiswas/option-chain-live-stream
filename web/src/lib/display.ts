@@ -1,20 +1,8 @@
-const LABELS: Record<string, string> = {
-  NIFTY: "NIFTY 50",
-  BANKNIFTY: "BANK NIFTY",
-  FINNIFTY: "FIN NIFTY",
-  MIDCPNIFTY: "MIDCAP NIFTY",
-  NIFTYNXT50: "NIFTY NEXT 50",
-  NIFTYFPI: "NIFTY FPI",
-  SENSEX: "SENSEX",
-  BANKEX: "BANKEX",
-  SENSEX50: "SENSEX 50",
-  SX50: "SENSEX 50",
-  ANANDRATHI: "Anand Rathi Wealth",
-};
+import { daysToExpiry, isListedExpiryLive } from "./expiry";
+import { indexLabel } from "./index-match";
 
 export function displayName(symbol: string, fallback?: string): string {
-  const key = symbol.replace(/\s+/g, "").toUpperCase();
-  return LABELS[key] ?? fallback ?? symbol;
+  return indexLabel(symbol, fallback);
 }
 
 const MONTHS: Record<string, number> = {
@@ -56,17 +44,25 @@ export function describeExpiry(raw: string, now = new Date()): ExpiryInfo | null
   let year = Number(match[3]);
   if (year < 100) year += 2000;
   const date = new Date(year, month, day);
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const days = Math.round((date.getTime() - start.getTime()) / 86_400_000);
+  const days = daysToExpiry(raw, now) ?? 0;
   const lateShift = date.getDay() !== 4 && date.getDate() >= 24;
   const bucket: ExpiryInfo["bucket"] = isLastThursday(date) || lateShift ? "monthly" : "weekly";
-  const when = days < 0 ? "" : days === 0 ? "0d" : `${days}d`;
+  const names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const pretty = `${String(day).padStart(2, "0")} ${names[month]} ${year}`;
+  const when =
+    !isListedExpiryLive(raw, now) || days < 0
+      ? ""
+      : days === 0
+        ? "today"
+        : days === 1
+          ? "1 day"
+          : `${days} days`;
   return {
     raw,
     date,
     days,
     bucket,
-    label: when ? `${raw} · ${when}` : raw,
+    label: when ? `${pretty} · ${when}` : raw,
   };
 }
 
@@ -112,17 +108,14 @@ export function groupExpiries(expiries: string[], now = new Date()) {
       other.push(raw);
       continue;
     }
-    if (info.days < 0) continue;
+    if (!isListedExpiryLive(raw, now)) continue;
     (info.bucket === "monthly" ? monthly : weekly).push(info);
   }
   return { weekly, monthly, other };
 }
 
 export function upcomingExpiry(expiries: string[], current: string, now = new Date()): string {
-  const live = expiries.filter((raw) => {
-    const info = describeExpiry(raw, now);
-    return info == null || info.days >= 0;
-  });
+  const live = expiries.filter((raw) => isListedExpiryLive(raw, now));
   const pool = live.length > 0 ? live : expiries;
   if (current && pool.includes(current)) return current;
   return pool[0] ?? "";

@@ -1,33 +1,19 @@
 import { loadOptionChain, publicChainError } from "@/lib/chain-service";
 import { diffChain } from "@/lib/diff";
-import { openNseOptionSocket, type OptionTick } from "@/lib/nse-ws";
-import type { OptionChainSnapshot, OptionQuote } from "@/lib/types";
+import type { OptionChainSnapshot } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
+/**
+ * The NSE fo/mbp websocket has not been proven in a market-hours capture.
+ * This stream is REST polling. It does not invent a websocket feed.
+ * The in-memory chain cache is per function instance.
+ */
+
 function publicMessage(err: unknown) {
   return publicChainError(err);
-}
-
-function mergeLeg(target: OptionQuote, patch?: Partial<OptionQuote>) {
-  if (!patch) return;
-  (Object.keys(patch) as Array<keyof OptionQuote>).forEach((key) => {
-    const value = patch[key];
-    if (value !== undefined && value !== null) target[key] = value;
-  });
-}
-
-function applyTick(snapshot: OptionChainSnapshot, tick: OptionTick) {
-  const row = snapshot.rows.find((item) => item.strike === tick.strike);
-  if (!row) return false;
-  mergeLeg(row.ce, tick.ce);
-  mergeLeg(row.pe, tick.pe);
-  snapshot.feed = "websocket";
-  if (tick.timestamp) snapshot.timestamp = tick.timestamp;
-  snapshot.latencyMs = 0;
-  return true;
 }
 
 export async function GET(req: Request) {
@@ -46,61 +32,67 @@ export async function GET(req: Request) {
 
   const encoder = new TextEncoder();
   let closed = false;
+  let id = Number(req.headers.get("last-event-id") || "0") || 0;
 
   const stream = new ReadableStream({
     async start(controller) {
       const send = (event: string, data: unknown) => {
         if (closed) return;
-        controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+        id += 1;
+        controller.enqueue(
+          encoder.encode(`id: ${id}\nevent: ${event}\ndata: ${JSON.stringify(data)}\n\n`),
+        );
       };
 
       let snapshot: OptionChainSnapshot | null = null;
-      let socket: ReturnType<typeof openNseOptionSocket> | null = null;
+      let marketOpen = false;
       const started = Date.now();
+      let lastSessionCheck = 0;
 
-      const heartbeat = setInterval(() => {
-        if (!closed) controller.enqueue(encoder.encode(`: ping ${Date.now()}\n\n`));
-      }, 8000);
+      const beat = () => {
+        send("heartbeat", {
+          ts: new Date().toISOString(),
+          session: marketOpen ? "open" : "closed",
+          latencyMs: snapshot?.latencyMs ?? null,
+        });
+      };
 
       const pull = async (full: boolean) => {
         const next = await loadOptionChain({ symbol, expiry, exchange, segment });
-        if (snapshot?.feed === "websocket") next.feed = "websocket";
-        const patch = !full && snapshot ? diffChain(snapshot, next) : null;
+        next.feed = "polling";
+        marketOpen = next.marketOpen;
+        if (!full && snapshot && snapshot.symbol === next.symbol && snapshot.expiry === next.expiry) {
+          const patch = diffChain(snapshot, next);
+          snapshot = next;
+          if (patch) send("patch", patch);
+          return next;
+        }
         snapshot = next;
-        if (patch) send("patch", patch);
-        else send("chain", snapshot);
+        send("chain", snapshot);
         return next;
       };
 
+      const heartbeat = setInterval(beat, 10_000);
+
       try {
-        const first = await pull(true);
-        if (first.exchange === "NSE" && first.marketOpen) {
-          socket = openNseOptionSocket(
-            first.symbol,
-            first.expiry,
-            (tick) => {
-              if (!snapshot) return;
-              if (applyTick(snapshot, tick)) send("chain", snapshot);
-            },
-            (state, detail) => {
-              send("socket", { state, detail: detail ?? null });
-            },
-          );
-        }
+        controller.enqueue(encoder.encode("retry: 3000\n\n"));
+        await pull(true);
+        lastSessionCheck = Date.now();
 
         while (!closed && Date.now() - started < 50_000) {
-          await new Promise((resolve) => setTimeout(resolve, 4000));
+          await new Promise((resolve) => setTimeout(resolve, marketOpen ? 2_000 : 10_000));
           if (closed) break;
+          if (!marketOpen && Date.now() - lastSessionCheck < 60_000) continue;
           await pull(false).catch((err) => {
             send("notice", { message: publicMessage(err) });
           });
+          lastSessionCheck = Date.now();
         }
-        send("end", { reason: "rotation" });
+        send("rotate", { reason: "maxDuration", afterMs: Date.now() - started });
       } catch (err) {
         send("notice", { message: publicMessage(err) });
       } finally {
         clearInterval(heartbeat);
-        socket?.close();
         if (!closed) {
           closed = true;
           controller.close();

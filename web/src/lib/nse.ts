@@ -1,5 +1,7 @@
 import { buildTotals } from "./analytics";
 import { upcomingExpiry } from "./display";
+import { expiryIso, toIstIso } from "./expiry";
+import { assertBookShape } from "./schema";
 import { parseLooseNumber } from "./format";
 import { httpsGet, httpsGetJson } from "./http";
 import type {
@@ -152,14 +154,19 @@ export async function discoverNseBook(): Promise<{
     fetchJson<string[]>("/api/master-quote"),
   ]);
 
-  const block = page.match(
-    /<select[^>]*id="equity_optionchain_select"[^>]*>([\s\S]*?)<\/select>/i,
-  );
-  const indexes = block
-    ? [...block[1].matchAll(/<option[^>]*value="([A-Z0-9&-]+)"/g)]
-        .map((m) => m[1])
-        .filter((v): v is string => Boolean(v))
-    : [];
+  const readSelect = (id: string) => {
+    const block = page.match(new RegExp(`<select[^>]*id="${id}"[^>]*>([\\s\\S]*?)<\\/select>`, "i"));
+    if (!block?.[1]) return [];
+    return [...block[1].matchAll(/<option[^>]*value="([A-Z0-9&-]+)"/g)]
+      .map((match) => match[1])
+      .filter((value): value is string => Boolean(value));
+  };
+  const indexSelect = readSelect("index_optionchain_select");
+  const listedSelect = readSelect("equity_optionchain_select");
+  const indexes = indexSelect.length > 0 ? indexSelect : listedSelect.length <= 20 ? listedSelect : [];
+  if (indexes.length === 0) {
+    throw new Error("NSE index list was empty");
+  }
 
   return {
     indexes,
@@ -280,20 +287,29 @@ export async function getNseOptionChain(params: {
   const spot = parseLooseNumber(raw.records?.underlyingValue);
   const market = await getNseMarketStatus().catch(() => null);
   const marketOpen = market?.open ?? false;
+  assertBookShape({
+    strikes: rows.map((row) => row.strike),
+    spot,
+    expiry,
+    expiries,
+    segment: params.segment,
+  });
 
   return {
     exchange: "NSE",
     symbol: params.symbol,
     segment: params.segment,
     expiry,
+    expiryIso: expiryIso(expiry),
     expiries,
     spot,
-    timestamp: raw.records?.timestamp || new Date().toISOString(),
+    timestamp: toIstIso(raw.records?.timestamp || ""),
     rows,
     totals: buildTotals(rows, spot),
     latencyMs: Date.now() - started,
     source: "nse",
     marketOpen,
+    stale: false,
     feed: "rest",
   };
 }

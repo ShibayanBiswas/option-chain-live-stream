@@ -14,18 +14,24 @@ export type SideColumn = {
  * Quiet book columns sit farthest left.
  * Last sits against the strike.
  */
+/** Outside to inside, so the last price sits against the strike. */
 export const SIDE_COLUMNS: SideColumn[] = [
-  { key: "oi", label: "OI", always: true, focus: true },
-  { key: "oiChg", label: "Chng in OI" },
-  { key: "volume", label: "Volume", always: true, focus: true },
-  { key: "iv", label: "IV", always: true, focus: true },
-  { key: "bidQty", label: "Bid Qty" },
+  { key: "pChg", label: "% Change" },
+  { key: "theta", label: "Theta" },
+  { key: "delta", label: "Delta" },
+  { key: "bidQty", label: "Bid Quantity" },
   { key: "bid", label: "Bid" },
   { key: "ask", label: "Ask" },
-  { key: "askQty", label: "Ask Qty" },
-  { key: "chng", label: "Chng", focus: true },
+  { key: "askQty", label: "Ask Quantity" },
+  { key: "oiChg", label: "OI Change", focus: true },
+  { key: "oi", label: "OI", always: true, focus: true },
+  { key: "volume", label: "Volume", always: true, focus: true },
+  { key: "iv", label: "IV" },
+  { key: "chng", label: "Change", focus: true },
   { key: "ltp", label: "LTP", always: true, focus: true },
 ];
+
+const COLLAPSED: ColumnKey[] = ["volume", "oiChg", "oi", "chng", "ltp"];
 
 function quoteField(q: OptionQuote, key: ColumnKey): number | null {
   switch (key) {
@@ -49,21 +55,34 @@ function quoteField(q: OptionQuote, key: ColumnKey): number | null {
       return q.ask;
     case "askQty":
       return q.askQty;
+    case "pChg":
+      return q.pChange;
+    case "delta":
+    case "theta":
+      return null;
   }
 }
 
 export function visibleColumns(
   rows: ChainRow[],
   density: "focus" | "full" = "full",
+  options?: { marketOpen?: boolean },
 ): ColumnKey[] {
+  if (density === "focus") return COLLAPSED;
+  const marketOpen = options?.marketOpen ?? true;
   return SIDE_COLUMNS.filter((col) => {
-    if (density === "focus" && !col.focus) return false;
-    if (col.always) return true;
-    return rows.some(
-      (row) =>
-        !isEmptyValue(quoteField(row.ce, col.key)) ||
-        !isEmptyValue(quoteField(row.pe, col.key)),
-    );
+    const quoteColumn = col.key === "bid" || col.key === "ask" || col.key === "bidQty" || col.key === "askQty";
+    if (!marketOpen && quoteColumn) return true;
+    if (col.key === "delta" || col.key === "theta" || col.key === "pChg") return true;
+    if (col.always || col.focus || col.key === "iv") return true;
+    if (quoteColumn) {
+      return rows.some(
+        (row) =>
+          !isEmptyValue(quoteField(row.ce, col.key)) ||
+          !isEmptyValue(quoteField(row.pe, col.key)),
+      );
+    }
+    return true;
   }).map((c) => c.key);
 }
 
@@ -87,6 +106,9 @@ const HINTS: Record<ColumnKey, string> = {
   bid: "Best bid",
   ask: "Best ask",
   askQty: "Quantity at the best ask",
+  delta: "Black-Scholes delta from exchange IV",
+  theta: "Black-Scholes theta per day",
+  pChg: "Percent change",
 };
 
 export function columnHint(key: ColumnKey): string {

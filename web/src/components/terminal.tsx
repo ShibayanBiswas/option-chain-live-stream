@@ -37,7 +37,7 @@ export function Terminal() {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Instrument | null>(null);
   const [expiry, setExpiry] = useState("");
-  const [depth, setDepth] = useState<"near" | "full">("near");
+  const [depth] = useState<"near" | "full">("full");
   const [density, setDensity] = useState<"focus" | "full">("focus");
   const [railOpen, setRailOpen] = useState(false);
   const [picked, setPicked] = useState<ChainRow | null>(null);
@@ -50,30 +50,36 @@ export function Terminal() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/universe", { cache: "no-store" })
-      .then(async (res) => {
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Universe unavailable");
-        return data as Book;
-      })
-      .then((data) => {
-        if (cancelled) return;
-        setBook(data);
-        const saved = window.localStorage.getItem("ocls-last");
-        const all = [...data.indexes, ...data.equities];
-        const remembered = all.find((item) => `${item.exchange}:${item.symbol}` === saved);
-        const nifty = all.find((item) => item.symbol === "NIFTY" && item.exchange === "NSE");
-        setSelected((current) => current ?? remembered ?? nifty ?? data.indexes[0] ?? data.equities[0] ?? null);
-      })
-      .catch((err) => {
-        if (!cancelled) setLoadError(err instanceof Error ? err.message : "Universe unavailable");
-      });
+    const pull = (first: boolean) => {
+      fetch("/api/universe", { cache: "no-store" })
+        .then(async (res) => {
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "Universe unavailable");
+          return data as Book;
+        })
+        .then((data) => {
+          if (cancelled) return;
+          setBook((current) => (first || !current ? data : { ...current, market: data.market }));
+          if (!first) return;
+          const saved = window.localStorage.getItem("ocls-last");
+          const all = [...data.indexes, ...data.equities];
+          const remembered = all.find((item) => `${item.exchange}:${item.symbol}` === saved);
+          const nifty = all.find((item) => item.symbol === "NIFTY" && item.exchange === "NSE");
+          setSelected((current) => current ?? remembered ?? nifty ?? data.indexes[0] ?? data.equities[0] ?? null);
+        })
+        .catch((err) => {
+          if (!cancelled && first) setLoadError(err instanceof Error ? err.message : "Universe unavailable");
+        });
+    };
+    pull(true);
+    const timer = window.setInterval(() => pull(false), 60_000);
     return () => {
       cancelled = true;
+      window.clearInterval(timer);
     };
   }, []);
 
-  const { snapshot, status, error, socketState } = useOptionStream({
+  const { snapshot, status, error } = useOptionStream({
     symbol: selected?.symbol ?? "",
     expiry,
     exchange: selected?.exchange ?? "NSE",
@@ -168,17 +174,14 @@ export function Terminal() {
     [book],
   );
   const session = book?.market?.message ?? (book?.market ? "Market Closed" : "Session");
+  const marketOpen = book?.market?.open === true;
   const waiting = status === "connecting" || status === "polling";
-  const feed =
-    socketState === "open" || snapshot?.feed === "websocket"
-      ? "WebSocket"
-      : status === "live"
-        ? "Live"
-        : status === "connecting"
-          ? "Connecting"
-          : status === "polling"
-            ? "Waiting"
-            : "Rest";
+  const delayed = Boolean(snapshot?.stale);
+  const feed = delayed ? "Delayed" : !snapshot ? (waiting ? "Connecting" : "REST") : !marketOpen ? "Closed" : waiting ? "Waiting" : "REST";
+  const feedTime = delayed && snapshot?.asOf ? snapshot.asOf : snapshot ? `${snapshot.latencyMs} ms` : "…";
+  const strikeRange = snapshot?.rows.length
+    ? `${formatNumber(snapshot.rows[0]?.strike ?? null, 0)} – ${formatNumber(snapshot.rows[snapshot.rows.length - 1]?.strike ?? null, 0)} · ${snapshot.rows.length} strikes`
+    : "";
 
   return (
     <MotionConfig reducedMotion="user">
@@ -240,7 +243,7 @@ export function Terminal() {
           <div className="feed-chip" data-state={waiting ? "waiting" : status} aria-live="polite">
             <span className={cn("live-dot", status === "error" && "is-off", waiting && "is-stale")} />
             <span>{feed}</span>
-            <em>{snapshot ? `${snapshot.latencyMs} ms` : "…"}</em>
+            <em>{feedTime}</em>
           </div>
           <span
             className={cn(
@@ -264,15 +267,6 @@ export function Terminal() {
           />
           <select
             className="toolbar-select"
-            aria-label="Strikes"
-            value={depth}
-            onChange={(event) => setDepth(event.target.value as "near" | "full")}
-          >
-            <option value="near">Spot Focus</option>
-            <option value="full">Entire Book</option>
-          </select>
-          <select
-            className="toolbar-select"
             aria-label="Columns"
             value={density}
             onChange={(event) => setDensity(event.target.value as "focus" | "full")}
@@ -294,6 +288,17 @@ export function Terminal() {
 
         {error || loadError ? <p className="banner">{error || loadError}</p> : null}
 
+        <div className="book-tools">
+          <span className="range-label" aria-label="Strike range">{strikeRange}</span>
+          <button className="icon-btn" type="button" onClick={() => {
+            const row = document.getElementById(`strike-${snapshot?.totals.atm ?? ""}`);
+            const scroller = row?.closest(".chain-scroll");
+            if (!(row instanceof HTMLElement) || !(scroller instanceof HTMLElement)) return;
+            scroller.scrollTop = Math.max(0, row.offsetTop - scroller.clientHeight / 2);
+          }}>
+            Jump to spot
+          </button>
+        </div>
         <div className="board">
           {snapshot ? (
             <OptionChainTable

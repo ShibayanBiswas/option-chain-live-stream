@@ -12,15 +12,17 @@ Next.js 15 App Router desk in `web/`, deployed on Vercel as **option-chain-live-
 | `src/components/quote-sheet.tsx` | Strike detail sheet |
 | `src/hooks/use-option-stream.ts` | SSE client with REST fallback |
 | `src/lib/chain-service.ts` | Resolves instrument → NSE/BSE snapshot |
-| `src/lib/universe.ts` | NIFTY, SENSEX, and Anand Rathi Wealth only |
-| `src/lib/nse.ts` / `bse.ts` / `nse-ws.ts` | Exchange transports |
+| `src/lib/universe.ts` | Every discovered index, equity limited to Anand Rathi Wealth |
+| `src/lib/nse.ts` / `bse.ts` | Exchange transports. The unverified NSE websocket client was removed |
 | `src/app/api/*` | Universe, chain, stream, tape, health |
 
 ## Data path
 
-1. Browser loads `/api/universe` once.
-2. Selecting a contract opens `/api/stream` (SSE). The server pushes `chain` snapshots and, when the NSE market is open, mirrors WebSocket ticks.
-3. REST `/api/chain` remains available for one-shot refresh and smoke tests.
+1. Browser loads `/api/universe`, then refreshes the session every 60 seconds.
+2. Selecting a contract opens `/api/stream`. The server sends one `chain`, then `patch` events for changed strikes and a `heartbeat` every 10 seconds. While the market is closed it does not poll the book every few seconds. The stream rotates before the 60 second function limit.
+3. There is no websocket feed. Live ticks on `wss://streamer.nseindia.com/streams/fo/mbp` have not been captured during market hours, so the chip says REST, Closed, or Delayed.
+4. A bundled BSE snapshot is served only when BSE blocks the request, and it is marked `stale`.
+5. The chain cache and the PCR series are in memory on each function instance. They do not survive a cold start.
 
 ## Density model
 

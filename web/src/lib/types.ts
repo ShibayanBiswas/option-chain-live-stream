@@ -44,7 +44,11 @@ export type OptionChainSnapshot = {
   latencyMs: number;
   source: "nse" | "bse";
   marketOpen: boolean;
-  feed: "websocket" | "rest";
+  /** REST polling. A websocket feed is not claimed until a market-hours capture proves it. */
+  feed: "rest" | "polling";
+  stale?: boolean;
+  asOf?: string | null;
+  expiryIso?: string | null;
 };
 
 export type Instrument = {
@@ -87,4 +91,7 @@ export type ColumnKey =
   | "bidQty"
   | "bid"
   | "ask"
-  | "askQty";
+  | "askQty"
+  | "delta"
+  | "theta"
+  | "pChg";

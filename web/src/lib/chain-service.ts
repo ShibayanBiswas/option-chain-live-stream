@@ -1,6 +1,7 @@
 import { BseBlockedError, getBseOptionChain } from "./bse";
 import { getBseCachedChain } from "./bse-cache";
-import { getNseMarketStatus, getNseOptionChain } from "./nse";
+import { chainCacheKey, coalesceChain, readChainCache, recordPcr, writeChainCache } from "./chain-cache";
+import { getNseOptionChain } from "./nse";
 import { resolveInstrument } from "./universe";
 import type { OptionChainSnapshot } from "./types";
 
@@ -12,7 +13,7 @@ export function publicChainError(err: unknown): string {
   return raw;
 }
 
-export async function loadOptionChain(params: {
+async function loadFresh(params: {
   symbol: string;
   expiry?: string;
   exchange?: string;
@@ -22,8 +23,6 @@ export async function loadOptionChain(params: {
   if (!instrument) {
     throw new Error(`No listed contract for ${params.symbol}`);
   }
-
-  const market = await getNseMarketStatus().catch(() => null);
 
   if (instrument.exchange === "BSE") {
     if (!instrument.bseScrip) {
@@ -36,12 +35,17 @@ export async function loadOptionChain(params: {
         expiry: params.expiry,
         segment: instrument.segment,
       });
-      return { ...live, segment: instrument.segment, marketOpen: market?.open ?? false };
+      return { ...live, segment: instrument.segment, marketOpen: live.marketOpen, stale: false };
     } catch (err) {
       if (!(err instanceof BseBlockedError)) throw err;
       const cached = getBseCachedChain(instrument.symbol, params.expiry);
       if (!cached) throw new Error(`Chain unavailable for ${instrument.symbol}`);
-      return { ...cached, segment: instrument.segment, marketOpen: market?.open ?? false };
+      return {
+        ...cached,
+        segment: instrument.segment,
+        stale: true,
+        marketOpen: false,
+      };
     }
   }
 
@@ -50,5 +54,27 @@ export async function loadOptionChain(params: {
     expiry: params.expiry,
     type: instrument.nseType ?? "Equity",
     segment: instrument.segment,
+  });
+}
+
+export async function loadOptionChain(params: {
+  symbol: string;
+  expiry?: string;
+  exchange?: string;
+  segment?: string;
+}): Promise<OptionChainSnapshot> {
+  const key = chainCacheKey(params);
+  const cached = readChainCache(key);
+  if (cached.hit === "fresh" && cached.value) return cached.value;
+  return coalesceChain(key, async () => {
+    try {
+      const live = await loadFresh(params);
+      writeChainCache(key, live);
+      recordPcr(key, live.totals.pcr);
+      return live;
+    } catch (err) {
+      if (cached.value) return { ...cached.value, stale: true };
+      throw err;
+    }
   });
 }

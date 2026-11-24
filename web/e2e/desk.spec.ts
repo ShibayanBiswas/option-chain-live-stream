@@ -16,7 +16,7 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   await waitForBook(page);
   fs.mkdirSync(shotDir, { recursive: true });
   if (testInfo.project.name === "phone" || testInfo.project.name === "phone-narrow") {
-    await expect(page.locator(".feed-chip")).toContainText(/Live|WebSocket|Waiting|Rest/, { timeout: 25_000 });
+    await expect(page.locator(".feed-chip")).toContainText(/Closed|Delayed|REST|Waiting|Connecting/, { timeout: 25_000 });
     await page.waitForTimeout(400);
     const viewport = page.viewportSize();
     const fitted = await page.evaluate(() => {
@@ -45,7 +45,7 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
         session: inside(".session-pill"),
         feed: inside(".feed-chip"),
         expiry: inside("[aria-label='Expiry']"),
-        strikes: inside("[aria-label='Strikes']"),
+        strikes: inside("[aria-label='Strike range']"),
         columns: inside("[aria-label='Columns']"),
         separated,
         chainFits: chain instanceof HTMLElement && chain.scrollWidth <= chain.clientWidth + 2,
@@ -101,11 +101,8 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   await density.selectOption("full");
   await expect(page.locator(".chain-scroll")).toHaveAttribute("data-density", "full");
 
-  const view = page.locator("select").nth(1);
-  await expect(view.locator("option[value='near']")).toHaveText("Spot Focus");
-  await expect(view.locator("option[value='full']")).toHaveText("Entire Book");
-  await view.selectOption("full");
-  await expect(page.locator(".chain-row").nth(40)).toBeVisible();
+  await page.getByRole("button", { name: "Jump to spot" }).click();
+  await expect(page.getByTestId("spot-marker")).toBeVisible();
 
   const headerOrder = await page.evaluate(() => {
     const heads = [...document.querySelectorAll(".chain-table thead tr:nth-child(2) th")].map((th) =>
@@ -117,8 +114,8 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
       after: heads.slice(strike + 1, strike + 3),
     };
   });
-  expect(headerOrder.before).toEqual(["Chng", "LTP"]);
-  expect(headerOrder.after).toEqual(["LTP", "Chng"]);
+  expect(headerOrder.before).toEqual(["Change", "LTP"]);
+  expect(headerOrder.after).toEqual(["LTP", "Change"]);
 
   const zeroRows = page.locator('[data-volume="zero"]');
   await expect(zeroRows.first()).toBeVisible();
@@ -265,7 +262,6 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   expect(millis).toBeLessThan(50);
   await page.emulateMedia({ reducedMotion: "no-preference" });
 
-  const session = await page.locator(".session-pill").innerText();
   const events = await page.evaluate(async () => {
     const controller = new AbortController();
     const kill = setTimeout(() => controller.abort(), 25_000);
@@ -299,8 +295,8 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   });
   if (events.length > 0) {
     expect(events).toContain("chain");
-    if (session.includes("Closed")) expect(events).not.toContain("socket");
-    if (session.includes("Open")) expect(events).toContain("socket");
+    expect(events).not.toContain("socket");
+    expect(events.join(" ")).not.toMatch(/websocket/i);
   }
 });
 
@@ -309,8 +305,9 @@ test("universe API exposes indices and Anand Rathi Wealth only", async ({ reques
   expect(res.ok()).toBeTruthy();
   const body = await res.json();
   const symbols = body.indexes.map((row: { symbol: string }) => row.symbol);
-  expect(symbols).toEqual(["NIFTY", "SENSEX"]);
-  expect(body.indexes.map((row: { exchange: string }) => row.exchange)).toEqual(["NSE", "BSE"]);
+  expect(symbols).toContain("NIFTY");
+  expect(symbols).toContain("SENSEX");
+  expect(new Set(symbols).size).toBe(symbols.length);
   expect(body.equities.every((row: { symbol: string }) => row.symbol === "ANANDRATHI")).toBe(true);
   expect(body.equities.length).toBeGreaterThanOrEqual(1);
   expect(body.equities.length).toBeLessThanOrEqual(2);
