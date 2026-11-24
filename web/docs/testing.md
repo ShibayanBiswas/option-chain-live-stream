@@ -32,7 +32,7 @@ npm run test:e2e
 
 Projects: desktop 1440, laptop 1280, tablet 768, phone 390, phone-narrow 360.
 
-Coverage includes the chain, focus versus all columns, zero-volume shading, the sidebar, light and dark, the phone horizontal chain, and the NIFTY / SENSEX / Anand Rathi Wealth book.
+Coverage includes the chain, focus versus all columns, zero-volume shading, the sidebar, light and dark, the fitted phone book, and the NIFTY / SENSEX / Anand Rathi Wealth book.
 
 Screenshots land in `docs/screenshots/`.
 

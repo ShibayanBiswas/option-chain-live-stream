@@ -249,6 +249,14 @@ html.dark .bg-mesh::before {
   background: var(--ar-table-row-alt);
 }
 
+.chain-row {
+  transition: background 0.2s ease;
+}
+
+.chain-row:active td {
+  background: rgba(212, 178, 76, 0.12);
+}
+
 .chain-table .strike-cell {
   position: sticky;
   left: calc(50cqw - 46px);
@@ -283,6 +291,90 @@ html.dark .bg-mesh::before {
 .chain-table tr.is-atm .strike-cell {
   color: var(--ar-gold-dark);
   box-shadow: inset 0 0 0 1px rgba(212, 178, 76, 0.45);
+  animation: atm-glow 2.8s ease-in-out infinite;
+}
+
+.chain-table tbody {
+  animation: book-in 0.55s ease;
+}
+
+.spot-marker span {
+  animation: spot-sweep 0.7s ease;
+}
+
+.depth-bar {
+  transition: width 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.kpi strong {
+  animation: tick-in 0.45s ease;
+}
+
+@keyframes book-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes atm-glow {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 1px rgba(212, 178, 76, 0.35);
+  }
+  50% {
+    box-shadow: inset 0 0 0 1px rgba(212, 178, 76, 0.9);
+  }
+}
+
+@keyframes spot-sweep {
+  from {
+    letter-spacing: 0.2em;
+    opacity: 0;
+  }
+  to {
+    letter-spacing: 0.08em;
+    opacity: 1;
+  }
+}
+
+@keyframes tick-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes live-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.35);
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgba(22, 163, 74, 0);
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.4s;
 }
 
 .ce-zone {
@@ -538,6 +630,11 @@ html.dark .chain-row.is-zero td {
   overflow: hidden;
 }
 
+.toolbar-main,
+.toolbar-tools {
+  display: contents;
+}
+
 .toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -602,6 +699,7 @@ html.dark .chain-row.is-zero td {
 .session-pill.is-open {
   color: #166534;
   background: rgba(22, 163, 74, 0.12);
+  animation: live-pulse 1.8s ease-in-out infinite;
 }
 
 .session-pill.is-preopen {
@@ -692,6 +790,15 @@ html.dark .chain-row.is-zero td {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+}
+
+.icon-btn:hover {
+  transform: translateY(-1px);
+}
+
+.icon-btn:active {
+  transform: scale(0.94);
 }
 
 .icon-btn.is-on {
@@ -1114,6 +1221,7 @@ html.dark .quote-card.put {
     border-radius: 18px;
     overflow: auto;
     box-shadow: var(--ar-shadow);
+    animation: sheet-in 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
 
   .analytics-row {
@@ -1304,9 +1412,7 @@ html.dark .quote-card.put {
     padding-bottom: 12px;
   }
 
-  .chain-table,
-  .chain-scroll[data-density="focus"] .chain-table {
-    min-width: 680px;
+  .chain-table {
     font-size: 11px;
   }
 
@@ -1690,46 +1796,105 @@ html.dark .is-itm {
     display: none;
   }
 
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    flex-wrap: nowrap;
+    overflow: visible;
+    gap: 8px;
+  }
+
+  .toolbar-main,
+  .toolbar-tools {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .toolbar-tools {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    overflow: visible;
+    gap: 8px;
+  }
+
+  .toolbar-tools .toolbar-select {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+  }
+
+  .toolbar-tools .session-pill {
+    justify-self: start;
+    width: max-content;
+    max-width: 100%;
+  }
+
+  .identity {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .identity h1,
+  .spot-inline {
+    font-size: 16px;
+    white-space: nowrap;
+  }
+
+  .identity h1 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .toolbar-select,
+  .session-pill {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+  }
+
   .chain-scroll {
     min-height: 0;
     flex: 1;
   }
 
-  .toolbar {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-  }
-
-  .toolbar-select {
-    max-width: none;
-    flex: 0 0 auto;
-  }
-
   .kpi-row {
-    display: flex;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    gap: 6px;
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    overflow: visible;
+    gap: 8px;
   }
 
   .kpi {
-    flex: 0 0 auto;
-    min-width: 84px;
-    padding: 6px 8px;
+    grid-column: span 2;
+    width: auto;
+    min-width: 0;
+    flex: none;
+    padding: 8px 10px;
+  }
+
+  .kpi:nth-child(4) {
+    grid-column: 1 / span 3;
+  }
+
+  .kpi:nth-child(5) {
+    grid-column: 4 / span 3;
   }
 
   .kpi p {
-    font-size: 9px;
+    font-size: 10px;
   }
 
   .kpi strong {
     margin-top: 2px;
-    font-size: 14px;
+    font-size: 15px;
   }
 
   .chain-table .strike-cell {
     position: static;
     left: auto;
+    width: auto;
+    min-width: 68px;
   }
 
   .chain-table thead .strike-cell {
@@ -1738,20 +1903,62 @@ html.dark .is-itm {
     left: auto;
   }
 
-  .chain-scroll,
-  .chain-scroll[data-density="focus"] .chain-table,
-  .chain-scroll[data-density="full"] .chain-table {
-    min-width: 0;
+  .chain-scroll[data-density="focus"] {
+    overflow-x: hidden;
   }
 
-  .chain-table,
   .chain-scroll[data-density="focus"] .chain-table {
-    min-width: 760px;
-    width: max-content;
-    table-layout: auto;
+    min-width: 0;
+    width: 100%;
+    table-layout: fixed;
+    font-size: 11px;
+  }
+
+  .chain-scroll[data-density="focus"] .chain-table thead th,
+  .chain-scroll[data-density="focus"] .chain-table tbody td {
+    padding: 5px 2px;
+    overflow: hidden;
+    letter-spacing: 0;
+  }
+
+  .chain-scroll[data-density="focus"] .col-oi {
+    width: 17%;
+  }
+
+  .chain-scroll[data-density="focus"] .col-ltp {
+    width: 23%;
+  }
+
+  .chain-scroll[data-density="focus"] .strike-cell {
+    width: 20%;
+    min-width: 0;
+    font-size: 12px;
+  }
+
+  .chain-scroll[data-density="focus"] .quote-num {
+    display: block;
+    font-size: 12px;
+  }
+
+  .chain-scroll[data-density="focus"] .col-volume,
+  .chain-scroll[data-density="focus"] .col-iv,
+  .chain-scroll[data-density="focus"] .col-chng {
+    display: none;
+  }
+
+  .chain-scroll[data-density="focus"] .ltp-chng {
+    display: block;
+    margin-top: 1px;
+    font-family: var(--font-data);
+    font-size: 10px;
+    font-weight: 650;
+    line-height: 1.1;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .chain-scroll[data-density="full"] .chain-table {
     min-width: 1040px;
+    width: max-content;
   }
 }

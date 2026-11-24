@@ -13,7 +13,7 @@
 
 - Full-width terminal: left rail + stage, no page gutters.
 - Floating sidebar control (`rail-fab`) that tracks open/collapsed state without covering the board.
-- Toolbar: contract, spot, session, expiry, strike window, columns, theme. On a phone the toolbar scrolls sideways.
+- Toolbar: contract, spot, session, expiry, strike window, columns, theme. On a phone the name stays on the first row and the controls wrap onto a second row.
 
 ## Option chain
 
@@ -27,7 +27,7 @@
 
 ## Mobile
 
-- The chain, the summary strip, and the toolbar each scroll horizontally inside their own row. The page itself does not scroll sideways.
+- On a phone, Focus is five columns that fit the screen: OI, LTP with the change under it, Strike, then the put side. All Columns still scrolls sideways inside the chain. The summary cards wrap onto two rows. The page itself does not scroll sideways.
 - The strike stays in its column. It is not pinned to the left edge.
 - The instrument list starts closed and opens as a sheet from the toolbar.
 - Touch targets ≥ 44px.

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { motion } from "framer-motion";
+import { MotionConfig, motion } from "framer-motion";
 import { Moon, PanelLeft, Search, Sun } from "lucide-react";
 
 import { BrandLogo } from "@/components/brand-logo";
@@ -170,6 +170,7 @@ export function Terminal() {
   const session = book?.market?.message ?? (book?.market ? "Market Closed" : "Session");
 
   return (
+    <MotionConfig reducedMotion="user">
     <div className={cn("terminal bg-mesh", !railOpen && "rail-hidden")}>
       <aside className={cn("rail", !railOpen && "is-collapsed", railOpen && "is-sheet")} aria-hidden={!railOpen}>
         <div className="rail-brand">
@@ -193,7 +194,13 @@ export function Terminal() {
       </aside>
 
       <section className="stage">
-        <header className="toolbar">
+        <motion.header
+          className="toolbar"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.35, ease: [0.2, 0.8, 0.2, 1] }}
+        >
+          <div className="toolbar-main">
           <button
             className="icon-btn"
             type="button"
@@ -210,6 +217,11 @@ export function Terminal() {
             <h1>{selected ? displayName(selected.symbol, selected.label) : "Option Chain"}</h1>
             <strong className="spot-inline">{formatPrice(snapshot?.spot ?? null)}</strong>
           </div>
+          <button className="icon-btn" type="button" onClick={toggle} aria-label="Toggle theme">
+            {mounted && theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
+          </div>
+          <div className="toolbar-tools">
           <span
             className={cn(
               "session-pill",
@@ -249,17 +261,15 @@ export function Terminal() {
             <option value="focus">Focus</option>
             <option value="full">All Columns</option>
           </select>
-          <button className="icon-btn" type="button" onClick={toggle} aria-label="Toggle theme">
-            {mounted && theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </button>
-        </header>
+          </div>
+        </motion.header>
 
         <div className="kpi-row">
-          <Kpi label="PCR" value={snapshot?.totals.pcr != null ? snapshot.totals.pcr.toFixed(2) : "—"} />
-          <Kpi label="Max Pain" value={formatNumber(snapshot?.totals.maxPain ?? null, 0)} />
-          <Kpi label="Call OI" value={formatCompact(snapshot?.totals.ceOi ?? null)} />
-          <Kpi label="Put OI" value={formatCompact(snapshot?.totals.peOi ?? null)} />
-          <Kpi label="ATM IV" value={snapshot ? formatNumber(atmIv(snapshot.rows, snapshot.totals.atm), 2) : "—"} />
+          <Kpi index={0} label="PCR" value={snapshot?.totals.pcr != null ? snapshot.totals.pcr.toFixed(2) : "—"} />
+          <Kpi index={1} label="Max Pain" value={formatNumber(snapshot?.totals.maxPain ?? null, 0)} />
+          <Kpi index={2} label="Call OI" value={formatCompact(snapshot?.totals.ceOi ?? null)} />
+          <Kpi index={3} label="Put OI" value={formatCompact(snapshot?.totals.peOi ?? null)} />
+          <Kpi index={4} label="ATM IV" value={snapshot ? formatNumber(atmIv(snapshot.rows, snapshot.totals.atm), 2) : "—"} />
         </div>
 
         {error || loadError ? <p className="banner">{error || loadError}</p> : null}
@@ -286,12 +296,19 @@ export function Terminal() {
       />
       <Toasts messages={toasts} />
     </div>
+    </MotionConfig>
   );
 }
 
-function Kpi({ label, value }: { label: string; value: string }) {
+function Kpi({ label, value, index }: { label: string; value: string; index: number }) {
   return (
-    <motion.article className="kpi" whileHover={{ y: -2 }}>
+    <motion.article
+      className="kpi"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.06 * index, type: "spring", stiffness: 420, damping: 28 }}
+      whileHover={{ y: -2 }}
+    >
       <p>{label}</p>
       <strong>{value}</strong>
     </motion.article>

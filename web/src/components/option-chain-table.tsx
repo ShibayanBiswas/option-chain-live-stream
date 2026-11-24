@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useRef, type ReactNode } from "react";
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 
 import { chainHighlights } from "@/lib/analytics";
@@ -91,10 +91,12 @@ export function OptionChainTable({
   onSelect: (row: ChainRow) => void;
 }) {
   const reduce = useReducedMotion();
-  const callCols = useMemo(
-    () => visibleColumns(snapshot.rows, density),
-    [density, snapshot.rows],
-  );
+  const narrow = useNarrow();
+  const callCols = useMemo(() => {
+    const cols = visibleColumns(snapshot.rows, density);
+    if (narrow && density === "focus") return cols.filter((key) => key === "oi" || key === "ltp");
+    return cols;
+  }, [density, narrow, snapshot.rows]);
   const peCols = useMemo(() => putColumns(callCols), [callCols]);
   const spotStrike = snapshot.totals.atm;
 
@@ -149,6 +151,7 @@ export function OptionChainTable({
     <motion.div
       className="chain-scroll"
       data-density={density}
+      data-compact={narrow && density === "focus" ? "true" : undefined}
       initial={reduce ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
     >
@@ -258,6 +261,18 @@ export function OptionChainTable({
       </table>
     </motion.div>
   );
+}
+
+function useNarrow() {
+  const [matches, setMatches] = useState(false);
+  useLayoutEffect(() => {
+    const media = window.matchMedia("(max-width: 700px)");
+    const apply = () => setMatches(media.matches);
+    apply();
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, []);
+  return matches;
 }
 
 function SideCell({

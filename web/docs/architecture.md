@@ -33,7 +33,7 @@ Next.js 15 App Router desk in `web/`, deployed on Vercel as **option-chain-live-
 
 - Full-bleed terminal grid (sidebar + stage). No centered `max-width` gutters.
 - The sidebar button sits in the toolbar.
-- Scrollbars are hidden. On a phone the chain scrolls horizontally inside its frame, and the strike column stays with its row.
+- Scrollbars are hidden. On a phone, Focus fits the width and All Columns scrolls inside the chain. The strike stays in its row.
 
 ## Theme
 

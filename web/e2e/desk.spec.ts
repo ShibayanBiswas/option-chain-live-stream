@@ -14,6 +14,62 @@ async function waitForBook(page: Page) {
 
 test("desk, density, volume shade, stream, and motion", async ({ page }, testInfo) => {
   await waitForBook(page);
+  fs.mkdirSync(shotDir, { recursive: true });
+  if (testInfo.project.name === "phone" || testInfo.project.name === "phone-narrow") {
+    await page.waitForTimeout(700);
+    const viewport = page.viewportSize();
+    const fitted = await page.evaluate(() => {
+      const inside = (selector: string) => {
+        const el = document.querySelector(selector);
+        if (!(el instanceof HTMLElement)) return false;
+        const box = el.getBoundingClientRect();
+        return box.width > 20 && box.left >= -1 && box.right <= window.innerWidth + 1;
+      };
+      const row = document.querySelector(".chain-row");
+      const cells = row
+        ? [...row.querySelectorAll("td")].filter((td) => getComputedStyle(td).display !== "none")
+        : [];
+      let separated = cells.length === 5;
+      for (let i = 1; i < cells.length; i += 1) {
+        const previous = cells[i - 1].getBoundingClientRect();
+        const next = cells[i].getBoundingClientRect();
+        if (previous.right > next.left + 1) separated = false;
+      }
+      const chain = document.querySelector(".chain-scroll");
+      const table = document.querySelector(".chain-table");
+      const kpis = document.querySelector(".kpi-row");
+      const chainWidth = chain instanceof HTMLElement ? chain.getBoundingClientRect().width : 0;
+      const tableWidth = table instanceof HTMLElement ? table.getBoundingClientRect().width : 0;
+      return {
+        session: inside(".session-pill"),
+        expiry: inside("[aria-label='Expiry']"),
+        strikes: inside("[aria-label='Strikes']"),
+        columns: inside("[aria-label='Columns']"),
+        separated,
+        chainFits: chain instanceof HTMLElement && chain.scrollWidth <= chain.clientWidth + 2,
+        tableFills: tableWidth >= chainWidth - 4,
+        kpiFits: kpis instanceof HTMLElement && kpis.scrollWidth <= kpis.clientWidth + 2,
+      };
+    });
+    expect(fitted).toEqual({
+      session: true,
+      expiry: true,
+      strikes: true,
+      columns: true,
+      separated: true,
+      chainFits: true,
+      tableFills: true,
+      kpiFits: true,
+    });
+    expect(viewport?.width).toBeGreaterThan(0);
+    await page.screenshot({ path: path.join(shotDir, `desk-${testInfo.project.name}.png`), fullPage: false });
+    await page.getByRole("button", { name: "Toggle theme" }).click();
+    await expect(page.locator("html")).toHaveClass(/dark/);
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: path.join(shotDir, `desk-${testInfo.project.name}-dark.png`), fullPage: false });
+    await page.getByRole("button", { name: "Toggle theme" }).click();
+    await page.waitForTimeout(500);
+  }
 
   const chainText = await page.locator(".chain-table").innerText();
   expect(chainText).not.toMatch(/\+\d/);
@@ -144,21 +200,26 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   if (narrow) {
     await page.getByRole("button", { name: "Expand sidebar" }).click();
     await expect(page.locator(".rail.is-sheet")).toBeVisible();
+    await page.locator(".rail.is-sheet").evaluate(async (el) => {
+      const running = el.getAnimations().filter((item) => item.effect?.getComputedTiming().iterations !== Infinity);
+      await Promise.all(running.map((item) => item.finished.catch(() => undefined)));
+    });
     await expect(page.locator(".symbol-main").first()).toBeVisible();
     const toolbarBox = await page.locator(".toolbar").boundingBox();
-    expect(toolbarBox).toBeTruthy();
-    expect(toolbarBox!.x).toBeGreaterThanOrEqual(-1);
+    expect(toolbarBox, "toolbar box").toBeTruthy();
+    expect(toolbarBox!.x, JSON.stringify(toolbarBox)).toBeGreaterThanOrEqual(-1);
     expect(toolbarBox!.width).toBeLessThanOrEqual((viewport?.width ?? 0) + 2);
     const target = await page.locator(".symbol-main").first().boundingBox();
     expect(target!.height).toBeGreaterThanOrEqual(44);
   }
 
   if (narrow) await page.getByRole("button", { name: "Collapse sidebar" }).click();
-  fs.mkdirSync(shotDir, { recursive: true });
-  await page.screenshot({
-    path: path.join(shotDir, `desk-${testInfo.project.name}.png`),
-    fullPage: false,
-  });
+  if (testInfo.project.name !== "phone" && testInfo.project.name !== "phone-narrow") {
+    await page.screenshot({
+      path: path.join(shotDir, `desk-${testInfo.project.name}.png`),
+      fullPage: false,
+    });
+  }
 
   if (testInfo.project.name !== "desktop") return;
 

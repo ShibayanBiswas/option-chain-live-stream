@@ -52,7 +52,17 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const toggle = useCallback(() => {
-    setTheme(theme === "dark" ? "light" : "dark");
+    const next: Theme = theme === "dark" ? "light" : "dark";
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!reduce && typeof document.startViewTransition === "function") {
+      document.startViewTransition(() => {
+        applyTheme(next);
+        setThemeState(next);
+        localStorage.setItem(STORAGE_KEY, next);
+      });
+      return;
+    }
+    setTheme(next);
   }, [setTheme, theme]);
 
   const value = useMemo(
