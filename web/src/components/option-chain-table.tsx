@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 
-import { columnLabel, putColumns, visibleColumns } from "@/lib/columns";
+import { chainHighlights } from "@/lib/analytics";
+import { columnHint, columnLabel, putColumns, visibleColumns } from "@/lib/columns";
 import { cn } from "@/lib/cn";
 import { formatCompact, formatNumber, formatPrice, formatSigned, isEmptyValue } from "@/lib/format";
 import type { ChainRow, ColumnKey, OptionChainSnapshot, OptionQuote } from "@/lib/types";
@@ -104,6 +105,13 @@ export function OptionChainTable({
     return snapshot.rows.slice(Math.max(0, idx - 18), Math.min(snapshot.rows.length, idx + 19));
   }, [depth, snapshot.rows, spotStrike]);
 
+  const highlights = useMemo(() => chainHighlights(rows), [rows]);
+  const scales = useMemo(() => {
+    const oi = Math.max(1, ...rows.flatMap((row) => [row.ce.oi ?? 0, row.pe.oi ?? 0]));
+    const volume = Math.max(1, ...rows.flatMap((row) => [row.ce.volume ?? 0, row.pe.volume ?? 0]));
+    return { oi, volume };
+  }, [rows]);
+
   const bands = useMemo(() => {
     const volumes = rows
       .flatMap((row) => [row.ce.volume ?? 0, row.pe.volume ?? 0])
@@ -144,61 +152,93 @@ export function OptionChainTable({
           </tr>
           <tr>
             {callCols.map((key) => (
-              <th key={`ce-${key}`} className="ce-zone">
+              <th key={`ce-${key}`} className="ce-zone" title={columnHint(key)}>
                 {columnLabel(key)}
               </th>
             ))}
             <th className="strike-cell">Price</th>
             {peCols.map((key) => (
-              <th key={`pe-${key}`} className="pe-zone">
+              <th key={`pe-${key}`} className="pe-zone" title={columnHint(key)}>
                 {columnLabel(key)}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => {
+          {rows.map((row, index) => {
+            const previous = rows[index - 1];
+            const spot = snapshot.spot;
+            const showSpot =
+              spot != null &&
+              previous != null &&
+              previous.strike < spot &&
+              row.strike > spot;
             const atSpot = row.strike === spotStrike;
             const callQuiet = !row.ce.volume;
             const putQuiet = !row.pe.volume;
-            const itmCall = snapshot.spot != null && row.strike < snapshot.spot;
-            const itmPut = snapshot.spot != null && row.strike > snapshot.spot;
+            const itmCall = spot != null && row.strike < spot;
+            const itmPut = spot != null && row.strike > spot;
+            const span = callCols.length + peCols.length + 1;
             return (
-              <tr
-                key={row.strike}
-                id={`strike-${row.strike}`}
-                data-volume={callQuiet && putQuiet ? "zero" : "traded"}
-                className={cn(
-                  "chain-row",
-                  atSpot && "is-atm",
-                  callQuiet && putQuiet && "is-zero",
-                  itmCall && "is-itm-call",
-                  itmPut && "is-itm-put",
-                )}
-                onClick={() => onSelect(row)}
-              >
-                {callCols.map((key) => (
-                  <SideCell
-                    key={`ce-${row.strike}-${key}`}
-                    side="ce"
-                    field={key}
-                    quote={row.ce}
-                    high={bands.high}
-                    low={bands.low}
-                  />
-                ))}
-                <td className="strike-cell">{formatNumber(row.strike, 0)}</td>
-                {peCols.map((key) => (
-                  <SideCell
-                    key={`pe-${row.strike}-${key}`}
-                    side="pe"
-                    field={key}
-                    quote={row.pe}
-                    high={bands.high}
-                    low={bands.low}
-                  />
-                ))}
-              </tr>
+              <Fragment key={row.strike}>
+                {showSpot ? (
+                  <tr className="spot-marker" data-testid="spot-marker">
+                    <td colSpan={span}>
+                      <span>Spot {formatPrice(spot)}</span>
+                    </td>
+                  </tr>
+                ) : null}
+                <tr
+                  id={`strike-${row.strike}`}
+                  data-volume={callQuiet && putQuiet ? "zero" : "traded"}
+                  data-highlight={
+                    row.strike === highlights.maxCallOi
+                      ? "call-oi"
+                      : row.strike === highlights.maxPutOi
+                        ? "put-oi"
+                        : row.strike === highlights.maxMove
+                          ? "move"
+                          : undefined
+                  }
+                  className={cn(
+                    "chain-row",
+                    atSpot && "is-atm",
+                    callQuiet && putQuiet && "is-zero",
+                    itmCall && "is-itm-call",
+                    itmPut && "is-itm-put",
+                    row.strike === highlights.maxCallOi && "is-call-wall",
+                    row.strike === highlights.maxPutOi && "is-put-wall",
+                    row.strike === highlights.maxMove && "is-move",
+                  )}
+                  onClick={() => onSelect(row)}
+                >
+                  {callCols.map((key) => (
+                    <SideCell
+                      key={`ce-${row.strike}-${key}`}
+                      side="ce"
+                      field={key}
+                      quote={row.ce}
+                      high={bands.high}
+                      low={bands.low}
+                      scale={key === "oi" || key === "volume" ? (key === "oi" ? scales.oi : scales.volume) : 0}
+                      itm={itmCall}
+                    />
+                  ))}
+                  <td className="strike-cell">{formatNumber(row.strike, 0)}</td>
+                  {peCols.map((key) => (
+                    <SideCell
+                      key={`pe-${row.strike}-${key}`}
+                      side="pe"
+                      field={key}
+                      quote={row.pe}
+                      high={bands.high}
+                      low={bands.low}
+                      scale={key === "oi" || key === "volume" ? (key === "oi" ? scales.oi : scales.volume) : 0}
+                      itm={itmPut}
+                    />
+                  ))}
+                </tr>
+              </Fragment>
             );
           })}
         </tbody>
@@ -213,12 +253,16 @@ function SideCell({
   quote,
   high,
   low,
+  scale,
+  itm,
 }: {
   side: "ce" | "pe";
   field: ColumnKey;
   quote: OptionQuote;
   high: number;
   low: number;
+  scale: number;
+  itm: boolean;
 }) {
   const value = readField(quote, field);
   const tone =
@@ -231,13 +275,24 @@ function SideCell({
       : "";
   const quiet = !quote.volume;
   const heat = !quiet && field === "ltp" ? volumeBand(quote.volume, high, low) : null;
+  const depth = scale > 0 && value ? Math.max(6, Math.min(100, (value / scale) * 100)) : 0;
 
   return (
     <FlashCell
       value={value}
-      className={cn(side === "ce" ? "ce-zone" : "pe-zone", tone, quiet && "vol-zero", heat && `vol-${heat}`)}
+      className={cn(
+        side === "ce" ? "ce-zone" : "pe-zone",
+        "depth-cell",
+        tone,
+        itm && "is-itm",
+        quiet && "vol-zero",
+        heat && `vol-${heat}`,
+      )}
     >
-      {renderValue(field, value)}
+      {depth > 0 ? (
+        <i className={cn("depth-bar", side === "ce" ? "call" : "put")} style={{ width: `${depth}%` }} />
+      ) : null}
+      <span>{renderValue(field, value)}</span>
     </FlashCell>
   );
 }

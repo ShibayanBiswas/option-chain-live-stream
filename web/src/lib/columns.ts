@@ -75,3 +75,20 @@ export function putColumns(callCols: ColumnKey[]): ColumnKey[] {
 export function columnLabel(key: ColumnKey): string {
   return SIDE_COLUMNS.find((c) => c.key === key)?.label ?? key;
 }
+
+const HINTS: Record<ColumnKey, string> = {
+  oi: "Open interest, contracts outstanding",
+  oiChg: "Change in open interest",
+  volume: "Contracts traded",
+  iv: "Implied volatility",
+  ltp: "Last traded price",
+  chng: "Change from the previous close",
+  bidQty: "Quantity at the best bid",
+  bid: "Best bid",
+  ask: "Best ask",
+  askQty: "Quantity at the best ask",
+};
+
+export function columnHint(key: ColumnKey): string {
+  return HINTS[key];
+}

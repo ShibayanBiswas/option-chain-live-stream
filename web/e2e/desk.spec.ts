@@ -7,7 +7,7 @@ const shotDir = path.join(process.cwd(), "docs", "screenshots");
 async function waitForBook(page: Page) {
   await page.goto("/");
   await expect(page.locator("h1")).not.toHaveText("Option Chain", { timeout: 70_000 });
-  await expect(page.locator(".spot-block strong")).not.toHaveText("—");
+  await expect(page.locator(".spot-block strong")).not.toHaveText("—", { timeout: 70_000 });
   await expect(page.locator(".chain-row").first()).toBeVisible();
   await expect(page.locator(".session-pill")).toHaveText(/Market Open|Market Closed|Pre Open|Market Holiday/);
 }
@@ -19,6 +19,11 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   expect(chainText).not.toMatch(/\+\d/);
   expect(chainText).not.toMatch(/ATM|±/);
 
+  const narrow = testInfo.project.name !== "desktop" && testInfo.project.name !== "laptop";
+  if (narrow) {
+    await page.getByRole("button", { name: "Expand sidebar" }).click();
+    await expect(page.locator(".rail")).not.toHaveClass(/is-collapsed/);
+  }
   await expect(page.getByRole("button", { name: "Indices" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Equity" })).toBeVisible();
 
@@ -63,11 +68,16 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   await expect(page.locator(".rail")).toHaveClass(/is-collapsed/);
   await page.getByRole("button", { name: "Expand sidebar" }).click();
   await expect(page.locator(".terminal")).not.toHaveClass(/rail-hidden/);
+  await expect(page.locator(".is-itm").first()).toBeVisible();
+  await expect(page.locator(".depth-bar").first()).toBeVisible();
+  await expect(page.getByTestId("spot-marker")).toBeVisible();
 
+  if (narrow) await page.getByRole("button", { name: "Collapse sidebar" }).click();
   await page.getByRole("button", { name: "Magnify desk" }).click();
   await expect(page.locator(".terminal")).toHaveClass(/is-magnified/);
   await page.getByRole("button", { name: "Exit magnify" }).click();
   await expect(page.locator(".terminal")).not.toHaveClass(/is-magnified/);
+  if (narrow) await page.getByRole("button", { name: "Expand sidebar" }).click();
   await expect(page.locator(".rail")).not.toHaveClass(/is-collapsed/);
 
   const barWidth = await page.locator(".oi-fill").first().evaluate((el) => parseFloat(getComputedStyle(el).width));
@@ -100,7 +110,6 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   const layout = await page.evaluate(() => {
     const doc = document.documentElement;
     const chain = document.querySelector(".chain-scroll") as HTMLElement;
-    const list = document.querySelector(".symbol-list") as HTMLElement;
     const toolbar = document.querySelector(".toolbar") as HTMLElement;
     const stage = document.querySelector(".stage") as HTMLElement;
     chain.scrollTop = 140;
@@ -115,7 +124,6 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
       chainLeft: chain.scrollLeft,
       chainOverflows: chain.scrollWidth > chain.clientWidth + 8,
       strikeInside: sRect.left >= cRect.left - 4 && sRect.right <= cRect.right + 4,
-      listDir: getComputedStyle(list).flexDirection,
       toolbarFits: toolbar.getBoundingClientRect().right <= window.innerWidth + 1,
       terminalWidth: (document.querySelector(".terminal") as HTMLElement).getBoundingClientRect().width,
       stageMaxWidth: getComputedStyle(stage).maxWidth,
@@ -138,13 +146,15 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
       expect(layout.strikeInside).toBe(true);
     }
   }
-  if (testInfo.project.name !== "desktop" && testInfo.project.name !== "laptop") {
-    expect(layout.listDir).toBe("row");
-    await expect(page.locator(".symbol-item").first()).toBeVisible();
-    const expiryBox = await page.locator("select").first().boundingBox();
+  if (narrow) {
+    await expect(page.locator(".rail.is-sheet")).toBeVisible();
+    await expect(page.locator(".symbol-main").first()).toBeVisible();
+    const expiryBox = await page.getByLabel("Expiry").boundingBox();
     expect(expiryBox).toBeTruthy();
     expect(expiryBox!.x).toBeGreaterThanOrEqual(0);
     expect(expiryBox!.x + expiryBox!.width).toBeLessThanOrEqual((viewport?.width ?? 0) + 1);
+    const target = await page.locator(".symbol-main").first().boundingBox();
+    expect(target!.height).toBeGreaterThanOrEqual(44);
   }
 
   fs.mkdirSync(shotDir, { recursive: true });
@@ -155,29 +165,38 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
 
   if (testInfo.project.name !== "desktop") return;
 
-  const expiry = page.locator("select").first();
-  const firstExpiry = await expiry.inputValue();
-  const optionCount = await expiry.locator("option").count();
-  if (optionCount > 1) {
-    await expiry.selectOption({ index: 1 });
-    await expect(expiry).not.toHaveValue(firstExpiry, { timeout: 40_000 });
-  }
+  await page.getByRole("button", { name: "Search contracts" }).click();
+  const search = page.getByLabel("Search indices and equity");
+  await search.fill("NIFTY");
+  await search.press("ArrowDown");
+  await search.press("Enter");
+  await expect(page.locator("h1")).toContainText(/NIFTY/);
 
-  await page.getByRole("button", { name: "Equity" }).click();
-  const equityButtons = page.locator(".symbol-item");
-  const equityLabels = await equityButtons.allTextContents();
+  const equityNames = page.locator("section.tree-section", { hasText: "Equity" }).locator(".symbol-main");
+  const equityLabels = await equityNames.allTextContents();
   expect(equityLabels.length).toBeGreaterThan(0);
   expect(equityLabels.length).toBeLessThanOrEqual(2);
-  expect(equityLabels.every((label) => /ANANDRATHI|Anand Rathi Wealth/i.test(label))).toBe(true);
-  await equityButtons.first().click();
-  await expect(page.locator("h1")).toHaveText(/Anand Rathi Wealth|ANANDRATHI/);
+  expect(equityLabels.every((label) => /Anand Rathi Wealth|ANANDRATHI/i.test(label))).toBe(true);
+  await equityNames.first().click();
+  await expect(page.locator("h1")).toHaveText("Anand Rathi Wealth");
   await expect(page.locator(".spot-block strong")).not.toHaveText("—", { timeout: 60_000 });
+  const expiry = page.getByLabel("Expiry");
+  if ((await expiry.locator("option").count()) > 1) {
+    await expiry.selectOption({ index: 1 });
+    await expect(page.getByRole("status").filter({ hasText: "Expiry updated" })).toBeVisible();
+  }
 
   await page.getByRole("button", { name: "Toggle theme" }).click();
   await expect(page.locator("html")).toHaveClass(/dark/);
   await page.screenshot({ path: path.join(shotDir, "desk-desktop-dark.png"), fullPage: false });
   await page.getByRole("button", { name: "Toggle theme" }).click();
   await expect(page.locator("html")).not.toHaveClass(/dark/);
+
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const reduced = await page.locator(".ticker-track").evaluate((el) => getComputedStyle(el).animationDuration);
+  const millis = reduced.endsWith("ms") ? Number.parseFloat(reduced) : Number.parseFloat(reduced) * 1000;
+  expect(millis).toBeLessThan(50);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
 
   const session = await page.locator(".session-pill").innerText();
   await expect(page.locator(".feed-chip")).toContainText(/Live|WebSocket|Rest/);

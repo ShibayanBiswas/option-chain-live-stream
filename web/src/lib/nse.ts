@@ -59,6 +59,7 @@ async function fetchJson<T>(path: string, attempt = 0): Promise<T> {
     const msg = err instanceof Error ? err.message : "";
     if ((/HTTP 401|HTTP 403/.test(msg) || /ECONNRESET/.test(msg)) && attempt < 2) {
       jar = null;
+      await new Promise((resolve) => setTimeout(resolve, 300 * (attempt + 1)));
       return fetchJson<T>(path, attempt + 1);
     }
     throw err;
@@ -303,4 +304,15 @@ export async function getNseOptionChain(params: {
     marketOpen,
     feed: "rest",
   };
+}
+
+export async function getNseTape(): Promise<Array<{ symbol: string; last: number | null; change: number | null }>> {
+  const data = await fetchJson<{ data?: Array<Record<string, unknown>> }>("/api/allIndices");
+  return (data.data ?? [])
+    .map((row) => ({
+      symbol: String(row.indexSymbol ?? row.index ?? ""),
+      last: parseLooseNumber(row.last),
+      change: parseLooseNumber(row.variation ?? row.change),
+    }))
+    .filter((row) => row.symbol);
 }

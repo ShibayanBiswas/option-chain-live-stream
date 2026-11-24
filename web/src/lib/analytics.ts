@@ -51,6 +51,48 @@ export function computeMaxPain(rows: ChainRow[]): number | null {
   return bestStrike;
 }
 
+export type ChainHighlights = {
+  maxCallOi: number | null;
+  maxPutOi: number | null;
+  maxMove: number | null;
+};
+
+export function chainHighlights(rows: ChainRow[]): ChainHighlights {
+  let maxCallOi: number | null = null;
+  let maxPutOi: number | null = null;
+  let maxMove: number | null = null;
+  let callOi = -1;
+  let putOi = -1;
+  let move = -1;
+  for (const row of rows) {
+    const ce = row.ce.oi ?? 0;
+    const pe = row.pe.oi ?? 0;
+    if (ce > callOi) {
+      callOi = ce;
+      maxCallOi = row.strike;
+    }
+    if (pe > putOi) {
+      putOi = pe;
+      maxPutOi = row.strike;
+    }
+    const delta = Math.max(Math.abs(row.ce.change ?? 0), Math.abs(row.pe.change ?? 0));
+    if (delta > move) {
+      move = delta;
+      maxMove = row.strike;
+    }
+  }
+  return { maxCallOi, maxPutOi, maxMove: move > 0 ? maxMove : null };
+}
+
+export function atmIv(rows: ChainRow[], atm: number | null): number | null {
+  if (atm == null) return null;
+  const row = rows.find((item) => item.strike === atm);
+  if (!row) return null;
+  const values = [row.ce.iv, row.pe.iv].filter((value): value is number => value != null && value > 0);
+  if (values.length === 0) return null;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
 export function buildTotals(rows: ChainRow[], spot: number | null): ChainTotals {
   let ceOi = 0;
   let peOi = 0;

@@ -1,5 +1,14 @@
 # Interface
 
+## Navigation
+
+- Sidebar tree: Indices and Equity, each split into NSE and BSE. Sections animate open and closed.
+- Rows show last, change, and a sparkline from the session tape.
+- Pins and the last contract are stored in the browser.
+- Command palette: Search contracts, or Ctrl/Cmd+K. Arrow keys and Enter select.
+- Expiry menu groups Weekly and Monthly and shows days remaining.
+- On narrow screens the tree starts closed and opens as a bottom sheet.
+
 ## Chrome
 
 - Full-width terminal: left rail + stage, no page gutters.
