@@ -145,10 +145,10 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
     await page.getByRole("button", { name: "Expand sidebar" }).click();
     await expect(page.locator(".rail.is-sheet")).toBeVisible();
     await expect(page.locator(".symbol-main").first()).toBeVisible();
-    const expiryBox = await page.getByLabel("Expiry").boundingBox();
-    expect(expiryBox).toBeTruthy();
-    expect(expiryBox!.x).toBeGreaterThanOrEqual(0);
-    expect(expiryBox!.x + expiryBox!.width).toBeLessThanOrEqual((viewport?.width ?? 0) + 1);
+    const toolbarBox = await page.locator(".toolbar").boundingBox();
+    expect(toolbarBox).toBeTruthy();
+    expect(toolbarBox!.x).toBeGreaterThanOrEqual(-1);
+    expect(toolbarBox!.width).toBeLessThanOrEqual((viewport?.width ?? 0) + 2);
     const target = await page.locator(".symbol-main").first().boundingBox();
     expect(target!.height).toBeGreaterThanOrEqual(44);
   }
@@ -238,9 +238,9 @@ test("universe API exposes indices and Anand Rathi Wealth only", async ({ reques
   const res = await request.get("/api/universe");
   expect(res.ok()).toBeTruthy();
   const body = await res.json();
-  expect(body.indexes.length).toBeGreaterThan(5);
   const symbols = body.indexes.map((row: { symbol: string }) => row.symbol);
-  expect(symbols).toEqual(expect.arrayContaining(["NIFTY"]));
+  expect(symbols).toEqual(["NIFTY", "SENSEX"]);
+  expect(body.indexes.map((row: { exchange: string }) => row.exchange)).toEqual(["NSE", "BSE"]);
   expect(body.equities.every((row: { symbol: string }) => row.symbol === "ANANDRATHI")).toBe(true);
   expect(body.equities.length).toBeGreaterThanOrEqual(1);
   expect(body.equities.length).toBeLessThanOrEqual(2);

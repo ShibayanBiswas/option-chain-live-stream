@@ -14,7 +14,7 @@ import { Toasts } from "@/components/toasts";
 import { useOptionStream } from "@/hooks/use-option-stream";
 import { atmIv } from "@/lib/analytics";
 import { cn } from "@/lib/cn";
-import { canonicalTapeSymbol, displayName, upcomingExpiry } from "@/lib/display";
+import { displayName, upcomingExpiry } from "@/lib/display";
 import { formatCompact, formatNumber, formatPrice } from "@/lib/format";
 import { useTheme } from "@/lib/theme";
 import type { ChainRow, Instrument, TapeQuote } from "@/lib/types";
@@ -46,7 +46,6 @@ export function Terminal() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [pins, setPins] = useState<string[]>([]);
   const [tape, setTape] = useState<TapeQuote[]>([]);
-  const [history, setHistory] = useState<Record<string, number[]>>({});
   const [toasts, setToasts] = useState<string[]>([]);
 
   useEffect(() => {
@@ -121,16 +120,6 @@ export function Terminal() {
         .then((data: { quotes?: TapeQuote[] }) => {
           if (stop || !data.quotes) return;
           setTape(data.quotes);
-          setHistory((current) => {
-            const next = { ...current };
-            for (const quote of data.quotes ?? []) {
-              if (quote.last == null) continue;
-              const key = `NSE:${canonicalTapeSymbol(quote.symbol)}`;
-              const series = next[key] ?? [];
-              next[key] = [...series, quote.last].slice(-24);
-            }
-            return next;
-          });
         })
         .catch(() => undefined);
     };
@@ -149,16 +138,6 @@ export function Terminal() {
     }
     statusRef.current = status;
   }, [status]);
-
-  useEffect(() => {
-    if (!selected || snapshot?.spot == null) return;
-    const key = `${selected.exchange}:${selected.symbol}`;
-    const spot = snapshot.spot;
-    setHistory((current) => ({
-      ...current,
-      [key]: [...(current[key] ?? []), spot].slice(-24),
-    }));
-  }, [selected, snapshot?.spot, snapshot?.timestamp]);
 
   function pushToast(message: string) {
     setToasts((current) => [...current, message].slice(-3));
@@ -204,7 +183,6 @@ export function Terminal() {
             query={query}
             onQuery={setQuery}
             pins={pins}
-            history={history}
             tape={tape}
             onSelect={choose}
             onTogglePin={togglePin}

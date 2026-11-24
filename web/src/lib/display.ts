@@ -88,12 +88,18 @@ export function canonicalTapeSymbol(symbol: string): string {
   return TAPE_ALIASES[key] ?? key;
 }
 
-export function matchTape<T extends { symbol: string }>(symbol: string, quotes: T[]): T | undefined {
+export function matchTape<T extends { symbol: string; exchange?: string }>(
+  symbol: string,
+  quotes: T[],
+  exchange?: string,
+): T | undefined {
   const key = symbol.replace(/[^A-Z0-9]/gi, "").toUpperCase();
-  return quotes.find((quote) => {
+  const hits = quotes.filter((quote) => {
     const compact = quote.symbol.replace(/[^A-Z0-9]/gi, "").toUpperCase();
     return compact === key || TAPE_ALIASES[compact] === key;
   });
+  if (!exchange) return hits[0];
+  return hits.find((quote) => quote.exchange === exchange) ?? hits.find((quote) => !quote.exchange);
 }
 
 export function groupExpiries(expiries: string[], now = new Date()) {

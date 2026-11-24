@@ -77,6 +77,12 @@ describe("expiries", () => {
     expect(matchTape("BANKNIFTY", [{ symbol: "NIFTY BANK", last: 1 }])?.last).toBe(1);
     expect(matchTape("FINNIFTY", [{ symbol: "NIFTY FIN SERVICE", last: 2 }])?.last).toBe(2);
     expect(matchTape("NIFTYFPI", [{ symbol: "NIFTY FPI 150", last: 3 }])?.last).toBe(3);
+    expect(
+      matchTape("ANANDRATHI", [
+        { symbol: "ANANDRATHI", exchange: "NSE", last: 10 },
+        { symbol: "ANANDRATHI", exchange: "BSE", last: 11 },
+      ], "BSE")?.last,
+    ).toBe(11);
     expect(canonicalTapeSymbol("NIFTY BANK")).toBe("BANKNIFTY");
     expect(canonicalTapeSymbol("NIFTY MID SELECT")).toBe("MIDCPNIFTY");
     const info = describeExpiry("26-Nov-2026", now);

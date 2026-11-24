@@ -15,6 +15,12 @@ const TTL_MS = 10 * 60 * 1000;
 /** Equity option book is restricted to Anand Rathi Wealth only. */
 const WEALTH_EQUITY = "ANANDRATHI";
 
+/** The desk lists these two index contracts and nothing else. */
+export const DESK_INDEXES = [
+  { symbol: "NIFTY", exchange: "NSE" as const },
+  { symbol: "SENSEX", exchange: "BSE" as const },
+];
+
 function asInstrument(
   symbol: string,
   exchange: Exchange,
@@ -72,11 +78,14 @@ export async function loadUniverse(force = false): Promise<DeskUniverse> {
   if (nseWealth) equities.push(asInstrument(WEALTH_EQUITY, "NSE", "EQUITY"));
   if (bseWealth) equities.push(bseWealth);
 
+  const sensex =
+    bseIndexes.find((item) => item.symbol.replace(/\s+/g, "").toUpperCase() === "SENSEX") ??
+    asInstrument("SENSEX", "BSE", "INDEX", 1);
+
   const value: DeskUniverse = {
-    indexes: [
-      ...nse.indexes.map((symbol) => asInstrument(symbol, "NSE", "INDEX")),
-      ...bseIndexes,
-    ],
+    indexes: DESK_INDEXES.map((item) =>
+      item.symbol === "SENSEX" ? sensex : asInstrument(item.symbol, item.exchange, "INDEX"),
+    ),
     equities,
     refreshedAt: new Date().toISOString(),
   };

@@ -20,7 +20,7 @@ With the app running on port 3000:
 npm run test:api
 ```
 
-Probes `/api/health`, `/api/universe` (indices present, equities = ANANDRATHI only), NIFTY chain, Anand Rathi Wealth NSE chain, and SENSEX when BSE is reachable.
+Probes `/api/health`, `/api/universe` (indexes are exactly NSE NIFTY and BSE SENSEX, equities are ANANDRATHI only), the NIFTY chain, the Anand Rathi Wealth NSE chain, and SENSEX when BSE is reachable.
 
 ## Playwright
 
@@ -32,7 +32,7 @@ npm run test:e2e
 
 Projects: desktop 1440, laptop 1280, tablet 768, phone 390, phone-narrow 360.
 
-Coverage includes live feed / motion, focus vs full density for chain and OI, zero-volume shading, sidebar toggle, full-width chrome, magnify, light/dark, mobile collapsed rail, index list presence, and Anand Rathi Wealth as the only equity.
+Coverage includes the chain, focus versus all columns, zero-volume shading, the sidebar, light and dark, the phone horizontal chain, and the NIFTY / SENSEX / Anand Rathi Wealth book.
 
 Screenshots land in `docs/screenshots/`.
 

@@ -8,8 +8,8 @@ This plan covers the follow-up on top of the Indices / Anand Rathi Wealth desk. 
 
 **Goal:** one hierarchical book, reachable from the sidebar and from a header command palette.
 
-- Sections: Indices, then Equity. Subsections: NSE, then BSE. Rows come only from `/api/universe` (dynamic discovery). Display names such as NIFTY 50 are presentation labels for known symbols; unknown symbols keep the exchange code.
-- Each row shows the live last, signed change (colour, no plus), and a sparkline built from successive tape samples.
+- Sections: Indices, then Equity. The index book is NIFTY on NSE and SENSEX on BSE. Equity is Anand Rathi Wealth on NSE and on BSE when that contract exists.
+- Each row shows the live last and the signed change (colour, no plus). Sparklines are not drawn.
 - Sections animate open and closed. Favourites are pinned in `localStorage`. The last selection is restored from `localStorage`.
 - Header command palette (`Ctrl/Cmd+K` and a search button): type-ahead across the book, arrow keys, Enter to select.
 - Expiry control groups Weekly and Monthly, and shows days to expiry. Monthly means the last Thursday of the month (or a late-month holiday shift). Everything else is weekly.
@@ -69,4 +69,4 @@ This plan covers the follow-up on top of the Indices / Anand Rathi Wealth desk. 
 
 - Live broker orders.
 - Inventing a full-day put/call ratio history the exchange does not send. The trend is the session the desk has observed.
-- Hardcoding the index list. If an exchange omits a name, it is omitted.
+- Any index other than NIFTY and SENSEX. Any equity other than Anand Rathi Wealth.

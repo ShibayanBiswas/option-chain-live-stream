@@ -62,6 +62,7 @@ export type TapeQuote = {
   symbol: string;
   last: number | null;
   change: number | null;
+  exchange?: Exchange;
 };
 
 export type MetaResponse = {

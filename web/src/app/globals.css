@@ -1373,7 +1373,7 @@ html.dark .quote-card.put {
 
 .symbol-main {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 2px 8px;
   width: 100%;
   text-align: left;
@@ -1695,8 +1695,14 @@ html.dark .is-itm {
     flex: 1;
   }
 
+  .toolbar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
   .toolbar-select {
-    max-width: 100%;
+    max-width: none;
+    flex: 0 0 auto;
   }
 
   .kpi-row {
@@ -1732,47 +1738,20 @@ html.dark .is-itm {
     left: auto;
   }
 
+  .chain-scroll,
+  .chain-scroll[data-density="focus"] .chain-table,
+  .chain-scroll[data-density="full"] .chain-table {
+    min-width: 0;
+  }
+
+  .chain-table,
   .chain-scroll[data-density="focus"] .chain-table {
-    min-width: 0;
-    width: 100%;
-    table-layout: fixed;
-    font-size: 11px;
+    min-width: 760px;
+    width: max-content;
+    table-layout: auto;
   }
 
-  .chain-scroll[data-density="focus"] .col-volume,
-  .chain-scroll[data-density="focus"] .col-iv,
-  .chain-scroll[data-density="focus"] .col-chng {
-    display: none;
-  }
-
-  .chain-scroll[data-density="focus"] .ltp-chng {
-    display: block;
-    margin-top: 1px;
-    font-family: var(--font-data);
-    font-size: 10px;
-    font-weight: 600;
-    line-height: 1.1;
-  }
-
-  .chain-scroll[data-density="focus"] .quote-num {
-    font-weight: 650;
-  }
-
-  .chain-scroll[data-density="focus"] .strike-cell {
-    position: static;
-    left: auto;
-    min-width: 0;
-    width: 22%;
-  }
-
-  .chain-scroll[data-density="focus"] thead .strike-cell {
-    position: sticky;
-    top: 28px;
-    left: auto;
-  }
-
-  .chain-scroll[data-density="focus"] th,
-  .chain-scroll[data-density="focus"] td {
-    padding: 7px 3px;
+  .chain-scroll[data-density="full"] .chain-table {
+    min-width: 1040px;
   }
 }

@@ -3,7 +3,7 @@
 ## Navigation
 
 - Sidebar tree: Indices and Equity, each split into NSE and BSE. Sections animate open and closed.
-- Rows show last, change, and a sparkline from the session tape.
+- Rows show last and change. NIFTY comes from the NSE index tape. SENSEX and Anand Rathi Wealth on NSE and BSE come from the live quote supplement, because those names are not on the NSE index tape.
 - Pins and the last contract are stored in the browser.
 - Command palette: Search contracts, or Ctrl/Cmd+K. Arrow keys and Enter select.
 - Expiry menu groups Weekly and Monthly and shows days remaining.
@@ -13,29 +13,24 @@
 
 - Full-width terminal: left rail + stage, no page gutters.
 - Floating sidebar control (`rail-fab`) that tracks open/collapsed state without covering the board.
-- Toolbar: identity, spot, session phase, expiry, strike window, column density, feed latency, magnify, refresh, theme.
+- Toolbar: contract, spot, session, expiry, strike window, columns, theme. On a phone the toolbar scrolls sideways.
 
 ## Option chain
 
 - Layout: **Calls | Strike | Puts**.
 - Sticky dual header and sticky strike column; tabular figures; ATM / ITM tinting.
-- Important metrics sit against the strike (Last, Change).
+- Column names match the exchanges: OI, Chng in OI, Volume, IV, LTP, Chng, Bid Qty, Bid, Ask, Ask Qty, Strike.
 - Default **Focus Columns**; **All Columns** reveals every non-empty field.
 - Zero-volume strikes shaded; high/low volume last prices highlighted.
 - Strike window controls are **Spot Focus** and **Entire Book** — never “ATM ±N”.
 - Live cells flash without layout shift.
 
-## Open interest
-
-- Same focus / full density behaviour.
-- Animated dual-sided bars with sheen, spot highlight, and optional metric labels in full density.
-- Magnify raises the chart height with the board.
-
 ## Mobile
 
-- Rail collapses into a horizontal symbol strip; toggle moves to a bottom FAB.
+- The chain, the summary strip, and the toolbar each scroll horizontally inside their own row. The page itself does not scroll sideways.
+- The strike stays in its column. It is not pinned to the left edge.
+- The instrument list starts closed and opens as a sheet from the toolbar.
 - Touch targets ≥ 44px.
-- Tables scroll inside their panes; the page itself does not overflow horizontally.
 
 ## Copy rules
 

@@ -13,7 +13,7 @@ Next.js 15 App Router desk in `web/`, deployed on Vercel as **option-chain-live-
 | `src/components/quote-sheet.tsx` | Strike detail sheet |
 | `src/hooks/use-option-stream.ts` | SSE client with REST fallback |
 | `src/lib/chain-service.ts` | Resolves instrument → NSE/BSE snapshot |
-| `src/lib/universe.ts` | Dynamic indices + Anand Rathi Wealth equity lock |
+| `src/lib/universe.ts` | NIFTY, SENSEX, and Anand Rathi Wealth only |
 | `src/lib/nse.ts` / `bse.ts` / `nse-ws.ts` | Exchange transports |
 | `src/app/api/*` | Universe, chain, stream, health, meta |
 
@@ -25,16 +25,15 @@ Next.js 15 App Router desk in `web/`, deployed on Vercel as **option-chain-live-
 
 ## Density model
 
-- **Focus Columns** (default): open interest, volume, IV, change, last — the metrics that sit against the strike.
+- **Focus** (default): OI, Volume, IV, Chng, LTP against the strike.
 - **All Columns**: every non-empty book field, including interest change and bid/ask when the exchange publishes them.
 - **Spot Focus / Entire Book**: strike window around ATM versus the full ladder (no “ATM ±N” labels).
 
 ## Layout rules
 
 - Full-bleed terminal grid (sidebar + stage). No centered `max-width` gutters.
-- Sidebar toggle is a floating control that never sits on top of table cells.
-- Magnify collapses the rail, enlarges the board and OI chart, and restores the prior rail state on exit.
-- Scrollbars are visually hidden; scroll still works inside the chain and OI panes.
+- The sidebar button sits in the toolbar.
+- Scrollbars are hidden. On a phone the chain scrolls horizontally inside its frame, and the strike column stays with its row.
 
 ## Theme
 

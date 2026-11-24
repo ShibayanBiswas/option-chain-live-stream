@@ -9,25 +9,6 @@ import { displayName, matchTape } from "@/lib/display";
 import { formatPrice, formatSigned } from "@/lib/format";
 import type { Instrument, TapeQuote } from "@/lib/types";
 
-function Spark({ points }: { points: number[] }) {
-  if (points.length < 2) return <svg className="spark" viewBox="0 0 64 18" aria-hidden />;
-  const min = Math.min(...points);
-  const max = Math.max(...points);
-  const span = max - min || 1;
-  const d = points
-    .map((value, index) => {
-      const x = (index / (points.length - 1)) * 64;
-      const y = 16 - ((value - min) / span) * 14;
-      return `${index === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`;
-    })
-    .join(" ");
-  return (
-    <svg className="spark" viewBox="0 0 64 18" aria-hidden>
-      <path d={d} />
-    </svg>
-  );
-}
-
 export function InstrumentTree({
   indexes,
   equities,
@@ -35,7 +16,6 @@ export function InstrumentTree({
   query,
   onQuery,
   pins,
-  history,
   tape,
   onSelect,
   onTogglePin,
@@ -46,7 +26,6 @@ export function InstrumentTree({
   query: string;
   onQuery: (value: string) => void;
   pins: string[];
-  history: Record<string, number[]>;
   tape: TapeQuote[];
   onSelect: (item: Instrument) => void;
   onTogglePin: (item: Instrument) => void;
@@ -101,7 +80,6 @@ export function InstrumentTree({
               item={item}
               selected={selected}
               tape={tape}
-              history={history}
               pinned
               onSelect={onSelect}
               onTogglePin={onTogglePin}
@@ -136,7 +114,6 @@ export function InstrumentTree({
                         item={item}
                         selected={selected}
                         tape={tape}
-                        history={history}
                         pinned={pins.includes(`${item.exchange}:${item.symbol}`)}
                         onSelect={onSelect}
                         onTogglePin={onTogglePin}
@@ -158,7 +135,6 @@ function Row({
   item,
   selected,
   tape,
-  history,
   pinned,
   onSelect,
   onTogglePin,
@@ -166,23 +142,20 @@ function Row({
   item: Instrument;
   selected: Instrument | null;
   tape: TapeQuote[];
-  history: Record<string, number[]>;
   pinned: boolean;
   onSelect: (item: Instrument) => void;
   onTogglePin: (item: Instrument) => void;
 }) {
-  const quote = matchTape(item.symbol, tape);
+  const quote = matchTape(item.symbol, tape, item.exchange);
   const last = quote?.last ?? item.last ?? null;
   const change = quote?.change ?? item.change ?? null;
   const active = selected?.symbol === item.symbol && selected.exchange === item.exchange;
-  const key = `${item.exchange}:${item.symbol}`;
   return (
     <div className={cn("symbol-item", active && "is-active")}>
       <button type="button" className="symbol-main" onClick={() => onSelect(item)}>
         <span>{displayName(item.symbol, item.label)}</span>
         <em className={change != null && change < 0 ? "tone-down" : "tone-up"}>{formatSigned(change, 2)}</em>
         <strong>{formatPrice(last)}</strong>
-        <Spark points={history[key] ?? history[`NSE:${item.symbol}`] ?? (last != null ? [last] : [])} />
       </button>
       <button
         className={cn("pin-btn", pinned && "is-on")}

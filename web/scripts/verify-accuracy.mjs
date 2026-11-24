@@ -18,10 +18,10 @@ function assert(cond, msg) {
   if (!cond) throw new Error(msg);
 }
 
-async function verifySymbol(symbol, exchange = "NSE") {
+async function verifySymbol(symbol, exchange = "NSE", segment = "INDEX") {
   const t0 = Date.now();
   const snap = await getJson(
-    `/api/chain?symbol=${encodeURIComponent(symbol)}&exchange=${exchange}`,
+    `/api/chain?symbol=${encodeURIComponent(symbol)}&exchange=${exchange}&segment=${segment}`,
   );
   const latency = Date.now() - t0;
 
@@ -61,9 +61,8 @@ async function main() {
   console.log(`Accuracy suite against ${BASE}`);
   await getJson("/api/health");
   const results = [];
-  for (const symbol of ["NIFTY", "BANKNIFTY", "FINNIFTY", "RELIANCE"]) {
-    results.push(await verifySymbol(symbol, "NSE"));
-  }
+  results.push(await verifySymbol("NIFTY", "NSE"));
+  results.push(await verifySymbol("ANANDRATHI", "NSE", "EQUITY"));
   try {
     results.push(await verifySymbol("SENSEX", "BSE"));
   } catch (err) {

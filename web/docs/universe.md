@@ -4,12 +4,12 @@ Two categories only: **Indices** and **Equity**.
 
 ## Indices
 
-Every Indian index that publishes an option chain on NSE or BSE is discovered at runtime.
+The book is two index contracts:
 
-- **NSE** index names come from the option-chain page select `equity_optionchain_select` on each refresh. That is the exchange’s own index-option list (NIFTY, BANKNIFTY, FINNIFTY, MIDCPNIFTY, NIFTYNXT50, and any others the exchange lists).
-- **BSE** index names and contract codes come from `ddlUnderlyingAsset` with product type `IO` (SENSEX, BANKEX, SENSEX50, and peers). If the edge rejects the server, the desk falls back to symbols and contract codes stored in `src/data/bse-cache.json`, which was captured from that same endpoint.
+- **NIFTY** on NSE
+- **SENSEX** on BSE
 
-Nothing in this list is hardcoded in the UI. The sidebar renders whatever `/api/universe` returns under `indexes`.
+Discovery still reads the exchange lists so the BSE contract code for SENSEX stays current. Every other index is dropped before `/api/universe` responds. If the BSE edge is blocked, SENSEX falls back to contract code `1` from `src/data/bse-cache.json`.
 
 ## Equity
 
