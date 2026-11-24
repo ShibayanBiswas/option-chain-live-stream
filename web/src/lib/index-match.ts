@@ -6,6 +6,8 @@ export type IndexQuote = {
   pChange: number | null;
   previousClose: number | null;
   open: number | null;
+  symbol?: string;
+  spark?: number[];
 };
 
 /**

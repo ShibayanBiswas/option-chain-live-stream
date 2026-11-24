@@ -8,7 +8,7 @@ NSE index names are read from the option-chain page select `equity_optionchain_s
 
 BSE index names and contract codes come from `ddlUnderlyingAsset` with product type `IO`. If the edge rejects the server, the desk uses the symbols and contract codes stored in `src/data/bse-cache.json`, which was captured from that same endpoint.
 
-The rail shows the exchange code. When `/api/quotes` can match the code to the NSE derivatives index board, the row also shows the exchange's long name, such as NIFTY 50 or NIFTY BANK. The match table in `src/lib/index-match.ts` only joins those two exchange strings. A new option symbol with no join still appears under its own code.
+The rail shows the exchange's long name, such as NIFTY 50 or BSE SENSEX, with the trading code underneath. NSE spots, changes, and sparklines come from the NSE derivatives index board. BSE spots, changes, and sparklines come from BSE's own index graph (`IndexSensexData1` and `SensexGraphData` for SENSEX 16, BANKEX 53, and Focused IT 134). SENSEX 50 uses the code from BSE's index list when that list is reachable. The join in `src/lib/index-match.ts` only connects the option symbol to the exchange's published index name.
 
 ## Equity
 

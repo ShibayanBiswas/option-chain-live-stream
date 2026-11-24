@@ -36,14 +36,41 @@ test("chain density, colour, navigation, and chrome", async ({ page }, testInfo)
   expect(chainText).not.toMatch(/\+\d/);
   expect(chainText).not.toMatch(/ATM|±/);
 
-  const calls = page.locator(".chain-pane.calls thead tr").nth(1).locator("th");
+  const calls = page.locator(".chain-head .chain-pane.calls thead tr").first().locator("th");
   const callCount = await calls.count();
   await expect(calls.nth(callCount - 1)).toHaveText("Last");
   await expect(calls.nth(callCount - 2)).toHaveText("Change");
-  const puts = page.locator(".chain-pane.puts thead tr").nth(1).locator("th");
+  const puts = page.locator(".chain-head .chain-pane.puts thead tr").first().locator("th");
   await expect(puts.nth(0)).toHaveText("Last");
   await expect(puts.nth(1)).toHaveText("Change");
   await expect(page.locator(".chain-scroll")).toHaveAttribute("data-density", "collapsed");
+  await expect(page.getByTestId("chain-head")).toBeVisible();
+  await expect(page.getByTestId("chain-head")).toContainText("Calls");
+  await expect(page.getByTestId("chain-head")).toContainText("Puts");
+  await expect(page.getByTestId("chain-head")).toContainText("OI");
+  await expect(page.getByTestId("chain-head")).toContainText("Last");
+  const headerStuck = await page.evaluate(() => {
+    const scroller = document.querySelector(".chain-scroll") as HTMLElement;
+    scroller.scrollTop = scroller.scrollHeight;
+    const head = document.querySelector(".chain-head")!.getBoundingClientRect();
+    const frame = scroller.getBoundingClientRect();
+    return head.top >= frame.top - 2 && head.top <= frame.top + 2 && head.bottom <= frame.bottom;
+  });
+  expect(headerStuck).toBe(true);
+  const clippedHeaders = await page.evaluate(() => {
+    const bad: string[] = [];
+    for (const pane of document.querySelectorAll(".chain-head .chain-pane")) {
+      const frame = pane.getBoundingClientRect();
+      for (const cell of pane.querySelectorAll("th[data-col], th.strike-cell")) {
+        const box = cell.getBoundingClientRect();
+        const seen = box.right > frame.left + 1 && box.left < frame.right - 1;
+        const full = box.left >= frame.left - 1 && box.right <= frame.right + 1;
+        if (seen && !full) bad.push((cell.textContent ?? "").trim());
+      }
+    }
+    return bad;
+  });
+  expect(clippedHeaders).toEqual([]);
   await expect(page.locator(".chain-pane.calls thead")).not.toContainText("Bid");
 
   await page.locator(".desk-header").getByRole("button", { name: "Expand columns" }).click();
@@ -60,6 +87,27 @@ test("chain density, colour, navigation, and chrome", async ({ page }, testInfo)
   await expect(page.locator(".spot-marker").first()).toBeVisible();
   await expect(page.locator('[data-call-wall="true"]')).toHaveCount(1);
   await expect(page.locator('[data-put-wall="true"]')).toHaveCount(1);
+
+  const overlaps = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll(".symbol-row")];
+    const hits: string[] = [];
+    for (const row of rows) {
+      const boxes = [".symbol-copy strong", ".symbol-quote", ".spark, .spark-empty", ".pin-btn"]
+        .map((selector) => row.querySelector(selector)?.getBoundingClientRect())
+        .filter((box): box is DOMRect => Boolean(box));
+      for (let left = 0; left < boxes.length; left += 1) {
+        for (let right = left + 1; right < boxes.length; right += 1) {
+          const a = boxes[left]!;
+          const b = boxes[right]!;
+          const overlaps =
+            a.left < b.right - 0.5 && a.right > b.left + 0.5 && a.top < b.bottom - 0.5 && a.bottom > b.top + 0.5;
+          if (overlaps) hits.push((row.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 60));
+        }
+      }
+    }
+    return hits;
+  });
+  expect(overlaps).toEqual([]);
 
   const gap = await page.evaluate(() => {
     const cells = [...document.querySelectorAll(".chain-pane.calls tbody tr.chain-row td")].slice(0, 6);
@@ -113,7 +161,7 @@ test("chain density, colour, navigation, and chrome", async ({ page }, testInfo)
     await page.getByRole("button", { name: "Indices", exact: true }).click();
     await page.getByRole("button", { name: "NIFTY NSE", exact: true }).focus();
     await page.keyboard.press("ArrowDown");
-    await expect(page.getByRole("button", { name: "BANKNIFTY NSE", exact: true })).toBeFocused();
+    await expect(page.getByRole("button", { name: "NIFTYNXT50 NSE", exact: true })).toBeFocused();
   } else {
     await expect(page.locator(".rail")).toHaveCount(0);
     await expect(page.locator(".mobile-dock")).toBeVisible();

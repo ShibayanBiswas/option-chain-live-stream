@@ -57,7 +57,11 @@ export const chain: OptionChainSnapshot = {
 export const universe = {
   indexes: [
     { symbol: "NIFTY", label: "NIFTY", exchange: "NSE", segment: "INDEX" },
+    { symbol: "NIFTYNXT50", label: "NIFTYNXT50", exchange: "NSE", segment: "INDEX" },
+    { symbol: "FINNIFTY", label: "FINNIFTY", exchange: "NSE", segment: "INDEX" },
     { symbol: "BANKNIFTY", label: "BANKNIFTY", exchange: "NSE", segment: "INDEX" },
+    { symbol: "MIDCPNIFTY", label: "MIDCPNIFTY", exchange: "NSE", segment: "INDEX" },
+    { symbol: "NIFTYFPI", label: "NIFTYFPI", exchange: "NSE", segment: "INDEX" },
     { symbol: "SENSEX", label: "SENSEX", exchange: "BSE", segment: "INDEX" },
     { symbol: "BANKEX", label: "BANKEX", exchange: "BSE", segment: "INDEX" },
     { symbol: "SX50", label: "SX50", exchange: "BSE", segment: "INDEX" },
@@ -80,7 +84,11 @@ export const universe = {
 export const quotes = {
   items: [
     { symbol: "NIFTY", exchange: "NSE", segment: "INDEX", name: "NIFTY 50", spot: 25340, change: -120.5, pChange: -0.47, spark: [25480, 25410, 25340] },
+    { symbol: "NIFTYNXT50", exchange: "NSE", segment: "INDEX", name: "NIFTY NEXT 50", spot: 72245.4, change: -961.85, pChange: -1.31, spark: [73200, 72800, 72245.4] },
+    { symbol: "FINNIFTY", exchange: "NSE", segment: "INDEX", name: "NIFTY FIN SERVICE", spot: 28153.5, change: -717.7, pChange: -2.49, spark: [28800, 28400, 28153.5] },
     { symbol: "BANKNIFTY", exchange: "NSE", segment: "INDEX", name: "NIFTY BANK", spot: 58210, change: -340, pChange: -0.58, spark: [58600, 58400, 58210] },
+    { symbol: "MIDCPNIFTY", exchange: "NSE", segment: "INDEX", name: "NIFTY MID SELECT", spot: 14199.6, change: -105.55, pChange: -0.74, spark: [14320, 14240, 14199.6] },
+    { symbol: "NIFTYFPI", exchange: "NSE", segment: "INDEX", name: "NIFTY FPI 150", spot: 1600.25, change: -22.9, pChange: -1.41, spark: [1630, 1612, 1600.25] },
     { symbol: "SENSEX", exchange: "BSE", segment: "INDEX", name: "SENSEX", spot: 82400, change: -210, pChange: -0.25, spark: [82650, 82500, 82400] },
     { symbol: "BANKEX", exchange: "BSE", segment: "INDEX", name: "BANKEX", spot: 65000, change: 80, pChange: 0.12, spark: [64800, 64920, 65000] },
     { symbol: "SX50", exchange: "BSE", segment: "INDEX", name: "SENSEX 50", spot: 26600, change: -40, pChange: -0.15, spark: [26680, 26640, 26600] },

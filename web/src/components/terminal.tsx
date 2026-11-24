@@ -167,14 +167,13 @@ export function Terminal() {
   const groups = useMemo(() => groupExpiries(snapshot?.expiries ?? []), [snapshot?.expiries]);
   const session = book?.market?.label ?? (book?.market ? "Market Closed" : "Session");
   const phase = book?.market?.phase ?? (book?.market?.open ? "open" : book?.market ? "closed" : "closed");
-  const feed =
-    socketState === "open" || snapshot?.feed === "websocket"
-      ? "WebSocket"
-      : status === "live"
-        ? "Live"
-        : status === "connecting"
-          ? "Connecting"
-          : "Rest";
+  const feed = !snapshot
+    ? "Connecting"
+    : phase === "open" && (socketState === "open" || snapshot.feed === "websocket")
+      ? "Live"
+      : phase === "open"
+        ? "Delayed"
+        : "Closed";
 
   const choose = (item: Instrument) => {
     setSelected(item);
@@ -264,10 +263,9 @@ export function Terminal() {
             <option value="full">Entire Book</option>
           </select>
         </label>
-        <div className="feed-chip">
-          <span className={cn("live-dot", status === "error" && "is-off", (status === "connecting" || status === "polling") && "is-stale")} />
+        <div className={cn("feed-chip", `is-${feed.toLowerCase()}`)} data-feed={feed}>
+          <span className={cn("live-dot", feed === "Closed" && "is-off", feed !== "Live" && "is-stale")} />
           <span>{feed}</span>
-          <em>{snapshot ? `${snapshot.latencyMs} ms` : ""}</em>
         </div>
         <button className="btn-icon" type="button" onClick={() => setPaletteOpen(true)} aria-label="Search instruments">
           <Search className="h-4 w-4" />

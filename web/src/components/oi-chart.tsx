@@ -46,13 +46,6 @@ export function OpenInterestChart({
         </div>
       </header>
 
-      <div className="oi-metrics">
-        <Metric label="Put Call Ratio" value={snapshot.totals.pcr != null ? snapshot.totals.pcr.toFixed(2) : "—"} />
-        <Metric label="Max Pain" value={formatNumber(snapshot.totals.maxPain, 0)} />
-        <Metric label="Call Interest" value={formatCompact(snapshot.totals.ceOi)} />
-        <Metric label="Put Interest" value={formatCompact(snapshot.totals.peOi)} />
-      </div>
-
       <div className="oi-chart-head">
         <span>Call interest</span>
         <span>Strike</span>
@@ -135,15 +128,6 @@ export function OpenInterestChart({
         </div>
       ) : null}
     </section>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <p className="oi-metric">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </p>
   );
 }
 

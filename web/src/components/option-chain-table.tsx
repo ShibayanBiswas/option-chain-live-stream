@@ -79,6 +79,10 @@ export function OptionChainTable({
 }) {
   const reduce = useReducedMotion();
   const scroller = useRef<HTMLDivElement>(null);
+  const callHead = useRef<HTMLDivElement>(null);
+  const putHead = useRef<HTMLDivElement>(null);
+  const callBody = useRef<HTMLDivElement>(null);
+  const putBody = useRef<HTMLDivElement>(null);
   const rows = useMemo(
     () => windowRows(snapshot.rows, snapshot.totals.atm, depth),
     [depth, snapshot.rows, snapshot.totals.atm],
@@ -111,6 +115,42 @@ export function OptionChainTable({
   );
 
   useEffect(() => {
+    const pairs: Array<[HTMLDivElement | null, HTMLDivElement | null]> = [
+      [callBody.current, callHead.current],
+      [putBody.current, putHead.current],
+    ];
+    const align = (body: HTMLDivElement | null, head: HTMLDivElement | null, fromEnd: boolean) => {
+      if (!body || !head || body.clientWidth < 40) return;
+      const min = 64;
+      const count = Math.max(1, Math.floor(body.clientWidth / min));
+      const width = body.clientWidth / count;
+      body.style.setProperty("--col", `${width}px`);
+      head.style.setProperty("--col", `${width}px`);
+      const columns = head.querySelectorAll("tr:last-child [data-col]").length;
+      const offset = fromEnd ? Math.max(0, columns - count) * width : 0;
+      body.scrollLeft = offset;
+      head.scrollLeft = offset;
+    };
+    const alignBoth = () => {
+      align(callBody.current, callHead.current, true);
+      align(putBody.current, putHead.current, false);
+    };
+    alignBoth();
+    const frame = requestAnimationFrame(alignBoth);
+    const stops: Array<() => void> = [() => cancelAnimationFrame(frame)];
+    for (const [body, head] of pairs) {
+      if (!body || !head) continue;
+      const sync = () => {
+        head.scrollLeft = body.scrollLeft;
+      };
+      sync();
+      body.addEventListener("scroll", sync, { passive: true });
+      stops.push(() => body.removeEventListener("scroll", sync));
+    }
+    return () => stops.forEach((stop) => stop());
+  }, [callCols, peCols, rows.length]);
+
+  useEffect(() => {
     const root = scroller.current;
     const marker = root?.querySelector(".spot-marker");
     if (!root || !(marker instanceof HTMLElement)) return;
@@ -141,24 +181,58 @@ export function OptionChainTable({
         animate={{ opacity: 1, y: 0 }}
       >
         {rows.length === 0 ? <p className="board-wait">No strikes in this expiry</p> : null}
-        <div className="chain-split">
-          <div className="chain-pane calls">
+        <div className="chain-head" data-testid="chain-head">
+          <div className="chain-split">
+            <div className="chain-pane calls">
+              <div className="side-banner call-banner">Calls</div>
+              <div className="chain-pane-scroll" ref={callHead}>
+                <table className="chain-table">
+                  <thead>
+                    <tr>
+                      {callCols.map((key) => (
+                        <th key={key} className="ce-zone" data-col={key} title={columnTip(key)}>
+                          {columnLabel(key)}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                </table>
+              </div>
+            </div>
+            <div className="chain-pane strike">
+              <table className="chain-table strike-table">
+                <thead>
+                  <tr>
+                    <th className="strike-cell">Strike</th>
+                  </tr>
+                  <tr>
+                    <th className="strike-cell">Price</th>
+                  </tr>
+                </thead>
+              </table>
+            </div>
+            <div className="chain-pane puts">
+              <div className="side-banner put-banner">Puts</div>
+              <div className="chain-pane-scroll" ref={putHead}>
+                <table className="chain-table">
+                  <thead>
+                    <tr>
+                      {peCols.map((key) => (
+                        <th key={key} className="pe-zone" data-col={key} title={columnTip(key)}>
+                          {columnLabel(key)}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="chain-split chain-body">
+          <div className="chain-pane calls" ref={callBody}>
             <table className="chain-table">
               <caption className="sr-only">Call contracts</caption>
-              <thead>
-                <tr>
-                  <th colSpan={callCols.length} className="side-banner call-banner">
-                    Calls
-                  </th>
-                </tr>
-                <tr>
-                  {callCols.map((key) => (
-                    <th key={key} className="ce-zone" data-col={key} title={columnTip(key)}>
-                      {columnLabel(key)}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
               <tbody>
                 {lines.map((line) =>
                   line.kind === "spot" ? (
@@ -185,14 +259,6 @@ export function OptionChainTable({
           </div>
           <div className="chain-pane strike">
             <table className="chain-table strike-table">
-              <thead>
-                <tr>
-                  <th className="strike-cell">Strike</th>
-                </tr>
-                <tr>
-                  <th className="strike-cell">Price</th>
-                </tr>
-              </thead>
               <tbody>
                 {lines.map((line) =>
                   line.kind === "spot" ? (
@@ -222,23 +288,9 @@ export function OptionChainTable({
               </tbody>
             </table>
           </div>
-          <div className="chain-pane puts">
+          <div className="chain-pane puts" ref={putBody}>
             <table className="chain-table">
               <caption className="sr-only">Put contracts</caption>
-              <thead>
-                <tr>
-                  <th colSpan={peCols.length} className="side-banner put-banner">
-                    Puts
-                  </th>
-                </tr>
-                <tr>
-                  {peCols.map((key) => (
-                    <th key={key} className="pe-zone" data-col={key} title={columnTip(key)}>
-                      {columnLabel(key)}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
               <tbody>
                 {lines.map((line) =>
                   line.kind === "spot" ? (

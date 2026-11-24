@@ -20,7 +20,7 @@ async function freeze(page: Page, theme: "light" | "dark") {
   );
   await page.goto("/");
   await expect(page.locator(".chain-row").first()).toBeVisible();
-  await expect(page.locator(".feed-chip")).toContainText(/Rest|Live/);
+  await expect(page.locator(".feed-chip")).toContainText(/Live|Delayed|Closed/);
 }
 
 for (const theme of ["light", "dark"] as const) {

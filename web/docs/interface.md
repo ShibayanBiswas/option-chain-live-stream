@@ -10,7 +10,7 @@ On a phone or tablet the rail is not rendered. An icon in the header or the bott
 
 ## Instrument tree
 
-Indices and Equity, each with NSE and BSE subsections. Sections animate open and closed. A row shows the code, the long name, spot, change without a plus sign, and a sparkline from the exchange previous close, open, and last. Pins and the last selection are stored in the browser. Ctrl or Cmd+K opens the same list as a command palette with keyboard selection. Arrow keys move through the rail.
+Indices and Equity, each with NSE and BSE subsections. Sections animate open and closed. A row shows the full index name, then the trading code and exchange. The name truncates with an ellipsis when the rail is narrow, and it does not run into the price, sparkline, or pin. Spot and change come from the exchange index feed. Pins and the last selection are stored in the browser. Ctrl or Cmd+K opens the same list as a command palette with keyboard selection. Arrow keys move through the rail.
 
 Expiry options are grouped into Weekly and Monthly. Monthly is the last listed expiry in each calendar month. The option text includes the day count.
 
@@ -28,10 +28,10 @@ A tick flashes the cell green or red without changing the row height.
 
 ## Open interest
 
-Collapsed shows the ratio, max pain, call interest, put interest, and a short histogram around spot. Expanded adds the full strike book, the change in open interest, and the put-call ratio path collected during the session. Bars grow in on load. The row under the pointer shows a crosshair readout.
+Collapsed is the histogram around spot. The ratio, max pain, and interest totals stay in the summary cards above the chart. Expanded adds the full strike book, the change in open interest, and the put-call ratio path collected during the session. Bars grow in on load. The row under the pointer shows a crosshair readout.
 
 Summary cards above the panel count the ratio, max pain, call interest, put interest, interest change, and at-the-money IV.
 
 ## Chrome
 
-Magnify collapses the rail and enlarges the book. Scrollbars are hidden. Light and dark themes share the same tokens. Toasts report a lost feed, a restored feed, an expiry change, and a refresh. The quote sheet is the strike popup and includes delta when IV, spot, and time are present. Positive numbers are not prefixed with a plus sign.
+The feed chip reads Live, Delayed, or Closed once a book has arrived, and Connecting only before that. Magnify collapses the rail and enlarges the book. Scrollbars are hidden. Light and dark themes share the same tokens. Toasts report a lost feed, a restored feed, an expiry change, and a refresh. The quote sheet is the strike popup and includes delta when IV, spot, and time are present. Positive numbers are not prefixed with a plus sign.

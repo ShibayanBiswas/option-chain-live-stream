@@ -190,6 +190,7 @@ function SymbolRow({
   onSelect: (item: Instrument) => void;
 }) {
   const name = quote?.name && quote.name !== item.symbol ? quote.name : isAnandRathiSymbol(item.symbol) ? "Anand Rathi Wealth" : item.symbol;
+  const title = name;
   const up = (quote?.change ?? 0) > 0;
   const down = (quote?.change ?? 0) < 0;
   return (
@@ -201,8 +202,10 @@ function SymbolRow({
         onClick={() => onSelect(item)}
       >
         <span className="symbol-copy">
-          <strong>{item.symbol}</strong>
-          <em>{name === item.symbol ? item.exchange : name}</em>
+          <strong title={title}>{title}</strong>
+          <em>
+            {item.symbol} {item.exchange}
+          </em>
         </span>
         <span className={cn("symbol-quote", up && "tone-up", down && "tone-down")}>
           <b>{quote?.spot != null ? formatNumber(quote.spot, quote.spot >= 1000 ? 2 : 2) : "—"}</b>

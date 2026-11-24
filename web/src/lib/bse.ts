@@ -1,6 +1,7 @@
 import { buildTotals } from "./analytics";
 import { parseLooseNumber } from "./format";
 import { httpsGet, httpsGetJson } from "./http";
+import type { IndexQuote } from "./index-match";
 import type { ChainRow, OptionChainSnapshot, OptionQuote } from "./types";
 
 const BSE_WWW = "https://www.bseindia.com";
@@ -88,6 +89,154 @@ function mapPe(row: ChainApiRow): OptionQuote {
     bidQty: parseLooseNumber(row.BIdQty),
     ask: parseLooseNumber(row.OfferPrice),
     askQty: parseLooseNumber(row.OfferQty),
+  };
+}
+
+/**
+ * BSE publishes index codes on its own site: 16 SENSEX, 53 BANKEX, 134 Focused IT.
+ * SENSEX 50 is resolved from the exchange index list when that list is reachable.
+ */
+const BSE_INDEX_CODES: Array<{ symbol: string; code: string; name: string }> = [
+  { symbol: "SENSEX", code: "16", name: "BSE SENSEX" },
+  { symbol: "BANKEX", code: "53", name: "BSE BANKEX" },
+  { symbol: "BSEFOCUSEDIT", code: "134", name: "BSE Focused IT" },
+];
+
+export function readBseSeries(payload: unknown): { prevClose: number | null; points: number[] } | null {
+  let prevClose: number | null = null;
+  let series: unknown = payload;
+
+  if (typeof payload === "string" && payload.includes("#@#")) {
+    const [head, tail] = payload.split("#@#");
+    try {
+      const parsed = JSON.parse(head ?? "null") as unknown;
+      const row = Array.isArray(parsed) ? parsed[0] : parsed;
+      prevClose = parseLooseNumber((row as { PreClose?: unknown; PrevClose?: unknown })?.PreClose ?? (row as { PrevClose?: unknown })?.PrevClose);
+    } catch {
+      prevClose = null;
+    }
+    try {
+      series = JSON.parse(tail ?? "null");
+    } catch {
+      series = null;
+    }
+  } else if (payload && typeof payload === "object") {
+    const record = payload as { Data?: unknown; PrevClose?: unknown; PreClose?: unknown };
+    prevClose = parseLooseNumber(record.PrevClose ?? record.PreClose);
+    if (typeof record.Data === "string") {
+      try {
+        series = JSON.parse(record.Data);
+      } catch {
+        series = record.Data;
+      }
+    } else if (record.Data != null) {
+      series = record.Data;
+    }
+  }
+
+  const points = collectPrices(series);
+  if (prevClose == null && points.length === 0) return null;
+  return { prevClose, points };
+}
+
+function collectPrices(value: unknown): number[] {
+  if (Array.isArray(value)) {
+    const numbers = value.map((item) => {
+      if (typeof item === "number") return item;
+      if (Array.isArray(item)) return parseLooseNumber(item[item.length - 1]);
+      if (item && typeof item === "object") {
+        const row = item as Record<string, unknown>;
+        return parseLooseNumber(row.ltp ?? row.LTP ?? row.close ?? row.Close ?? row.price ?? row.value ?? row.currvalue ?? row.IndexValue);
+      }
+      return parseLooseNumber(item);
+    });
+    return numbers.filter((item): item is number => item != null && item > 0);
+  }
+  return [];
+}
+
+export async function getBseIndexBoard(): Promise<IndexQuote[]> {
+  const quotes: IndexQuote[] = [];
+  const sensex = await readIndexPayload(`${BSE_API}/BseIndiaAPI/api/IndexSensexData1/w`).catch(() => null);
+  if (sensex) quotes.push(toIndexQuote("SENSEX", "BSE SENSEX", sensex));
+
+  let sensex50Code: string | null = null;
+  try {
+    const list = await bseGet<unknown>(`${BSE_API}/BseIndiaAPI/api/FillddlIndex/w?fmdt=&todt=`);
+    sensex50Code = findSensex50Code(list);
+  } catch {
+    sensex50Code = null;
+  }
+
+  const graphs = [
+    ...BSE_INDEX_CODES.filter((item) => item.symbol !== "SENSEX" || quotes.length === 0),
+    ...(sensex50Code && sensex50Code !== "98" ? [{ symbol: "SX50", code: sensex50Code, name: "BSE SENSEX 50" }] : []),
+    { symbol: "SX50", code: "98", name: "BSE SENSEX 50" },
+  ];
+
+  for (const item of graphs) {
+    if (quotes.some((quote) => quote.name === item.name || compactName(quote.name) === compactName(item.symbol))) continue;
+    const series = await readIndexPayload(
+      `${BSE_API}/BseIndiaAPI/api/SensexGraphData/w?index=${item.code}&flag=0&sector=&seriesid=R&frd=null&tod=null`,
+    ).catch(() => null);
+    if (!series || (series.points.length === 0 && series.prevClose == null)) continue;
+    quotes.push(toIndexQuote(item.symbol, item.name, series));
+  }
+
+  return quotes.filter((quote) => quote.last != null);
+}
+
+function compactName(value: string): string {
+  return value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+function findSensex50Code(payload: unknown): string | null {
+  const rows = Array.isArray(payload)
+    ? payload
+    : payload && typeof payload === "object"
+      ? ((payload as { Table?: unknown[] }).Table ?? Object.values(payload as object))
+      : [];
+  if (!Array.isArray(rows)) return null;
+  for (const row of rows) {
+    if (!row || typeof row !== "object") continue;
+    const record = row as Record<string, unknown>;
+    const label = String(record.Index_Name ?? record.indxnm ?? record.INDEX_NAME ?? record.name ?? "");
+    if (!/SENSEX\s*50/i.test(label)) continue;
+    const code = record.Index_Code ?? record.indxcode ?? record.code ?? record.INDEX_CODE;
+    if (code != null && String(code).trim()) return String(code).trim();
+  }
+  return null;
+}
+
+async function readIndexPayload(url: string): Promise<{ prevClose: number | null; points: number[] } | null> {
+  const data = await bseGet<unknown>(url);
+  return readBseSeries(data);
+}
+
+function downsample(values: number[], max: number): number[] {
+  if (values.length <= max) return values;
+  const step = (values.length - 1) / (max - 1);
+  return Array.from({ length: max }, (_, index) => values[Math.round(index * step)]!);
+}
+
+function toIndexQuote(
+  symbol: string,
+  name: string,
+  series: { prevClose: number | null; points: number[] },
+): IndexQuote {
+  const last = series.points.length ? series.points[series.points.length - 1]! : series.prevClose;
+  const change = last != null && series.prevClose != null ? last - series.prevClose : null;
+  const spark = downsample(series.points.length > 1 ? series.points : [series.prevClose, last].filter((value): value is number => value != null && value > 0), 32);
+  return {
+    group: "BSE",
+    name: name || symbol,
+    last,
+    change,
+    pChange: change != null && series.prevClose ? (change / series.prevClose) * 100 : null,
+    previousClose: series.prevClose,
+    open: series.points[0] ?? null,
+    symbol,
+    spark,
   };
 }
 
