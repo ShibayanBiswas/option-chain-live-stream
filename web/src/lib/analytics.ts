@@ -54,24 +54,41 @@ export function computeMaxPain(rows: ChainRow[]): number | null {
 export function buildTotals(rows: ChainRow[], spot: number | null): ChainTotals {
   let ceOi = 0;
   let peOi = 0;
+  let ceOiChg = 0;
+  let peOiChg = 0;
   let ceVolume = 0;
   let peVolume = 0;
   for (const row of rows) {
     ceOi += row.ce.oi ?? 0;
     peOi += row.pe.oi ?? 0;
+    ceOiChg += row.ce.oiChg ?? 0;
+    peOiChg += row.pe.oiChg ?? 0;
     ceVolume += row.ce.volume ?? 0;
     peVolume += row.pe.volume ?? 0;
   }
+  const atm = findAtmStrike(
+    spot,
+    rows.map((r) => r.strike),
+  );
   return {
     ceOi,
     peOi,
+    ceOiChg,
+    peOiChg,
     ceVolume,
     peVolume,
     pcr: ceOi > 0 ? peOi / ceOi : null,
     maxPain: computeMaxPain(rows),
-    atm: findAtmStrike(
-      spot,
-      rows.map((r) => r.strike),
-    ),
+    atm,
+    atmIv: averageAtmIv(rows, atm),
   };
+}
+
+export function averageAtmIv(rows: ChainRow[], atm: number | null): number | null {
+  if (atm == null) return null;
+  const row = rows.find((item) => item.strike === atm);
+  if (!row) return null;
+  const values = [row.ce.iv, row.pe.iv].filter((value): value is number => value != null && value > 0);
+  if (values.length === 0) return null;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
 }

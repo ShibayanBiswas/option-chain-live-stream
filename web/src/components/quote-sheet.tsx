@@ -2,14 +2,20 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 
+import { daysToExpiry } from "@/lib/expiry";
 import { formatCompact, formatNumber, formatPrice, formatSigned } from "@/lib/format";
+import { deltaFromIv } from "@/lib/greeks";
 import type { ChainRow, OptionQuote } from "@/lib/types";
 
 export function QuoteSheet({
   row,
+  spot,
+  expiry,
   onClose,
 }: {
   row: ChainRow | null;
+  spot: number | null;
+  expiry: string;
   onClose: () => void;
 }) {
   return (
@@ -42,8 +48,8 @@ export function QuoteSheet({
               </button>
             </header>
             <div className="sheet-grid">
-              <QuoteCard title="Call" quote={row.ce} tone="call" />
-              <QuoteCard title="Put" quote={row.pe} tone="put" />
+              <QuoteCard title="Call" quote={row.ce} tone="call" strike={row.strike} spot={spot} expiry={expiry} />
+              <QuoteCard title="Put" quote={row.pe} tone="put" strike={row.strike} spot={spot} expiry={expiry} />
             </div>
           </motion.aside>
         </motion.div>
@@ -56,15 +62,29 @@ function QuoteCard({
   title,
   quote,
   tone,
+  strike,
+  spot,
+  expiry,
 }: {
   title: string;
   quote: OptionQuote;
   tone: "call" | "put";
+  strike: number;
+  spot: number | null;
+  expiry: string;
 }) {
+  const delta = deltaFromIv({
+    spot,
+    strike,
+    ivPercent: quote.iv,
+    days: daysToExpiry(expiry),
+    type: tone === "call" ? "call" : "put",
+  });
   const items = [
     ["Last", formatPrice(quote.lastPrice)],
     ["Change", formatSigned(quote.change, 2)],
     ["IV", formatPrice(quote.iv)],
+    ["Delta", delta == null ? "—" : formatNumber(delta, 2)],
     ["Open Interest", formatCompact(quote.oi)],
     ["Interest Change", formatSigned(quote.oiChg, 0)],
     ["Volume", formatCompact(quote.volume)],

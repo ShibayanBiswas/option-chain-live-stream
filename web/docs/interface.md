@@ -1,72 +1,37 @@
 # Interface
 
-The terminal is one full-width trading desk. There are no secondary product tabs.
+The terminal is one full-width trading desk. The plan for the layout is in [UI_PLAN.md](./UI_PLAN.md).
 
-## Layout
+## Frame
 
-The viewport is locked to the desk. The page itself does not scroll. The left rail, toolbar, open-interest panel, and option chain share the full horizontal width. Scrollbars are hidden; panels still scroll with trackpad or touch.
+The page does not scroll. The header and the ticker run from the left edge of the viewport to the right edge. The sidebar toggle is the first control in the header, in normal flow, so it does not cover the symbol. Closing the rail zeroes its track. The header stays full width.
 
-## Sidebar
+On a phone or tablet the rail is not rendered. An icon in the header or the bottom dock opens the same tree as a bottom sheet. Dock targets are at least 44px. Tables scroll inside the chain and the open-interest panel.
 
-- Indexes or Equities
-- Both exchanges, NSE, or BSE
-- Search
-- The contract list is the live book from `/api/universe`
+## Instrument tree
 
-On phones and tablets the rail collapses into a horizontal chip strip so symbols stay reachable without eating the chain.
+Indices and Equity, each with NSE and BSE subsections. Sections animate open and closed. A row shows the code, the long name, spot, change without a plus sign, and a sparkline from the exchange previous close, open, and last. Pins and the last selection are stored in the browser. Ctrl or Cmd+K opens the same list as a command palette with keyboard selection. Arrow keys move through the rail.
 
-## Toolbar
+Expiry options are grouped into Weekly and Monthly. Monthly is the last listed expiry in each calendar month. The option text includes the day count.
 
-- Sidebar toggle
-- Selected symbol and spot
-- Session pill from the exchange status
-- Expiry dropdown
-- View dropdown: **Spot Focus** or **Entire Book**
-- Feed chip: WebSocket when ticks are merging, otherwise Live or Rest, plus the last snapshot latency
-- Magnify, refresh, and theme
-
-### Spot Focus and Entire Book
-
-Spot Focus centres the chain on the at-the-money strike and keeps a tight window around spot. Entire Book shows every listed strike. The labels never mention plus or minus windows.
-
-### Magnify
-
-Magnify enlarges the stage, deepens the open-interest window, and enlarges the chain type so the desk reads like a professional chart board. Magnify also collapses the rail so the book can use the full width.
-
-## Key figures
-
-Put Call Ratio, Max Pain, Call Interest, Put Interest, and At the Money sit in one row across the desk.
-
-## Open interest
-
-The Strike Pressure panel is a mirrored call and put histogram. Bars spring in, the spot row is washed in gold, and a soft sheen runs across the panel. Call bars grow toward the centre from the left. Put bars grow toward the centre from the right.
+Spot Focus keeps a window around the at-the-money strike. Entire Book shows every strike. The labels do not use a plus or minus window. The chain footer states the visible span as `Strikes A to B`.
 
 ## Chain
 
-Calls sit on the left. Puts sit on the right. The strike column is centred.
+Calls, strike, and puts are three panes in one vertical scroller. Columns are content-sized and packed against the strike, so spare width sits outside the figures. The call pane scrolls outward from the strike. The strike pane stays put. Headers stick to the top of the scroller.
 
-### Column order
+Collapsed, the default, shows open interest, the change in open interest, volume, IV, change, and last, dropping any of those that are mostly empty. Expanded shows every column that has data, including bid and ask when the book actually quotes them.
 
-Important quote columns sit against the strike. Quiet book columns sit farther away.
+In-the-money calls, strikes below spot, use a red tint. In-the-money puts, strikes above spot, use a green tint. The at-the-money strike is gold. Open interest and volume sit on a depth bar, red on the call side and green on the put side. Last price heat follows volume rank: hatched grey when there is no volume, faint blue when volume is low, gold when volume is high. A spot line sits between the strikes that bracket the underlying. The highest call open interest, the highest put open interest, and the largest price change are marked on the strike.
 
-Call side, reading toward the strike:
+A tick flashes the cell green or red without changing the row height.
 
-Open Interest → Interest Change → Volume → IV → Bid Quantity → Bid → Ask → Ask Quantity → Change → Last → Strike
+## Open interest
 
-Put side mirrors that order so Last sits against the strike on both sides.
+Collapsed shows the ratio, max pain, call interest, put interest, and a short histogram around spot. Expanded adds the full strike book, the change in open interest, and the put-call ratio path collected during the session. Bars grow in on load. The row under the pointer shows a crosshair readout.
 
-Empty bid and ask columns stay hidden when the whole book has no quotes.
+Summary cards above the panel count the ratio, max pain, call interest, put interest, interest change, and at-the-money IV.
 
-### Volume heat
+## Chrome
 
-- Gold wash on Last: high traded volume
-- Blue wash on Last: low traded volume among strikes that actually traded
-- Grey shade: no volume on that side, or on the whole strike when both sides are quiet
-
-A price tick flashes green or red.
-
-Click a strike to open the quote sheet. The sheet only renders fields that have a value. On phones the sheet rises from the bottom of the screen.
-
-## Themes
-
-Light is the default. Dark is stored in `option-chain-live-theme` and applied before paint so the first frame matches the last choice.
+Magnify collapses the rail and enlarges the book. Scrollbars are hidden. Light and dark themes share the same tokens. Toasts report a lost feed, a restored feed, an expiry change, and a refresh. The quote sheet is the strike popup and includes delta when IV, spot, and time are present. Positive numbers are not prefixed with a plus sign.

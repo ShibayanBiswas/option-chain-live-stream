@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { applyPatch, type ChainPatch } from "@/lib/diff";
 import type { OptionChainSnapshot } from "@/lib/types";
 
 type Status = "idle" | "connecting" | "live" | "polling" | "error";
@@ -86,6 +87,18 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
         if (cancelled) return;
         try {
           applySnapshot(JSON.parse((evt as MessageEvent).data));
+          setStatus("live");
+        } catch {
+          /* ignore parse */
+        }
+      });
+
+      es.addEventListener("patch", (evt) => {
+        if (cancelled) return;
+        try {
+          const patch = JSON.parse((evt as MessageEvent).data) as ChainPatch;
+          setSnapshot((current) => (current ? applyPatch(current, patch) : current));
+          setUpdatedAt(Date.now());
           setStatus("live");
         } catch {
           /* ignore parse */

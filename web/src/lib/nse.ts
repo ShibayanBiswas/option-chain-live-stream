@@ -1,6 +1,10 @@
 import { buildTotals } from "./analytics";
+import { isAnandRathiSymbol } from "./equity";
 import { parseLooseNumber } from "./format";
 import { httpsGet, httpsGetJson } from "./http";
+import type { IndexQuote } from "./index-match";
+import { logEvent } from "./log";
+import { classifySession } from "./session";
 import type {
   ChainRow,
   OptionChainSnapshot,
@@ -9,6 +13,7 @@ import type {
 } from "./types";
 
 const NSE_BASE = "https://www.nseindia.com";
+const NSE_INDEX_BOARD = "https://www.nseindia.in/api/allIndices";
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
 
@@ -143,32 +148,74 @@ export async function discoverNseBook(): Promise<{
   indexes: string[];
   equities: string[];
 }> {
-  const [page, equities] = await Promise.all([
-    (async () => {
-      const cookie = await primeSession();
-      const res = await httpsGet(
-        `${NSE_BASE}/option-chain`,
-        baseHeaders({ Accept: "text/html,application/xhtml+xml" }),
-        cookie,
-      );
-      return res.body;
-    })(),
-    fetchJson<string[]>("/api/master-quote"),
-  ]);
+  const cookie = await primeSession();
+  const page = await httpsGet(
+    `${NSE_BASE}/option-chain`,
+    baseHeaders({ Accept: "text/html,application/xhtml+xml" }),
+    cookie,
+  );
 
-  const block = page.match(
+  const block = page.body.match(
     /<select[^>]*id="equity_optionchain_select"[^>]*>([\s\S]*?)<\/select>/i,
   );
   const indexes = block
     ? [...block[1].matchAll(/<option[^>]*value="([A-Z0-9&-]+)"/g)]
-        .map((m) => m[1])
-        .filter((v): v is string => Boolean(v))
+        .map((match) => match[1])
+        .filter((value): value is string => Boolean(value))
     : [];
+
+  if (indexes.length === 0) {
+    throw new Error("NSE index list was empty");
+  }
+
+  let equities: string[] = [];
+  try {
+    const expiries = await getNseContractInfo("ANANDRATHI");
+    if (expiries.length > 0) equities = ["ANANDRATHI"];
+  } catch (err) {
+    logEvent("warn", "nse equity probe failed", {
+      symbol: "ANANDRATHI",
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 
   return {
     indexes,
-    equities: (equities ?? []).map((s) => String(s).trim()).filter(Boolean),
+    equities: equities.filter(isAnandRathiSymbol),
   };
+}
+
+let indexBoardCache: { at: number; value: IndexQuote[] } | null = null;
+
+export async function getNseIndexBoard(): Promise<IndexQuote[]> {
+  if (indexBoardCache && Date.now() - indexBoardCache.at < 15_000) return indexBoardCache.value;
+  const cookie = await primeSession();
+  const res = await httpsGetJson<{
+    data?: Array<{
+      key?: string;
+      index?: string;
+      indexSymbol?: string;
+      last?: number;
+      variation?: number;
+      percentChange?: number;
+      previousClose?: number;
+      open?: number;
+    }>;
+  }>(NSE_INDEX_BOARD, baseHeaders(), cookie);
+  const value: IndexQuote[] = (res.data.data ?? [])
+    .filter((row) => /DERIVATIV/i.test(row.key ?? ""))
+    .map((row) => ({
+      group: String(row.key ?? ""),
+      name: String(row.indexSymbol || row.index || ""),
+      last: parseLooseNumber(row.last),
+      change: parseLooseNumber(row.variation),
+      pChange: parseLooseNumber(row.percentChange),
+      previousClose: parseLooseNumber(row.previousClose),
+      open: parseLooseNumber(row.open),
+    }))
+    .filter((row) => row.name);
+  indexBoardCache = { at: Date.now(), value };
+  return value;
 }
 
 let marketCache: {
@@ -191,12 +238,16 @@ async function readMarketStatus() {
     data.marketState?.find((m) => m.market === "Capital Market") ??
     data.marketState?.[0];
   const status = capital?.marketStatus ?? "Unknown";
+  const message = capital?.marketStatusMessage ?? "";
+  const session = classifySession(status, message);
   return {
     status,
     tradeDate: capital?.tradeDate ?? "",
     niftyLast: parseLooseNumber(capital?.last),
-    message: capital?.marketStatusMessage ?? "",
-    open: String(status).toLowerCase() === "open",
+    message,
+    open: session.open,
+    phase: session.phase,
+    label: session.label,
   };
 }
 
@@ -206,6 +257,8 @@ export async function getNseMarketStatus(): Promise<{
   niftyLast: number | null;
   message: string;
   open: boolean;
+  phase: "open" | "pre-open" | "closed" | "holiday";
+  label: string;
 }> {
   if (marketCache && Date.now() - marketCache.at < 15_000) return marketCache.value;
   const value = await readMarketStatus();

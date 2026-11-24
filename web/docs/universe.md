@@ -1,19 +1,21 @@
 # Universe
 
-Two books, two exchanges.
+Two categories. Indices come from the exchanges. Equity is only Anand Rathi Wealth.
 
-## Indexes
+## Indices
 
-NSE index names are read from the option-chain page select `equity_optionchain_select` on each refresh. That is the exchange's own index-option list.
+NSE index names are read from the option-chain page select `equity_optionchain_select` on each refresh. That is the exchange's own index-option list. Nothing in source code is a private copy of that list.
 
 BSE index names and contract codes come from `ddlUnderlyingAsset` with product type `IO`. If the edge rejects the server, the desk uses the symbols and contract codes stored in `src/data/bse-cache.json`, which was captured from that same endpoint.
 
-## Equities
+The rail shows the exchange code. When `/api/quotes` can match the code to the NSE derivatives index board, the row also shows the exchange's long name, such as NIFTY 50 or NIFTY BANK. The match table in `src/lib/index-match.ts` only joins those two exchange strings. A new option symbol with no join still appears under its own code.
 
-NSE equity option underlyings are the array from `/api/master-quote`. The exchange publishes this list for the option-chain symbol dropdown. It includes the Anand Rathi Wealth listed name when the exchange includes it. The desk does not keep a private copy of that list in source code.
+## Equity
 
-BSE equity option underlyings are requested with product type `SO` from the same underlying endpoint. They appear under Equities with exchange BSE when the endpoint returns them.
+NSE equity is included only when `option-chain-contract-info` for `ANANDRATHI` returns expiries. The desk does not call `/api/master-quote`, so the other equity names are never requested.
+
+BSE equity is included only when the stock-option underlying list, product type `SO`, contains an Anand Rathi Wealth name. Other stock underlyings are discarded before the book is cached, and their chains are never requested. If that name is not in the list, the BSE equity section stays empty.
 
 ## Cache
 
-The combined book is cached in server memory for ten minutes, then rebuilt. The browser loads it from `/api/universe`.
+The combined book is cached in server memory for ten minutes, then rebuilt. An empty index list is not cached. The browser loads the book from `/api/universe`.

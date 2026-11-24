@@ -18,10 +18,10 @@ function assert(cond, msg) {
   if (!cond) throw new Error(msg);
 }
 
-async function verifySymbol(symbol, exchange = "NSE") {
+async function verifySymbol(symbol, exchange = "NSE", segment = "INDEX") {
   const t0 = Date.now();
   const snap = await getJson(
-    `/api/chain?symbol=${encodeURIComponent(symbol)}&exchange=${exchange}`,
+    `/api/chain?symbol=${encodeURIComponent(symbol)}&exchange=${exchange}&segment=${segment}`,
   );
   const latency = Date.now() - t0;
 
@@ -60,14 +60,17 @@ async function verifySymbol(symbol, exchange = "NSE") {
 async function main() {
   console.log(`Accuracy suite against ${BASE}`);
   await getJson("/api/health");
-  const results = [];
-  for (const symbol of ["NIFTY", "BANKNIFTY", "FINNIFTY", "RELIANCE"]) {
-    results.push(await verifySymbol(symbol, "NSE"));
+  const book = await getJson("/api/universe");
+  const equities = book.equities || [];
+  if (!equities.length || equities.some((item) => !String(item.symbol).toUpperCase().includes("ANANDRATHI"))) {
+    throw new Error(`Equity book must be only Anand Rathi Wealth, saw ${equities.map((item) => item.symbol).join(",")}`);
   }
-  try {
-    results.push(await verifySymbol("SENSEX", "BSE"));
-  } catch (err) {
-    console.warn(`⚠ BSE:SENSEX skipped — ${err.message}`);
+  const results = [];
+  for (const item of book.indexes || []) {
+    results.push(await verifySymbol(item.symbol, item.exchange, item.segment));
+  }
+  for (const item of equities) {
+    results.push(await verifySymbol(item.symbol, item.exchange, item.segment));
   }
 
   const avg = results.reduce((s, r) => s + r.latency, 0) / results.length;

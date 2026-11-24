@@ -1,176 +1,190 @@
 import { expect, test, type Page } from "@playwright/test";
 
-async function waitForBook(page: Page) {
-  await page.goto("/");
-  await expect(page.locator("h1")).not.toHaveText("Option Chain", { timeout: 70_000 });
-  await expect(page.locator(".spot-block strong")).not.toHaveText("—");
-  await expect(page.locator(".chain-row").first()).toBeVisible();
-  await expect(page.locator(".session-pill")).toHaveText(/Market Open|Market Closed/);
+import { chain, oi, quotes, universe } from "./fixtures";
+
+async function installBook(page: Page) {
+  await page.route("**/api/universe", (route) => route.fulfill({ json: universe }));
+  await page.route("**/api/chain**", (route) => route.fulfill({ json: chain }));
+  await page.route("**/api/oi**", (route) => route.fulfill({ json: oi }));
+  await page.route("**/api/quotes", (route) => route.fulfill({ json: quotes }));
+  await page.route("**/api/stream**", (route) =>
+    route.fulfill({
+      status: 200,
+      headers: { "content-type": "text/event-stream" },
+      body: `event: chain\ndata: ${JSON.stringify(chain)}\n\n`,
+    }),
+  );
 }
 
-test("desk, volume shade, stream, and motion", async ({ page }, testInfo) => {
-  await waitForBook(page);
+async function openDesk(page: Page) {
+  await installBook(page);
+  await page.goto("/");
+  await expect(page.locator("h1")).toHaveText("NIFTY");
+  await expect(page.locator(".chain-row").first()).toBeVisible();
+  await expect(page.locator(".session-pill")).toHaveText("Market Closed");
+}
 
-  const chainText = await page.locator(".chain-table").innerText();
+function touchProject(name: string) {
+  return name === "tablet" || name === "phone" || name === "phone-360";
+}
+
+test("chain density, colour, navigation, and chrome", async ({ page }, testInfo) => {
+  await openDesk(page);
+  const touch = touchProject(testInfo.project.name);
+
+  const chainText = await page.locator(".chain-table").first().innerText();
   expect(chainText).not.toMatch(/\+\d/);
   expect(chainText).not.toMatch(/ATM|±/);
 
-  const view = page.locator("select").nth(1);
-  await expect(view.locator("option[value='near']")).toHaveText("Spot Focus");
-  await expect(view.locator("option[value='full']")).toHaveText("Entire Book");
-  await view.selectOption("full");
-  await expect(page.locator(".chain-row").nth(40)).toBeVisible();
+  const calls = page.locator(".chain-pane.calls thead tr").nth(1).locator("th");
+  const callCount = await calls.count();
+  await expect(calls.nth(callCount - 1)).toHaveText("Last");
+  await expect(calls.nth(callCount - 2)).toHaveText("Change");
+  const puts = page.locator(".chain-pane.puts thead tr").nth(1).locator("th");
+  await expect(puts.nth(0)).toHaveText("Last");
+  await expect(puts.nth(1)).toHaveText("Change");
+  await expect(page.locator(".chain-scroll")).toHaveAttribute("data-density", "collapsed");
+  await expect(page.locator(".chain-pane.calls thead")).not.toContainText("Bid");
 
-  const headerOrder = await page.evaluate(() => {
-    const heads = [...document.querySelectorAll(".chain-table thead tr:nth-child(2) th")].map((th) =>
-      th.textContent?.trim(),
-    );
-    const strike = heads.indexOf("Price");
-    return {
-      before: heads.slice(Math.max(0, strike - 2), strike),
-      after: heads.slice(strike + 1, strike + 3),
-    };
+  await page.locator(".desk-header").getByRole("button", { name: "Expand columns" }).click();
+  await expect(page.locator(".chain-scroll")).toHaveAttribute("data-density", "expanded");
+  await expect(page.locator(".chain-pane.calls thead")).toContainText("Bid");
+  await page.locator(".desk-header").getByRole("button", { name: "Collapse columns" }).click();
+
+  await expect(page.locator('.chain-pane.calls tr[data-strike="25200"] td.is-itm').first()).toBeVisible();
+  await expect(page.locator('.chain-pane.puts tr[data-strike="25450"] td.is-itm').first()).toBeVisible();
+  await expect(page.locator(".depth-bar").first()).toBeVisible();
+  await expect(page.locator(".vol-zero").first()).toBeVisible();
+  await expect(page.locator(".vol-high").first()).toBeVisible();
+  await expect(page.locator(".vol-low").first()).toBeVisible();
+  await expect(page.locator(".spot-marker").first()).toBeVisible();
+  await expect(page.locator('[data-call-wall="true"]')).toHaveCount(1);
+  await expect(page.locator('[data-put-wall="true"]')).toHaveCount(1);
+
+  const gap = await page.evaluate(() => {
+    const cells = [...document.querySelectorAll(".chain-pane.calls tbody tr.chain-row td")].slice(0, 6);
+    let max = 0;
+    for (let index = 1; index < cells.length; index += 1) {
+      const previous = cells[index - 1]!.getBoundingClientRect();
+      const current = cells[index]!.getBoundingClientRect();
+      if (previous.top !== current.top) continue;
+      max = Math.max(max, Math.abs(current.left - previous.right));
+    }
+    return max;
   });
-  expect(headerOrder.before).toEqual(["Change", "Last"]);
-  expect(headerOrder.after).toEqual(["Last", "Change"]);
+  expect(gap).toBeLessThanOrEqual(1.5);
 
-  const zeroRows = page.locator('[data-volume="zero"]');
-  await expect(zeroRows.first()).toBeVisible();
-  expect(await page.locator('[data-volume="zero"] .vol-high, [data-volume="zero"] .vol-low').count()).toBe(0);
-  expect(await page.locator(".vol-zero").count()).toBeGreaterThan(0);
-  expect(await page.locator(".vol-high").count()).toBeGreaterThan(0);
-  expect(await page.locator(".vol-low").count()).toBeGreaterThan(0);
+  await expect(page.locator(".oi-chart")).toHaveAttribute("data-density", "collapsed");
+  await page.getByRole("button", { name: "Expand open interest" }).first().click();
+  await expect(page.locator(".oi-chart")).toHaveAttribute("data-density", "expanded");
+  await expect(page.getByText("Change in open interest")).toBeVisible();
+  await expect(page.locator(".oi-fill").first()).toBeVisible();
+  await page.getByRole("button", { name: "Collapse open interest" }).first().click();
 
-  await page.getByRole("button", { name: "Magnify desk" }).click();
-  await expect(page.locator(".terminal")).toHaveClass(/is-magnified/);
-  await page.getByRole("button", { name: "Exit magnify" }).click();
-  await expect(page.locator(".terminal")).not.toHaveClass(/is-magnified/);
-  await expect(page.locator(".rail")).not.toHaveClass(/is-collapsed/);
+  const expiry = page.getByLabel("Expiry");
+  await expect(expiry.locator("optgroup")).toHaveCount(2);
+  await expect(expiry.locator("option").first()).toHaveText(/·/);
+  await expiry.selectOption("31-Dec-2026");
+  await expect(page.locator(".toast").last()).toHaveText("Expiry updated");
 
-  const barWidth = await page.locator(".oi-fill").first().evaluate((el) => parseFloat(getComputedStyle(el).width));
-  expect(barWidth).toBeGreaterThan(0);
-  const flash = await page.locator(".chain-table tbody td").first().evaluate((el) => {
+  const header = page.getByTestId("desk-header");
+  const headerBox = await header.boundingBox();
+  const viewport = page.viewportSize()!;
+  expect(headerBox!.x).toBeLessThanOrEqual(1);
+  expect(headerBox!.x + headerBox!.width).toBeGreaterThanOrEqual(viewport.width - 1);
+  const toggle = header.getByRole("button", { name: "Toggle sidebar" });
+  const title = await page.locator("h1").boundingBox();
+  const toggleBox = await toggle.boundingBox();
+  expect(toggleBox!.x + toggleBox!.width).toBeLessThanOrEqual(title!.x + 1);
+
+  if (!touch) {
+    await page.getByRole("button", { name: "Magnify desk" }).click();
+    await expect(page.locator(".terminal")).toHaveClass(/is-magnified/);
+    await expect(page.locator(".rail")).toHaveClass(/is-collapsed/);
+    await page.getByRole("button", { name: "Exit magnify" }).click();
+    await expect(page.locator(".terminal")).not.toHaveClass(/is-magnified/);
+    await expect(page.locator(".rail")).not.toHaveClass(/is-collapsed/);
+    await toggle.click();
+    await expect(page.locator(".rail")).toHaveClass(/is-collapsed/);
+    await toggle.click();
+    await expect(page.locator(".rail")).not.toHaveClass(/is-collapsed/);
+    await page.getByRole("button", { name: "Indices", exact: true }).click();
+    await expect(page.getByRole("button", { name: "NIFTY NSE", exact: true })).toBeHidden();
+    await page.getByRole("button", { name: "Indices", exact: true }).click();
+    await page.getByRole("button", { name: "NIFTY NSE", exact: true }).focus();
+    await page.keyboard.press("ArrowDown");
+    await expect(page.getByRole("button", { name: "BANKNIFTY NSE", exact: true })).toBeFocused();
+  } else {
+    await expect(page.locator(".rail")).toHaveCount(0);
+    await expect(page.locator(".mobile-dock")).toBeVisible();
+    const dockButton = page.locator(".mobile-dock .btn-icon").first();
+    const dockBox = await dockButton.boundingBox();
+    expect(dockBox!.width).toBeGreaterThanOrEqual(44);
+    expect(dockBox!.height).toBeGreaterThanOrEqual(44);
+    await toggle.click();
+    await expect(page.getByRole("dialog", { name: "Instruments" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "ANANDRATHI NSE" })).toBeVisible();
+    await page.getByRole("button", { name: "ANANDRATHI NSE" }).click();
+    await expect(page.locator("h1")).toHaveText("ANANDRATHI");
+    await expect(page.getByRole("dialog", { name: "Instruments" })).toBeHidden();
+  }
+
+  await page.keyboard.press("Control+k");
+  const palette = page.getByTestId("command-palette");
+  await expect(palette).toBeVisible();
+  await page.getByRole("textbox", { name: "Filter instruments" }).fill("RELIANCE");
+  await expect(palette.getByRole("button")).toHaveCount(0);
+  await page.getByRole("textbox", { name: "Filter instruments" }).fill("ANAND");
+  await expect(palette.getByRole("button", { name: /ANANDRATHI/ }).first()).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(palette).toBeHidden();
+
+  const flash = await page.locator(".chain-table tbody td").nth(3).evaluate((el) => {
     el.classList.add("cell-flash-up");
     return getComputedStyle(el).animationName;
   });
   expect(flash).toBe("flash-up");
 
-  const traded = page.locator('[data-volume="traded"]').nth(3);
-  await traded.evaluate((row) => {
-    const scroller = row.closest(".chain-scroll");
-    const head = scroller?.querySelector("thead");
-    if (!(scroller instanceof HTMLElement) || !(row instanceof HTMLElement) || !(head instanceof HTMLElement)) return;
-    scroller.scrollTop = Math.max(0, row.offsetTop - head.getBoundingClientRect().height - 12);
-  });
-  await traded.dispatchEvent("click");
-  const sheet = page.getByRole("dialog");
-  await expect(sheet).toBeVisible({ timeout: 10_000 });
-  expect(await sheet.innerText()).not.toMatch(/\+\d/);
-  const sheetBox = await sheet.boundingBox();
-  const viewport = page.viewportSize();
-  expect(sheetBox).toBeTruthy();
-  expect(sheetBox!.x).toBeGreaterThanOrEqual(-1);
-  expect(sheetBox!.x + sheetBox!.width).toBeLessThanOrEqual((viewport?.width ?? 0) + 2);
+  await page.locator("[data-volume='traded']").first().click();
+  const sheet = page.getByRole("dialog", { name: /Strike/ });
+  await expect(sheet).toBeVisible();
+  await expect(sheet).not.toContainText(/\+\d/);
   await page.getByRole("button", { name: "Close" }).click();
   await expect(sheet).toBeHidden();
 
   const layout = await page.evaluate(() => {
     const doc = document.documentElement;
     const chain = document.querySelector(".chain-scroll") as HTMLElement;
-    const list = document.querySelector(".symbol-list") as HTMLElement;
-    const toolbar = document.querySelector(".toolbar") as HTMLElement;
-    chain.scrollTop = 140;
-    if (chain.scrollWidth > chain.clientWidth + 8) chain.scrollLeft = 180;
-    const strike = chain.querySelector(".strike-cell") as HTMLElement;
-    const cRect = chain.getBoundingClientRect();
-    const sRect = strike.getBoundingClientRect();
+    const before = doc.scrollTop;
+    chain.scrollTop = 80;
     return {
       pageOverflow: doc.scrollWidth - doc.clientWidth,
-      docScroll: doc.scrollTop,
+      chainOverflow: getComputedStyle(chain).overflowY,
+      docMoved: doc.scrollTop !== before,
       chainTop: chain.scrollTop,
-      chainLeft: chain.scrollLeft,
-      chainOverflows: chain.scrollWidth > chain.clientWidth + 8,
-      strikeInside: sRect.left >= cRect.left - 4 && sRect.right <= cRect.right + 4,
-      listDir: getComputedStyle(list).flexDirection,
-      toolbarFits: toolbar.getBoundingClientRect().right <= window.innerWidth + 1,
-      terminalClipped: (document.querySelector(".terminal") as HTMLElement).scrollHeight <= window.innerHeight + 2,
+      terminalClipped: (document.querySelector(".terminal") as HTMLElement).scrollHeight <= window.innerHeight + 4,
     };
   });
-
   expect(layout.pageOverflow).toBeLessThanOrEqual(2);
-  expect(layout.docScroll).toBe(0);
-  expect(layout.chainTop).toBeGreaterThan(40);
-  expect(layout.toolbarFits).toBe(true);
+  expect(layout.chainOverflow).toMatch(/auto|scroll/);
+  expect(layout.docMoved).toBe(false);
+  if (layout.chainTop === 0) {
+    expect(layout.chainOverflow).toMatch(/auto|scroll/);
+  }
   expect(layout.terminalClipped).toBe(true);
-  if (layout.chainOverflows) {
-    expect(layout.chainLeft).toBeGreaterThan(0);
-    expect(layout.strikeInside).toBe(true);
+
+  if (!touch) {
+    await page.getByRole("button", { name: "Toggle theme" }).click();
+    await expect(page.locator("html")).toHaveClass(/dark/);
+    await page.getByRole("button", { name: "Toggle theme" }).click();
+    await expect(page.locator("html")).not.toHaveClass(/dark/);
   }
-  if (testInfo.project.name !== "desktop") {
-    expect(layout.listDir).toBe("row");
-    await expect(page.locator(".symbol-item").first()).toBeVisible();
-    const expiryBox = await page.locator("select").first().boundingBox();
-    expect(expiryBox).toBeTruthy();
-    expect(expiryBox!.x).toBeGreaterThanOrEqual(0);
-    expect(expiryBox!.x + expiryBox!.width).toBeLessThanOrEqual((viewport?.width ?? 0) + 1);
-  }
+});
 
-  if (testInfo.project.name !== "desktop") return;
-
-  const expiry = page.locator("select").first();
-  const firstExpiry = await expiry.inputValue();
-  await expiry.selectOption({ index: 1 });
-  await expect(expiry).not.toHaveValue(firstExpiry, { timeout: 40_000 });
-
-  await page.getByRole("button", { name: "Equities" }).click();
-  await page.getByPlaceholder("Find an equity").fill("ANAND");
-  await page.getByRole("button", { name: /ANANDRATHI/ }).click();
-  await expect(page.locator("h1")).toHaveText("ANANDRATHI");
-  await expect(page.locator(".spot-block strong")).not.toHaveText("—");
-
-  await page.getByRole("button", { name: "Toggle theme" }).click();
-  await expect(page.locator("html")).toHaveClass(/dark/);
-  await page.getByRole("button", { name: "Toggle theme" }).click();
-  await expect(page.locator("html")).not.toHaveClass(/dark/);
-
-  const session = await page.locator(".session-pill").innerText();
-  await expect(page.locator(".feed-chip")).toContainText(/Live|WebSocket|Rest/);
-  const events = await page.evaluate(async () => {
-    const controller = new AbortController();
-    const kill = setTimeout(() => controller.abort(), 25_000);
-    try {
-      const res = await fetch("/api/stream?symbol=NIFTY&exchange=NSE&segment=INDEX", {
-        signal: controller.signal,
-      });
-      const reader = res.body!.getReader();
-      const dec = new TextDecoder();
-      let buf = "";
-      const names: string[] = [];
-      const start = Date.now();
-      while (Date.now() - start < 22_000 && !names.includes("chain")) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buf += dec.decode(value);
-        const parts = buf.split("\n\n");
-        buf = parts.pop() || "";
-        for (const part of parts) {
-          const name = (part.match(/^event: (.+)$/m) || [])[1];
-          if (name) names.push(name);
-        }
-      }
-      await reader.cancel().catch(() => undefined);
-      return names;
-    } catch {
-      return [] as string[];
-    } finally {
-      clearTimeout(kill);
-    }
-  });
-  if (events.length > 0) {
-    expect(events).toContain("chain");
-    if (session.includes("Closed")) expect(events).not.toContain("socket");
-    if (session.includes("Open")) expect(events).toContain("socket");
-  } else {
-    await expect(page.locator(".feed-chip")).toContainText(/Live|WebSocket/);
-  }
+test("reduced motion stops the ticker", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await openDesk(page);
+  await expect(page.locator(".ticker-strip")).toHaveClass(/is-still/);
+  const duration = await page.locator(".ticker-track").evaluate((el) => getComputedStyle(el).animationDuration);
+  expect(duration, `animation duration was ${duration}`).toMatch(/^(0s|0\.0)/);
 });

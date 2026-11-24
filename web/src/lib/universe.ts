@@ -1,5 +1,8 @@
+import { deskBook } from "./book";
 import { BseBlockedError, discoverBseUnderlyings } from "./bse";
 import { listCachedBse } from "./bse-cache";
+import { isAnandRathiSymbol } from "./equity";
+import { logEvent } from "./log";
 import { discoverNseBook } from "./nse";
 import type { Exchange, Instrument, Segment } from "./types";
 
@@ -17,6 +20,7 @@ function asInstrument(
   exchange: Exchange,
   segment: Segment,
   bseScrip?: number,
+  bseProduct?: "IO" | "SO",
 ): Instrument {
   return {
     symbol,
@@ -25,7 +29,12 @@ function asInstrument(
     segment,
     nseType: exchange === "NSE" ? (segment === "INDEX" ? "Indices" : "Equity") : undefined,
     bseScrip,
+    bseProduct,
   };
+}
+
+export function clearUniverseCache() {
+  cache = null;
 }
 
 export async function loadUniverse(force = false): Promise<DeskUniverse> {
@@ -41,33 +50,36 @@ export async function loadUniverse(force = false): Promise<DeskUniverse> {
       discoverBseUnderlyings("SO").catch(() => []),
     ]);
     bseIndexes = indexes.map((row) =>
-      asInstrument(row.symbol.replace(/\s+/g, ""), "BSE", "INDEX", row.scrip),
+      asInstrument(row.symbol.replace(/\s+/g, ""), "BSE", "INDEX", row.scrip, "IO"),
     );
-    bseEquities = stocks.map((row) =>
-      asInstrument(row.symbol.replace(/\s+/g, ""), "BSE", "EQUITY", row.scrip),
-    );
+    bseEquities = stocks
+      .filter((row) => isAnandRathiSymbol(row.symbol))
+      .map((row) => asInstrument(row.symbol.replace(/\s+/g, ""), "BSE", "EQUITY", row.scrip, "SO"));
   } catch (err) {
     if (!(err instanceof BseBlockedError)) {
-      console.error("bse universe", err);
+      logEvent("error", "bse universe", { error: err instanceof Error ? err.message : String(err) });
     }
     bseIndexes = listCachedBse().map((row) =>
-      asInstrument(row.symbol, "BSE", "INDEX", row.scrip),
+      asInstrument(row.symbol, "BSE", "INDEX", row.scrip, "IO"),
     );
   }
 
-  const value: DeskUniverse = {
-    indexes: [
+  const shaped = deskBook(
+    [
       ...nse.indexes.map((symbol) => asInstrument(symbol, "NSE", "INDEX")),
       ...bseIndexes,
     ],
-    equities: [
-      ...nse.equities.map((symbol) => asInstrument(symbol, "NSE", "EQUITY")),
+    [
+      ...nse.equities.filter(isAnandRathiSymbol).map((symbol) => asInstrument(symbol, "NSE", "EQUITY")),
       ...bseEquities,
     ],
+  );
+  const value: DeskUniverse = {
+    ...shaped,
     refreshedAt: new Date().toISOString(),
   };
 
-  cache = { at: Date.now(), value };
+  if (value.indexes.length > 0) cache = { at: Date.now(), value };
   return value;
 }
 

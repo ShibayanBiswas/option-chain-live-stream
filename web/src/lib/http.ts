@@ -46,10 +46,13 @@ function execCurl(args: string[]): Promise<{ stdout: string; code: number }> {
 /**
  * Reliable exchange GET via system curl (Node fetch/undici gets reset by NSE/Akamai).
  */
-export async function httpsGet(
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function httpsGetOnce(
   url: string,
   headers: Record<string, string>,
-  _cookies = "",
 ): Promise<HttpResult> {
   const args = [
     "-sL",
@@ -105,6 +108,34 @@ export async function httpsGet(
     body,
     cookies,
   };
+}
+
+const RETRY_STATUS = new Set([429, 502, 503]);
+
+export async function httpsGet(
+  url: string,
+  headers: Record<string, string>,
+  cookies = "",
+): Promise<HttpResult> {
+  void cookies;
+  let last: HttpResult | null = null;
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const res = await httpsGetOnce(url, headers);
+      if (RETRY_STATUS.has(res.status) && attempt < 2) {
+        last = res;
+        await delay(400 * 2 ** attempt);
+        continue;
+      }
+      return res;
+    } catch (err) {
+      lastError = err;
+      if (attempt < 2) await delay(400 * 2 ** attempt);
+    }
+  }
+  if (last) return last;
+  throw lastError instanceof Error ? lastError : new Error(`curl failed for ${url}`);
 }
 
 export async function httpsGetJson<T>(

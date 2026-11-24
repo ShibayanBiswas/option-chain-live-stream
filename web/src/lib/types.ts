@@ -24,11 +24,14 @@ export type ChainRow = {
 export type ChainTotals = {
   ceOi: number;
   peOi: number;
+  ceOiChg: number;
+  peOiChg: number;
   ceVolume: number;
   peVolume: number;
   pcr: number | null;
   maxPain: number | null;
   atm: number | null;
+  atmIv: number | null;
 };
 
 export type OptionChainSnapshot = {
@@ -45,6 +48,8 @@ export type OptionChainSnapshot = {
   source: "nse" | "bse";
   marketOpen: boolean;
   feed: "websocket" | "rest";
+  pcrSeries?: { t: string; pcr: number }[];
+  stale?: boolean;
 };
 
 export type Instrument = {
@@ -54,6 +59,7 @@ export type Instrument = {
   segment: Segment;
   nseType?: "Indices" | "Equity";
   bseScrip?: number;
+  bseProduct?: "IO" | "SO";
 };
 
 export type MetaResponse = {

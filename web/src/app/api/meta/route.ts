@@ -20,7 +20,10 @@ export async function GET() {
         status: market?.status ?? "Unknown",
         tradeDate: market?.tradeDate ?? "",
         niftyLast: market?.niftyLast ?? null,
-        message: market?.open ? "Market Open" : "Market Closed",
+        open: market?.open ?? false,
+        phase: market?.phase ?? "closed",
+        label: market?.label ?? "Market Closed",
+        message: market?.label ?? "Market Closed",
       },
       serverTimeIst: new Date().toLocaleString("en-IN", {
         timeZone: "Asia/Kolkata",

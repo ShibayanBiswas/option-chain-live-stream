@@ -1,11 +1,12 @@
 # Option Chain Live Stream
 
-Anand Rathi Wealth derivatives desk for NSE and BSE. Indexes and equities are loaded from the exchanges. The chain streams over server-sent events, and NSE names also merge the exchange websocket. The desk is full width, Spot Focus or Entire Book, with magnify and an animated Strike Pressure open-interest panel.
+Anand Rathi Wealth derivatives desk. Indices are every NSE and BSE name the exchanges publish for options. Equity is only Anand Rathi Wealth, on NSE and on BSE when the exchange lists it. The chain streams over server-sent events, and NSE names also merge the exchange websocket while the session is open.
 
 ## Run
 
 ```bash
 npm install
+npm test
 npm run typecheck
 npm run build
 npm run start
@@ -17,15 +18,18 @@ With the server running:
 
 ```bash
 npm run verify:accuracy
+npm run test:e2e
 ```
 
 ## Docs
 
+- [UI plan](./docs/UI_PLAN.md)
 - [Architecture](./docs/architecture.md)
 - [Universe](./docs/universe.md)
 - [Streaming](./docs/streaming.md)
 - [Interface](./docs/interface.md)
 - [Testing](./docs/testing.md)
+- [Deployment](./docs/deployment.md)
 
 ## Deploy
 

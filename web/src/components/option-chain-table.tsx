@@ -1,37 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, type CSSProperties, type ReactNode, type TdHTMLAttributes } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 
-import { columnLabel, putColumns, visibleColumns } from "@/lib/columns";
+import { columnLabel, columnTip, columnsFor, putColumns, quoteField } from "@/lib/columns";
+import { chainMarks, depthPercent, heatIntensity, volumeBands, volumeClass, windowRows } from "@/lib/depth";
 import { cn } from "@/lib/cn";
 import { formatCompact, formatNumber, formatPrice, formatSigned, isEmptyValue } from "@/lib/format";
 import type { ChainRow, ColumnKey, OptionChainSnapshot, OptionQuote } from "@/lib/types";
-
-function readField(q: OptionQuote, key: ColumnKey): number | null {
-  switch (key) {
-    case "oi":
-      return q.oi;
-    case "oiChg":
-      return q.oiChg;
-    case "volume":
-      return q.volume;
-    case "iv":
-      return q.iv;
-    case "ltp":
-      return q.lastPrice;
-    case "chng":
-      return q.change;
-    case "bidQty":
-      return q.bidQty;
-    case "bid":
-      return q.bid;
-    case "ask":
-      return q.ask;
-    case "askQty":
-      return q.askQty;
-  }
-}
 
 function renderValue(key: ColumnKey, value: number | null) {
   if (isEmptyValue(value)) return "—";
@@ -41,22 +17,16 @@ function renderValue(key: ColumnKey, value: number | null) {
   return formatNumber(value, 0);
 }
 
-function volumeBand(value: number | null, high: number, low: number): "high" | "low" | "mid" | null {
-  if (!value) return null;
-  if (value >= high) return "high";
-  if (value <= low) return "low";
-  return "mid";
-}
-
 function FlashCell({
   value,
   children,
   className,
+  ...rest
 }: {
   value: number | null;
   children: ReactNode;
   className?: string;
-}) {
+} & TdHTMLAttributes<HTMLTableCellElement>) {
   const ref = useRef<HTMLTableCellElement>(null);
   const prev = useRef<number | null>(null);
 
@@ -72,139 +42,286 @@ function FlashCell({
   }, [value]);
 
   return (
-    <td ref={ref} className={className}>
+    <td ref={ref} className={className} {...rest}>
       {children}
     </td>
   );
 }
 
+type ViewLine =
+  | { kind: "spot"; price: number }
+  | { kind: "strike"; row: ChainRow };
+
+function viewLines(rows: ChainRow[], spot: number | null): ViewLine[] {
+  const lines: ViewLine[] = [];
+  let placed = false;
+  for (const row of rows) {
+    if (!placed && spot != null && row.strike > spot) {
+      lines.push({ kind: "spot", price: spot });
+      placed = true;
+    }
+    lines.push({ kind: "strike", row });
+  }
+  if (!placed && spot != null) lines.push({ kind: "spot", price: spot });
+  return lines;
+}
+
 export function OptionChainTable({
   snapshot,
   depth,
+  density,
   onSelect,
 }: {
   snapshot: OptionChainSnapshot;
   depth: "near" | "full";
+  density: "collapsed" | "expanded";
   onSelect: (row: ChainRow) => void;
 }) {
   const reduce = useReducedMotion();
-  const [compact, setCompact] = useState(false);
-  const callCols = useMemo(() => {
-    const all = visibleColumns(snapshot.rows);
-    if (!compact) return all;
-    const preferred: ColumnKey[] = ["chng", "ltp"];
-    const next = preferred.filter((key) => all.includes(key));
-    return next.length > 0 ? next : all;
-  }, [compact, snapshot.rows]);
+  const scroller = useRef<HTMLDivElement>(null);
+  const rows = useMemo(
+    () => windowRows(snapshot.rows, snapshot.totals.atm, depth),
+    [depth, snapshot.rows, snapshot.totals.atm],
+  );
+  const callCols = useMemo(() => columnsFor(rows, density), [density, rows]);
   const peCols = useMemo(() => putColumns(callCols), [callCols]);
-  const spotStrike = snapshot.totals.atm;
+  const lines = useMemo(() => viewLines(rows, snapshot.spot), [rows, snapshot.spot]);
+  const marks = useMemo(() => chainMarks(rows), [rows]);
+  const bands = useMemo(
+    () => volumeBands(rows.flatMap((row) => [row.ce.volume ?? 0, row.pe.volume ?? 0])),
+    [rows],
+  );
+  const volumeValues = useMemo(
+    () => rows.flatMap((row) => [row.ce.volume ?? 0, row.pe.volume ?? 0]),
+    [rows],
+  );
+  const maxOi = useMemo(
+    () => ({
+      ce: Math.max(1, ...rows.map((row) => row.ce.oi ?? 0)),
+      pe: Math.max(1, ...rows.map((row) => row.pe.oi ?? 0)),
+    }),
+    [rows],
+  );
+  const maxVol = useMemo(
+    () => ({
+      ce: Math.max(1, ...rows.map((row) => row.ce.volume ?? 0)),
+      pe: Math.max(1, ...rows.map((row) => row.pe.volume ?? 0)),
+    }),
+    [rows],
+  );
 
   useEffect(() => {
-    const query = window.matchMedia("(max-width: 700px)");
-    const sync = () => setCompact(query.matches);
-    sync();
-    query.addEventListener("change", sync);
-    return () => query.removeEventListener("change", sync);
-  }, []);
+    const root = scroller.current;
+    const marker = root?.querySelector(".spot-marker");
+    if (!root || !(marker instanceof HTMLElement)) return;
+    const top = marker.offsetTop - root.clientHeight / 2 + marker.clientHeight / 2;
+    root.scrollTo({ top: Math.max(0, top), behavior: reduce ? "auto" : "smooth" });
+  }, [reduce, snapshot.expiry, snapshot.symbol, snapshot.spot]);
 
-  const rows = useMemo(() => {
-    if (depth === "full" || spotStrike == null) return snapshot.rows;
-    const idx = snapshot.rows.findIndex((row) => row.strike === spotStrike);
-    if (idx < 0) return snapshot.rows;
-    return snapshot.rows.slice(Math.max(0, idx - 18), Math.min(snapshot.rows.length, idx + 19));
-  }, [depth, snapshot.rows, spotStrike]);
-
-  const bands = useMemo(() => {
-    const volumes = rows
-      .flatMap((row) => [row.ce.volume ?? 0, row.pe.volume ?? 0])
-      .filter((value) => value > 0)
-      .sort((a, b) => a - b);
-    if (volumes.length < 4) return { high: Number.POSITIVE_INFINITY, low: 0 };
-    return {
-      high: volumes[Math.floor(volumes.length * 0.8)] ?? Number.POSITIVE_INFINITY,
-      low: volumes[Math.floor(volumes.length * 0.2)] ?? 0,
-    };
-  }, [rows]);
-
-  useEffect(() => {
-    const row = document.getElementById(`strike-${spotStrike}`);
-    const scroller = row?.closest(".chain-scroll");
-    if (!row || !(scroller instanceof HTMLElement)) return;
-    const top = row.offsetTop - scroller.clientHeight / 2 + row.clientHeight / 2;
-    scroller.scrollTo({ top: Math.max(0, top), behavior: reduce ? "auto" : "smooth" });
-  }, [reduce, snapshot.expiry, snapshot.symbol, spotStrike]);
+  const span =
+    rows.length > 0
+      ? `Strikes ${formatNumber(rows[0]!.strike, 0)} to ${formatNumber(rows[rows.length - 1]!.strike, 0)}`
+      : "No strikes";
 
   return (
-    <motion.div
-      className="chain-scroll"
-      initial={reduce ? false : { opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
+    <div className="chain-frame" data-density={density}>
+      <div className="chain-toolbar">
+        <p className="chain-span">{span}</p>
+        <span className="heat-legend">
+          <i className="swatch high" /> High volume
+          <i className="swatch low" /> Low volume
+          <i className="swatch zero" /> No volume
+        </span>
+      </div>
+      <motion.div
+        ref={scroller}
+        className="chain-scroll"
+        data-density={density}
+        initial={reduce ? false : { opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        {rows.length === 0 ? <p className="board-wait">No strikes in this expiry</p> : null}
+        <div className="chain-split">
+          <div className="chain-pane calls">
+            <table className="chain-table">
+              <caption className="sr-only">Call contracts</caption>
+              <thead>
+                <tr>
+                  <th colSpan={callCols.length} className="side-banner call-banner">
+                    Calls
+                  </th>
+                </tr>
+                <tr>
+                  {callCols.map((key) => (
+                    <th key={key} className="ce-zone" data-col={key} title={columnTip(key)}>
+                      {columnLabel(key)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {lines.map((line) =>
+                  line.kind === "spot" ? (
+                    <tr key="spot" className="spot-marker">
+                      <td colSpan={callCols.length} />
+                    </tr>
+                  ) : (
+                    <SideRow
+                      key={line.row.strike}
+                      row={line.row}
+                      side="ce"
+                      cols={callCols}
+                      spot={snapshot.spot}
+                      bands={bands}
+                      volumeValues={volumeValues}
+                      maxOi={maxOi.ce}
+                      maxVol={maxVol.ce}
+                      onSelect={onSelect}
+                    />
+                  ),
+                )}
+              </tbody>
+            </table>
+          </div>
+          <div className="chain-pane strike">
+            <table className="chain-table strike-table">
+              <thead>
+                <tr>
+                  <th className="strike-cell">Strike</th>
+                </tr>
+                <tr>
+                  <th className="strike-cell">Price</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lines.map((line) =>
+                  line.kind === "spot" ? (
+                    <tr key="spot" className="spot-marker">
+                      <td className="strike-cell spot-marker-label">{formatPrice(line.price)}</td>
+                    </tr>
+                  ) : (
+                    <tr
+                      key={line.row.strike}
+                      id={`strike-${line.row.strike}`}
+                      data-strike={line.row.strike}
+                      className={cn("chain-row", line.row.strike === snapshot.totals.atm && "is-atm")}
+                      onClick={() => onSelect(line.row)}
+                    >
+                      <td
+                        className="strike-cell"
+                        data-call-wall={marks.callWall === line.row.strike ? "true" : undefined}
+                        data-put-wall={marks.putWall === line.row.strike ? "true" : undefined}
+                        data-move={marks.moveStrike === line.row.strike ? "true" : undefined}
+                        title={strikeTitle(line.row.strike, marks)}
+                      >
+                        {formatNumber(line.row.strike, 0)}
+                      </td>
+                    </tr>
+                  ),
+                )}
+              </tbody>
+            </table>
+          </div>
+          <div className="chain-pane puts">
+            <table className="chain-table">
+              <caption className="sr-only">Put contracts</caption>
+              <thead>
+                <tr>
+                  <th colSpan={peCols.length} className="side-banner put-banner">
+                    Puts
+                  </th>
+                </tr>
+                <tr>
+                  {peCols.map((key) => (
+                    <th key={key} className="pe-zone" data-col={key} title={columnTip(key)}>
+                      {columnLabel(key)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {lines.map((line) =>
+                  line.kind === "spot" ? (
+                    <tr key="spot" className="spot-marker">
+                      <td colSpan={peCols.length} />
+                    </tr>
+                  ) : (
+                    <SideRow
+                      key={line.row.strike}
+                      row={line.row}
+                      side="pe"
+                      cols={peCols}
+                      spot={snapshot.spot}
+                      bands={bands}
+                      volumeValues={volumeValues}
+                      maxOi={maxOi.pe}
+                      maxVol={maxVol.pe}
+                      onSelect={onSelect}
+                    />
+                  ),
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function strikeTitle(strike: number, marks: ReturnType<typeof chainMarks>): string | undefined {
+  const notes: string[] = [];
+  if (marks.callWall === strike) notes.push("Highest call open interest");
+  if (marks.putWall === strike) notes.push("Highest put open interest");
+  if (marks.moveStrike === strike) notes.push("Largest price change");
+  return notes.length ? notes.join(". ") : undefined;
+}
+
+function SideRow({
+  row,
+  side,
+  cols,
+  spot,
+  bands,
+  volumeValues,
+  maxOi,
+  maxVol,
+  onSelect,
+}: {
+  row: ChainRow;
+  side: "ce" | "pe";
+  cols: ColumnKey[];
+  spot: number | null;
+  bands: { high: number; low: number };
+  volumeValues: number[];
+  maxOi: number;
+  maxVol: number;
+  onSelect: (row: ChainRow) => void;
+}) {
+  const quote = side === "ce" ? row.ce : row.pe;
+  const quiet = !quote.volume && !(side === "ce" ? row.pe.volume : row.ce.volume);
+  const itm = spot != null && (side === "ce" ? row.strike < spot : row.strike > spot);
+  return (
+    <tr
+      data-strike={row.strike}
+      data-volume={!row.ce.volume && !row.pe.volume ? "zero" : "traded"}
+      className={cn("chain-row", quiet && "is-zero")}
+      onClick={() => onSelect(row)}
     >
-      <table className="chain-table">
-        <thead>
-          <tr>
-            <th colSpan={callCols.length} className="side-banner call-banner">
-              Calls
-            </th>
-            <th className="strike-cell">Strike</th>
-            <th colSpan={peCols.length} className="side-banner put-banner">
-              Puts
-            </th>
-          </tr>
-          <tr>
-            {callCols.map((key) => (
-              <th key={`ce-${key}`} className="ce-zone">
-                {columnLabel(key)}
-              </th>
-            ))}
-            <th className="strike-cell">Price</th>
-            {peCols.map((key) => (
-              <th key={`pe-${key}`} className="pe-zone">
-                {columnLabel(key)}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => {
-            const atSpot = row.strike === spotStrike;
-            const callQuiet = !row.ce.volume;
-            const putQuiet = !row.pe.volume;
-            return (
-              <tr
-                key={row.strike}
-                id={`strike-${row.strike}`}
-                data-volume={callQuiet && putQuiet ? "zero" : "traded"}
-                className={cn("chain-row", atSpot && "is-atm", callQuiet && putQuiet && "is-zero")}
-                onClick={() => onSelect(row)}
-              >
-                {callCols.map((key) => (
-                  <SideCell
-                    key={`ce-${row.strike}-${key}`}
-                    side="ce"
-                    field={key}
-                    quote={row.ce}
-                    high={bands.high}
-                    low={bands.low}
-                  />
-                ))}
-                <td className="strike-cell">{formatNumber(row.strike, 0)}</td>
-                {peCols.map((key) => (
-                  <SideCell
-                    key={`pe-${row.strike}-${key}`}
-                    side="pe"
-                    field={key}
-                    quote={row.pe}
-                    high={bands.high}
-                    low={bands.low}
-                  />
-                ))}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </motion.div>
+      {cols.map((key) => (
+        <SideCell
+          key={`${side}-${row.strike}-${key}`}
+          side={side}
+          field={key}
+          quote={quote}
+          itm={itm}
+          bands={bands}
+          volumeValues={volumeValues}
+          maxOi={maxOi}
+          maxVol={maxVol}
+        />
+      ))}
+    </tr>
   );
 }
 
@@ -212,33 +329,45 @@ function SideCell({
   side,
   field,
   quote,
-  high,
-  low,
+  itm,
+  bands,
+  volumeValues,
+  maxOi,
+  maxVol,
 }: {
   side: "ce" | "pe";
   field: ColumnKey;
   quote: OptionQuote;
-  high: number;
-  low: number;
+  itm: boolean;
+  bands: { high: number; low: number };
+  volumeValues: number[];
+  maxOi: number;
+  maxVol: number;
 }) {
-  const value = readField(quote, field);
+  const value = quoteField(quote, field);
   const tone =
-    field === "chng" || field === "oiChg"
-      ? value && value > 0
-        ? "tone-up"
-        : value && value < 0
-          ? "tone-down"
-          : ""
-      : "";
-  const quiet = !quote.volume;
-  const heat = !quiet && field === "ltp" ? volumeBand(quote.volume, high, low) : null;
+    field === "chng" || field === "oiChg" ? (value && value > 0 ? "tone-up" : value && value < 0 ? "tone-down" : "") : "";
+  const heat = field === "ltp" ? volumeClass(quote.volume, bands) : null;
+  const intensity = field === "ltp" ? heatIntensity(quote.volume, volumeValues) : 0;
+  const depth =
+    field === "oi" ? depthPercent(value, maxOi) : field === "volume" ? depthPercent(value, maxVol) : 0;
+  const zone = side === "ce" ? "ce-zone call-side" : "pe-zone put-side";
 
   return (
     <FlashCell
       value={value}
-      className={cn(side === "ce" ? "ce-zone" : "pe-zone", tone, quiet && "vol-zero", heat && `vol-${heat}`)}
+      data-col={field}
+      className={cn(zone, tone, itm && "is-itm", heat === "zero" && field === "ltp" && "vol-zero", heat && heat !== "zero" && field === "ltp" && `vol-${heat}`)}
+      style={field === "ltp" && heat && heat !== "zero" ? ({ "--heat": String(intensity) } as CSSProperties) : undefined}
     >
-      {renderValue(field, value)}
+      {depth > 0 ? (
+        <span className="depth">
+          <span className={cn("depth-bar", side === "ce" ? "call" : "put")} style={{ width: `${depth}%` }} />
+          <span className="depth-val">{renderValue(field, value)}</span>
+        </span>
+      ) : (
+        renderValue(field, value)
+      )}
     </FlashCell>
   );
 }

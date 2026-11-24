@@ -9,7 +9,7 @@ const themeInitScript = `(function(){try{var t=localStorage.getItem("option-chai
 export const metadata: Metadata = {
   title: "Option Chain Live Stream | Anand Rathi Wealth",
   description:
-    "Industry-grade live NSE & BSE option chain streaming for Nifty, Sensex, index and equity F&O — Anand Rathi Wealth desk.",
+    "Live NSE and BSE index option chains, plus Anand Rathi Wealth equity options.",
   icons: { icon: "/brand/arwl-logo.svg" },
 };
 
