@@ -1,0 +1,22 @@
+node_modules/
+.next/
+.vercel/
+.env*
+!.env.example
+*.log
+cookies.txt
+*.json.bak
+web/cookies.txt
+web/bse_cookies.txt
+oc-*.js
+nse_home.html
+nifty*.json
+bn*.json
+contract.json
+global.js
+.DS_Store
+Thumbs.db
+
+# keep bundled BSE fallback
+!web/src/data/bse-cache.json
+!web/data/bse-cache.json
