@@ -6,7 +6,7 @@ import type { OptionChainSnapshot } from "./types";
 
 describe("reconnect", () => {
   it("resets failures and stops polling when any stream event arrives", () => {
-    let link = noteDrop(noteDrop(noteDrop(freshLink()).link).link).link;
+    const link = noteDrop(noteDrop(noteDrop(freshLink()).link).link).link;
     expect(link.polling).toBe(true);
     expect(link.failures).toBe(3);
     const delivered = noteDelivery(link, 4);
