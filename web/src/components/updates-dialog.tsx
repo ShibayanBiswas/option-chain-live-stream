@@ -1,5 +1,6 @@
 "use client";
 
+import { useLayoutEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 
@@ -19,6 +20,35 @@ export function UpdatesDialog({
   view: "custom" | "chain";
   onClose: () => void;
 }) {
+  const cardRef = useRef<HTMLElement>(null);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    const place = () => {
+      const card = cardRef.current;
+      const button = document.querySelector(".updates-btn");
+      if (!card || !(button instanceof HTMLElement)) return;
+      const toolbar = button.closest(".toolbar");
+      const bar = (toolbar instanceof HTMLElement ? toolbar : button).getBoundingClientRect();
+      const btn = button.getBoundingClientRect();
+      const narrow = window.innerWidth <= 700;
+      const width = narrow ? Math.min(window.innerWidth - 16, 420) : 248;
+      let top = bar.bottom + 8;
+      let left = narrow ? 8 : btn.right - width;
+      if (left < 8) left = 8;
+      if (left + width > window.innerWidth - 8) left = Math.max(8, window.innerWidth - 8 - width);
+      const height = card.offsetHeight;
+      if (top + height > window.innerHeight - 8) top = Math.max(8, window.innerHeight - height - 8);
+      card.style.right = "auto";
+      card.style.top = `${Math.round(top)}px`;
+      card.style.left = `${Math.round(left)}px`;
+      card.style.width = `${Math.round(width)}px`;
+    };
+    place();
+    window.addEventListener("resize", place);
+    return () => window.removeEventListener("resize", place);
+  }, [open]);
+
   return (
     <AnimatePresence>
       {open ? (
@@ -30,6 +60,7 @@ export function UpdatesDialog({
           onClick={onClose}
         >
           <section
+            ref={cardRef}
             className="updates-card"
             role="dialog"
             aria-label="Updates"

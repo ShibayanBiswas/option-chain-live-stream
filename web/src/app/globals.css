@@ -912,16 +912,17 @@ html.dark .chain-row.is-zero td {
   position: fixed;
   inset: 0;
   z-index: 70;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  background: rgba(8, 6, 4, 0.45);
+  background: rgba(8, 6, 4, 0.18);
 }
 
 .updates-card {
-  position: relative;
-  z-index: 1;
-  width: min(220px, 100%);
+  position: fixed;
+  z-index: 71;
+  top: 8px;
+  right: 8px;
+  width: min(248px, calc(100vw - 16px));
+  max-height: min(70dvh, 420px);
+  overflow: auto;
   border-radius: 16px;
   border: 1px solid var(--ar-border);
   background-color: var(--ar-surface);

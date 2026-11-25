@@ -4,6 +4,43 @@ import path from "node:path";
 
 const shotDir = path.join(process.cwd(), "docs", "screenshots");
 
+async function expectUpdatesFit(page: Page) {
+  const width = page.viewportSize()?.width ?? 0;
+  const height = page.viewportSize()?.height ?? 0;
+  const placed = await page.evaluate(() => {
+    const card = document.querySelector(".updates-card");
+    const button = document.querySelector(".updates-btn");
+    const toolbar = document.querySelector(".toolbar");
+    if (!(card instanceof HTMLElement) || !(button instanceof HTMLElement) || !(toolbar instanceof HTMLElement)) return null;
+    const box = card.getBoundingClientRect();
+    const btn = button.getBoundingClientRect();
+    const bar = toolbar.getBoundingClientRect();
+    return {
+      x: box.x,
+      y: box.y,
+      width: box.width,
+      height: box.height,
+      buttonRight: btn.right,
+      buttonTop: btn.top,
+      toolbarBottom: bar.bottom,
+    };
+  });
+  expect(placed, "updates card geometry").toBeTruthy();
+  expect(placed!.x).toBeGreaterThanOrEqual(4);
+  expect(placed!.y).toBeGreaterThanOrEqual(placed!.toolbarBottom - 1);
+  expect(placed!.x + placed!.width).toBeLessThanOrEqual(width + 1);
+  expect(placed!.y + placed!.height).toBeLessThanOrEqual(height + 1);
+  expect(placed!.y).toBeGreaterThanOrEqual(placed!.buttonTop + 8);
+  if (width <= 700) {
+    expect(placed!.width).toBeGreaterThan(width - 24);
+    expect(placed!.x).toBeLessThanOrEqual(12);
+  } else {
+    expect(Math.abs(placed!.x + placed!.width - placed!.buttonRight)).toBeLessThan(4);
+    expect(placed!.width).toBeGreaterThan(200);
+    expect(placed!.width).toBeLessThan(280);
+  }
+}
+
 async function waitForBook(page: Page) {
   await page.goto("/");
   await expect(page.locator("h1")).not.toHaveText("Option Chain", { timeout: 70_000 });
@@ -15,6 +52,7 @@ async function waitForBook(page: Page) {
   await expect(guide).toContainText("High volume");
   await expect(guide).toContainText("Zero volume");
   await expect(guide).not.toContainText("nearest expiry");
+  await expectUpdatesFit(page);
   const width = page.viewportSize()?.width ?? 0;
   if (width >= 1400 || width <= 400) {
     fs.mkdirSync(shotDir, { recursive: true });
@@ -206,6 +244,7 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   await expect(shades).toContainText("High volume");
   await expect(shades).toContainText("Zero volume");
   await expect(shades).not.toContainText("nearest expiry");
+  await expectUpdatesFit(page);
   const chainWidth = testInfo.project.name === "desktop" || testInfo.project.name === "phone" ? page.viewportSize()?.width ?? 0 : 0;
   if (chainWidth >= 1400 || (chainWidth > 0 && chainWidth <= 400)) {
     await page.screenshot({
