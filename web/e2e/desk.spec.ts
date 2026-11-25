@@ -144,7 +144,7 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   }
 
   const searchDialog = page.getByRole("dialog", { name: "Contract search" });
-  await page.getByRole("button", { name: "Search contracts" }).click();
+  await page.keyboard.press("Control+k");
   await expect(searchDialog).toBeVisible();
   await searchDialog.getByRole("button", { name: "Back" }).click();
   await expect(searchDialog).toBeHidden();
@@ -386,7 +386,7 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
 
   if (testInfo.project.name !== "desktop") return;
 
-  await page.getByRole("button", { name: "Search contracts" }).click();
+  await page.keyboard.press("Control+k");
   const search = page.getByLabel("Search indices and equity");
   await search.fill("NIFTY");
   await search.press("ArrowDown");

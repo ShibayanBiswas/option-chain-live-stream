@@ -89,9 +89,14 @@ export function InwardChain({
   rows: InwardRow[];
   layoutKey: string;
 }) {
+  const rootRef = useRef<HTMLDivElement>(null);
   const callsRef = useRef<HTMLDivElement>(null);
   const putsRef = useRef<HTMLDivElement>(null);
   const midRef = useRef<HTMLDivElement>(null);
+  const bindHost = useCallback((node: HTMLDivElement | null) => {
+    rootRef.current = node;
+    hostRef(node);
+  }, [hostRef]);
 
   useLayoutEffect(() => {
     const calls = callsRef.current;
@@ -167,6 +172,32 @@ export function InwardChain({
     };
   }, [layoutKey]);
 
+  const spotText = rows.find((line) => line.spot)?.spot ?? "";
+
+  useLayoutEffect(() => {
+    const host = rootRef.current;
+    const mid = midRef.current;
+    const label = host?.querySelector<HTMLElement>(".spot-float");
+    if (!host || !mid || !label) return;
+    const place = () => {
+      const row = mid.querySelector(".spot-marker");
+      if (!(row instanceof HTMLElement)) {
+        label.style.visibility = "hidden";
+        return;
+      }
+      label.style.visibility = "visible";
+      label.style.transform = `translateY(${row.getBoundingClientRect().top - host.getBoundingClientRect().top}px)`;
+    };
+    place();
+    mid.addEventListener("scroll", place, { passive: true });
+    const watch = new ResizeObserver(place);
+    watch.observe(mid);
+    return () => {
+      mid.removeEventListener("scroll", place);
+      watch.disconnect();
+    };
+  }, [layoutKey, spotText]);
+
   const spotRow = (line: InwardRow, span: number, label: boolean) =>
     line.spot ? (
       <tr className="spot-marker" data-testid={label ? "spot-marker" : undefined}>
@@ -176,12 +207,17 @@ export function InwardChain({
 
   return (
     <div
-      ref={hostRef}
+      ref={bindHost}
       className="chain-scroll inward"
       data-density={density}
       data-inward="true"
       data-compact={compact ? "true" : undefined}
     >
+      {rows.some((line) => line.spot) ? (
+        <div className="spot-float" aria-hidden="true">
+          <span>{rows.find((line) => line.spot)?.spot}</span>
+        </div>
+      ) : null}
       <div className="inward-captions side-labels">
         <span className="ce-zone">Calls</span>
         <span className="strike-gap" />

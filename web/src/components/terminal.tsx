@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { MotionConfig, motion } from "framer-motion";
-import { ArrowLeft, Moon, PanelLeft, Search, Sun } from "lucide-react";
+import { ArrowLeft, Moon, PanelLeft, Sun } from "lucide-react";
 
 import { BrandLogo } from "@/components/brand-logo";
 import { CommandPalette } from "@/components/command-palette";
@@ -229,6 +229,7 @@ export function Terminal() {
   const liveExpiryCount = upcomingExpiries(snapshot?.expiries ?? [], 99).length;
   const expiryMenu = expiryChoices(Math.max(1, liveExpiryCount));
   const shownExpiries = expiryMenu.includes(expiryCount) ? expiryCount : (expiryMenu[expiryMenu.length - 1] ?? 4);
+  const fittedExpiries = viewport === "phone" ? Math.min(2, shownExpiries) : shownExpiries;
   const strikeRange = snapshot?.rows.length
     ? `${formatNumber(snapshot.rows[0]?.strike ?? null, 0)} – ${formatNumber(snapshot.rows[snapshot.rows.length - 1]?.strike ?? null, 0)} · ${snapshot.rows.length} strikes`
     : "";
@@ -251,9 +252,6 @@ export function Terminal() {
             aria-pressed={railOpen}
           >
             <PanelLeft className="h-4 w-4" />
-          </button>
-          <button className="icon-btn" type="button" aria-label="Search contracts" onClick={() => setPaletteOpen(true)}>
-            <Search className="h-4 w-4" />
           </button>
           <div className="identity">
             <h1>{selected ? displayName(selected.symbol, selected.label) : "Option Chain"}</h1>
@@ -310,10 +308,10 @@ export function Terminal() {
             <select
               className="toolbar-select"
               aria-label="Expiries"
-              value={shownExpiries}
+              value={fittedExpiries}
               onChange={(event) => setExpiryCount(Number(event.target.value))}
             >
-              {expiryMenu.map((count) => (
+              {(viewport === "phone" ? expiryMenu.filter((count) => count <= 2) : expiryMenu).map((count) => (
                 <option key={count} value={count}>
                   {count === liveExpiryCount && liveExpiryCount > 1
                     ? `${count} expiries, all`
@@ -399,7 +397,7 @@ export function Terminal() {
               exchange={selected?.exchange ?? snapshot.exchange}
               segment={selected?.segment ?? snapshot.segment}
               expiries={snapshot.expiries}
-              count={shownExpiries}
+              count={fittedExpiries}
               depth={depth}
               primary={snapshot}
               onSelect={setPicked}

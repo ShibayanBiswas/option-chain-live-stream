@@ -333,11 +333,12 @@ html.dark .chain-scroll .chain-table thead tr.side-labels .pe-zone {
   padding: 0 !important;
   background: transparent !important;
   border: 0;
+  text-align: center !important;
 }
 
 .spot-marker span {
-  display: block;
-  margin: 2px 8px;
+  display: inline-block;
+  margin: 2px auto;
   padding: 3px 8px;
   border-radius: 999px;
   text-align: center;
@@ -2126,6 +2127,99 @@ html.dark .inward-captions .pe-zone {
   padding-right: 0 !important;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
+}
+
+.chain-scroll.inward {
+  position: relative;
+}
+
+.spot-float {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  z-index: 6;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  height: 22px;
+}
+
+.spot-float span {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(212, 178, 76, 0.92);
+  color: #3f2e08;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.inward .inward-pane.mid .spot-marker span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+@media (max-width: 700px) {
+  .toolbar {
+    flex-wrap: nowrap;
+    align-items: center;
+    height: 56px;
+    min-height: 56px;
+    max-height: 56px;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .toolbar-main,
+  .toolbar-tools {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    width: max-content;
+    height: 44px;
+  }
+
+  .identity {
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .toolbar .feed-chip em {
+    display: none;
+  }
+
+  .toolbar .icon-btn,
+  .toolbar .updates-btn,
+  .toolbar .toolbar-select,
+  .toolbar .session-pill,
+  .toolbar .feed-chip {
+    min-width: 44px;
+    min-height: 44px;
+    height: 44px;
+    flex: 0 0 auto;
+  }
+
+  .rail.is-sheet:not(.is-collapsed) {
+    top: 64px;
+  }
+
+  .pin-btn {
+    flex-basis: 44px;
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+  }
 }
 
 .chain-table tbody tr:last-child td {
