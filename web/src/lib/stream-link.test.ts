@@ -60,7 +60,7 @@ describe("ltp slice", () => {
       ],
     } as OptionChainSnapshot;
     const slice = toLtpSlice(snapshot);
-    expect(slice.rows[0]).toEqual({ strike: 100, ceLtp: 10, ceChg: 1, peLtp: 9, peChg: -1 });
+    expect(slice.rows[0]).toEqual({ strike: 100, ceLtp: 10, ceChg: 1, ceVol: 2, peLtp: 9, peChg: -1, peVol: 2 });
     const moved = {
       ...slice,
       timestamp: "t1",

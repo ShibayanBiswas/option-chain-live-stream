@@ -14,7 +14,8 @@ async function waitForBook(page: Page) {
   await expect(guide).toBeVisible();
   await expect(guide).toContainText("Last price");
   await expect(guide).toContainText("nearest expiry");
-  await expect(guide).not.toContainText("High volume");
+  await expect(guide).toContainText("High volume");
+  await expect(guide).toContainText("Zero volume");
   const width = page.viewportSize()?.width ?? 0;
   if (width >= 1400 || width <= 400) {
     fs.mkdirSync(shotDir, { recursive: true });
@@ -299,11 +300,16 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   if (narrow) await page.getByRole("button", { name: "Collapse sidebar" }).click();
   if (narrow) await expect(page.locator(".rail")).toHaveClass(/is-collapsed/);
 
-  const flash = await page.locator(".chain-table tbody td").first().evaluate((el) => {
+  const flash = await page.locator(".chain-row td.col-ltp").first().evaluate((el) => {
     el.classList.add("cell-flash-up");
-    return getComputedStyle(el).animationName;
+    const num = el.querySelector(".quote-num");
+    return {
+      wash: getComputedStyle(el, "::after").animationName,
+      tick: num ? getComputedStyle(num).animationName : "",
+    };
   });
-  expect(flash).toBe("flash-up");
+  expect(flash.wash).toBe("flash-wash");
+  expect(flash.tick).toBe("tick-up");
 
   const traded = page.locator('[data-volume="traded"]').nth(3);
   await traded.evaluate((row) => {

@@ -6,7 +6,12 @@ import { X } from "lucide-react";
 const CUSTOM = [
   { swatch: "price", name: "Last price", detail: "Each cell is the last price, shown to two decimals." },
   { swatch: "expiry", name: "Expiries", detail: "Calls sit on the left, far date to near. Puts sit on the right, near date to far. The nearest expiry is against the strike." },
-  { swatch: "atm", name: "At the money", detail: "The strike nearest the live price is outlined in gold. A spot line sits between the two surrounding strikes." },
+  { swatch: "atm", name: "At the money", detail: "The strike nearest the live price is outlined in gold. The spot tag sits on that strike when the price lands on it, and between the surrounding strikes otherwise." },
+  { swatch: "high", name: "High volume", detail: "Last price in the top 20% of contracts traded on the loaded expiries." },
+  { swatch: "low", name: "Low volume", detail: "Last price in the bottom 20% of contracts that actually traded." },
+  { swatch: "zero", name: "Zero volume", detail: "No contracts traded in that expiry. The price is grey." },
+  { swatch: "up", name: "Tick up", detail: "The last price just increased. The cell flashes green." },
+  { swatch: "down", name: "Tick down", detail: "The last price just decreased. The cell flashes red." },
   { swatch: "quote", name: "Quote", detail: "Click a price to open Calls and Puts for that strike." },
 ] as const;
 
@@ -53,7 +58,7 @@ export function UpdatesDialog({
             <header>
               <div>
                 <p>{custom ? "Custom" : "Option chain"}</p>
-                <h2>{custom ? "Reading the board" : "Volume shades"}</h2>
+                <h2>{custom ? "Prices and volume" : "Volume shades"}</h2>
               </div>
               <button className="icon-btn" type="button" onClick={onClose} aria-label="Close updates">
                 <X className="h-4 w-4" />

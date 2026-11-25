@@ -100,6 +100,16 @@ export function CustomLtpBoard({
 
   if (loaded.length === 0) return <div className="board-wait">Opening the expiries</div>;
 
+  const traded = loaded.flatMap((book) => book.rows.flatMap((row) => {
+    if ("ce" in row) return [row.ce.volume ?? 0, row.pe.volume ?? 0];
+    return [row.ceVol ?? 0, row.peVol ?? 0];
+  })).filter((value) => value > 0).sort((a, b) => a - b);
+  const bands = traded.length < 4
+    ? { high: Number.POSITIVE_INFINITY, low: 0 }
+    : {
+        high: traded[Math.floor(traded.length * 0.8)] ?? Number.POSITIVE_INFINITY,
+        low: traded[Math.floor(traded.length * 0.2)] ?? 0,
+      };
   const spotPlace = spotSlot(strikes, spot);
   const customRows = strikes.map((strike, index) => {
     const nearest = columns.map((column) => chainRow(column.book, strike)).find((row) => row != null) ?? null;
@@ -135,32 +145,40 @@ export function CustomLtpBoard({
           spot: showSpot ? `Spot ${formatPrice(spot)}` : null,
           spotAfter: showSpotAfter ? `Spot ${formatPrice(spot)}` : null,
           strike: formatNumber(strike, 0),
-          call: callCols.map((column) => (
-            <PriceCell
-              key={`ce-${strike}-${column.expiry}`}
-              side="ce"
-              resetKey={`${symbol}:${column.expiry}`}
-              value={quoteOf(column.book, strike, "ce").last}
-              itm={spot != null && strike < spot}
-              onClick={() => {
-                const row = chainRow(column.book, strike);
-                if (row) onSelect(row);
-              }}
-            />
-          )),
-          put: columns.map((column) => (
-            <PriceCell
-              key={`pe-${strike}-${column.expiry}`}
-              side="pe"
-              resetKey={`${symbol}:${column.expiry}`}
-              value={quoteOf(column.book, strike, "pe").last}
-              itm={spot != null && strike > spot}
-              onClick={() => {
-                const row = chainRow(column.book, strike);
-                if (row) onSelect(row);
-              }}
-            />
-          )),
+          call: callCols.map((column) => {
+            const quote = quoteOf(column.book, strike, "ce");
+            return (
+              <PriceCell
+                key={`ce-${strike}-${column.expiry}`}
+                side="ce"
+                resetKey={`${symbol}:${column.expiry}`}
+                value={quote.last}
+                heat={volumeHeat(quote.volume, bands.high, bands.low)}
+                itm={spot != null && strike < spot}
+                onClick={() => {
+                  const row = chainRow(column.book, strike);
+                  if (row) onSelect(row);
+                }}
+              />
+            );
+          }),
+          put: columns.map((column) => {
+            const quote = quoteOf(column.book, strike, "pe");
+            return (
+              <PriceCell
+                key={`pe-${strike}-${column.expiry}`}
+                side="pe"
+                resetKey={`${symbol}:${column.expiry}`}
+                value={quote.last}
+                heat={volumeHeat(quote.volume, bands.high, bands.low)}
+                itm={spot != null && strike > spot}
+                onClick={() => {
+                  const row = chainRow(column.book, strike);
+                  if (row) onSelect(row);
+                }}
+              />
+            );
+          }),
         }))}
       />
     );
@@ -203,33 +221,41 @@ export function CustomLtpBoard({
                     if (nearest) onSelect(nearest);
                   }}
                 >
-                  {callCols.map((column) => (
-                    <PriceCell
-                      key={`ce-${strike}-${column.expiry}`}
-                      side="ce"
-                      resetKey={`${symbol}:${column.expiry}`}
-                      value={quoteOf(column.book, strike, "ce").last}
-                      itm={spot != null && strike < spot}
-                      onClick={() => {
-                        const row = chainRow(column.book, strike);
-                        if (row) onSelect(row);
-                      }}
-                    />
-                  ))}
+                  {callCols.map((column) => {
+                    const quote = quoteOf(column.book, strike, "ce");
+                    return (
+                      <PriceCell
+                        key={`ce-${strike}-${column.expiry}`}
+                        side="ce"
+                        resetKey={`${symbol}:${column.expiry}`}
+                        value={quote.last}
+                        heat={volumeHeat(quote.volume, bands.high, bands.low)}
+                        itm={spot != null && strike < spot}
+                        onClick={() => {
+                          const row = chainRow(column.book, strike);
+                          if (row) onSelect(row);
+                        }}
+                      />
+                    );
+                  })}
                   <td className="strike-cell">{formatNumber(strike, 0)}</td>
-                  {columns.map((column) => (
-                    <PriceCell
-                      key={`pe-${strike}-${column.expiry}`}
-                      side="pe"
-                      resetKey={`${symbol}:${column.expiry}`}
-                      value={quoteOf(column.book, strike, "pe").last}
-                      itm={spot != null && strike > spot}
-                      onClick={() => {
-                        const row = chainRow(column.book, strike);
-                        if (row) onSelect(row);
-                      }}
-                    />
-                  ))}
+                  {columns.map((column) => {
+                    const quote = quoteOf(column.book, strike, "pe");
+                    return (
+                      <PriceCell
+                        key={`pe-${strike}-${column.expiry}`}
+                        side="pe"
+                        resetKey={`${symbol}:${column.expiry}`}
+                        value={quote.last}
+                        heat={volumeHeat(quote.volume, bands.high, bands.low)}
+                        itm={spot != null && strike > spot}
+                        onClick={() => {
+                          const row = chainRow(column.book, strike);
+                          if (row) onSelect(row);
+                        }}
+                      />
+                    );
+                  })}
                 </tr>
                 {showSpotAfter ? (
                   <tr className="spot-marker" data-testid="spot-marker">
@@ -247,15 +273,24 @@ export function CustomLtpBoard({
   );
 }
 
+function volumeHeat(volume: number | null, high: number, low: number): "high" | "low" | "mid" | "zero" {
+  if (!volume) return "zero";
+  if (volume >= high) return "high";
+  if (low > 0 && volume <= low) return "low";
+  return "mid";
+}
+
 function PriceCell({
   side,
   value,
+  heat,
   resetKey,
   itm,
   onClick,
 }: {
   side: "ce" | "pe";
   value: number | null;
+  heat: "high" | "low" | "mid" | "zero";
   resetKey: string;
   itm: boolean;
   onClick: () => void;
@@ -278,7 +313,11 @@ function PriceCell({
   return (
     <td
       ref={ref}
-      className={cn(side === "ce" ? "ce-zone" : "pe-zone", itm && "is-itm")}
+      className={cn(
+        side === "ce" ? "ce-zone" : "pe-zone",
+        heat !== "mid" && `vol-${heat}`,
+        itm && "is-itm",
+      )}
       onClick={(event) => {
         event.stopPropagation();
         onClick();
@@ -297,14 +336,16 @@ function quoteOf(
   book: OptionChainSnapshot | LtpSlice | null,
   strike: number,
   side: "ce" | "pe",
-): { last: number | null; change: number | null } {
+): { last: number | null; change: number | null; volume: number | null } {
   const row = book?.rows.find((item) => item.strike === strike);
-  if (!row) return { last: null, change: null };
+  if (!row) return { last: null, change: null, volume: null };
   if ("ce" in row) {
     const quote = side === "ce" ? row.ce : row.pe;
-    return { last: quote.lastPrice, change: quote.change };
+    return { last: quote.lastPrice, change: quote.change, volume: quote.volume };
   }
-  return side === "ce" ? { last: row.ceLtp, change: row.ceChg } : { last: row.peLtp, change: row.peChg };
+  return side === "ce"
+    ? { last: row.ceLtp, change: row.ceChg, volume: row.ceVol }
+    : { last: row.peLtp, change: row.peChg, volume: row.peVol };
 }
 
 function chainRow(book: OptionChainSnapshot | LtpSlice | null, strike: number): ChainRow | null {
