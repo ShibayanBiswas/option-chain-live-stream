@@ -1349,7 +1349,7 @@ html.dark .quote-card.put h3 {
 
   .chain-table,
   .chain-scroll[data-density="focus"] .chain-table {
-    min-width: 720px;
+    min-width: 0;
   }
 
   .toolbar {
@@ -1910,8 +1910,10 @@ html.dark .is-itm {
     left: auto;
   }
 
-  .chain-scroll[data-density="focus"] {
-    overflow-x: hidden;
+  .chain-scroll[data-density="focus"]:not(.inward) {
+    overflow-x: auto;
+    overflow-y: auto;
+    touch-action: pan-y;
   }
 
   .chain-scroll[data-density="focus"] .chain-table {
@@ -2018,10 +2020,13 @@ html.dark .is-itm {
 }
 
 .chain-scroll.inward {
-  overflow: hidden;
+  overflow: clip;
+  touch-action: auto;
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
+  max-height: 100%;
 }
 
 .inward-captions {
@@ -2083,7 +2088,9 @@ html.dark .inward-captions .pe-zone {
 }
 
 .inward-pane.mid {
-  overflow-x: hidden;
+  overflow-x: clip;
+  overflow-y: auto;
+  touch-action: pan-y;
   box-shadow: inset 1px 0 0 var(--ar-border), inset -1px 0 0 var(--ar-border);
 }
 
