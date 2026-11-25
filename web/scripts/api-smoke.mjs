@@ -44,9 +44,7 @@ await check("universe indices + wealth equity only", async () => {
   assert(ok, `universe ${json?.error || "failed"}`);
   assert(Array.isArray(json.indexes) && json.indexes.length > 0, "indexes missing");
   const symbols = json.indexes.map((row) => `${row.exchange}:${row.symbol}`);
-  assert(symbols.includes("NSE:NIFTY"), `NIFTY missing from ${symbols.join(",")}`);
-  assert(symbols.includes("BSE:SENSEX"), `SENSEX missing from ${symbols.join(",")}`);
-  assert(new Set(symbols).size === symbols.length, "duplicate instruments");
+  assert(symbols.join(",") === "NSE:NIFTY,BSE:SENSEX", `index book should be NIFTY and SENSEX, got ${symbols.join(",")}`);
   assert(Array.isArray(json.equities), "equities missing");
   assert(
     json.equities.every((row) => row.symbol === "ANANDRATHI"),
@@ -55,7 +53,7 @@ await check("universe indices + wealth equity only", async () => {
   assert(json.equities.length >= 1, "ANANDRATHI equity missing");
   assert(json.market && typeof json.market.message === "string", "market message");
   assert(
-    /Market Open|Market Closed|Pre Open|Market Holiday|Session/i.test(json.market.message),
+    /Market Open|Market Closed|Pre-Open|Market Holiday|Session/i.test(json.market.message),
     `unexpected market message ${json.market.message}`,
   );
 });

@@ -156,7 +156,7 @@ export function OptionChainTable({
       left: Math.max(0, left),
       behavior: reduce ? "auto" : "smooth",
     });
-  }, [reduce, snapshot.expiry, snapshot.symbol, spotStrike]);
+  }, [density, reduce, snapshot.expiry, snapshot.symbol, spotStrike]);
 
   return (
     <motion.div
@@ -168,7 +168,16 @@ export function OptionChainTable({
     >
       <table className="chain-table">
         <thead>
-          <tr>
+          <tr className="side-labels">
+            <th className="ce-zone" colSpan={callCols.length} scope="colgroup">
+              Calls
+            </th>
+            <th className="strike-cell" scope="col" />
+            <th className="pe-zone" colSpan={peCols.length} scope="colgroup">
+              Puts
+            </th>
+          </tr>
+          <tr className="column-head">
             {callCols.map((key) => (
               <th key={`ce-${key}`} scope="col" className={cn("ce-zone", `col-${key}`)} title={columnHint(key)}>
                 {columnLabel(key)}
@@ -183,15 +192,25 @@ export function OptionChainTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => {
+          {rows.map((row, index) => {
+            const previous = rows[index - 1];
             const spot = snapshot.spot;
+            const showSpot = spot != null && previous != null && previous.strike < spot && row.strike > spot;
             const atSpot = row.strike === spotStrike;
             const callQuiet = !row.ce.volume;
             const putQuiet = !row.pe.volume;
             const itmCall = spot != null && row.strike < spot;
             const itmPut = spot != null && row.strike > spot;
+            const span = callCols.length + peCols.length + 1;
             return (
               <Fragment key={row.strike}>
+                {showSpot ? (
+                  <tr className="spot-marker" data-testid="spot-marker">
+                    <td colSpan={span}>
+                      <span>Spot {formatPrice(spot)}</span>
+                    </td>
+                  </tr>
+                ) : null}
                 <tr
                   id={`strike-${row.strike}`}
                   tabIndex={0}

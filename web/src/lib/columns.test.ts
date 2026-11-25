@@ -34,11 +34,13 @@ describe("visibleColumns", () => {
     expect(visibleColumns([row(100)], "focus")).toEqual(["volume", "oiChg", "oi", "chng", "ltp"]);
   });
 
-  it("shows bid and ask in expanded mode when the market is closed", () => {
+  it("hides an empty bid and ask book, including when the market is closed", () => {
     const cols = visibleColumns([row(100)], "full", { marketOpen: false });
-    expect(cols).toContain("bid");
-    expect(cols).toContain("ask");
-    expect(cols).toContain("delta");
+    expect(cols).not.toContain("bid");
+    expect(cols).not.toContain("ask");
+    expect(cols).toContain("pChg");
+    expect(cols).not.toContain("delta");
+    expect(cols).not.toContain("theta");
   });
 
   it("hides empty bid ask in full density when the market is open", () => {

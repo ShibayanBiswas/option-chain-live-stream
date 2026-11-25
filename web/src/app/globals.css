@@ -259,14 +259,74 @@ html.dark .bg-mesh::before {
   background: linear-gradient(180deg, var(--ar-table-head-from), var(--ar-table-head-to)) !important;
 }
 
+.chain-table thead tr.side-labels th {
+  top: 0;
+  z-index: 7;
+  height: 28px;
+  padding: 4px 8px;
+  text-align: center;
+  letter-spacing: 0.14em;
+  font-size: 11px;
+  color: var(--ar-ink);
+}
+
+.chain-table thead tr.side-labels .ce-zone {
+  position: sticky;
+  left: 0;
+  z-index: 8;
+  text-align: left;
+  padding-left: 12px;
+  color: #166534;
+}
+
+.chain-table thead tr.side-labels .pe-zone {
+  position: sticky;
+  right: 0;
+  z-index: 8;
+  text-align: right;
+  padding-right: 12px;
+  color: #c2410c;
+}
+
+html.dark .chain-table thead tr.side-labels .ce-zone {
+  color: #86efac;
+}
+
+html.dark .chain-table thead tr.side-labels .pe-zone {
+  color: #fdba74;
+}
+
+.chain-table thead tr.column-head th {
+  top: 28px;
+}
+
 .chain-table tr.is-atm td {
   background: var(--atm-tint) !important;
 }
 
 .chain-table tr.is-atm .strike-cell {
-  color: var(--ar-ink);
-  box-shadow: none;
-  animation: none;
+  color: var(--ar-gold-dark);
+  box-shadow: inset 0 0 0 1px rgba(212, 178, 76, 0.45);
+}
+
+.spot-marker td {
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0;
+}
+
+.spot-marker span {
+  display: block;
+  margin: 2px 8px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  text-align: center;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ar-gold-dark);
+  background: rgba(212, 178, 76, 0.2);
 }
 
 .chain-table tbody {
@@ -699,7 +759,10 @@ html.dark .chain-row.is-zero td {
 
 .updates-btn {
   flex: 0 0 auto;
-  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
   padding: 0 12px;
   border-radius: 999px;
   border: 1px solid var(--ar-border);
@@ -820,16 +883,26 @@ html.dark .chain-row.is-zero td {
   font-size: 22px;
 }
 
-.terminal[data-viewport="tv"] .chain-scroll[data-density="full"] .chain-table,
-.terminal[data-viewport="desktop"] .chain-scroll[data-density="full"] .chain-table {
-  width: max(100%, 1680px);
-  min-width: 1680px;
+.chain-scroll[data-density="full"] .chain-table {
+  width: max-content;
+  min-width: 100%;
+  table-layout: auto;
 }
 
-.terminal[data-viewport="laptop"] .chain-scroll[data-density="full"] .chain-table,
-.terminal[data-viewport="tablet"] .chain-scroll[data-density="full"] .chain-table {
-  width: max(100%, 1280px);
-  min-width: 1280px;
+.chain-scroll[data-density="full"] th,
+.chain-scroll[data-density="full"] td {
+  min-width: 72px;
+}
+
+.chain-scroll[data-density="full"] .strike-cell {
+  width: 88px;
+  min-width: 88px;
+}
+
+.chain-scroll[data-density="full"] thead th {
+  white-space: normal;
+  line-height: 1.15;
+  vertical-align: bottom;
 }
 
 .vol-high {
@@ -881,7 +954,7 @@ html.dark .tone-down {
 .sheet-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 40;
+  z-index: 55;
   background: rgba(8, 6, 4, 0.35);
   display: flex;
   justify-content: flex-end;
@@ -935,7 +1008,27 @@ html.dark .quote-card.put {
 }
 
 .quote-card h3 {
-  margin: 0 0 8px;
+  margin: 0 0 10px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.quote-card.call h3 {
+  color: #166534;
+}
+
+.quote-card.put h3 {
+  color: #c2410c;
+}
+
+html.dark .quote-card.call h3 {
+  color: #86efac;
+}
+
+html.dark .quote-card.put h3 {
+  color: #fdba74;
 }
 
 .quote-card dl {
@@ -1191,10 +1284,6 @@ html.dark .quote-card.put {
 
   .chain-table {
     font-size: 11px;
-  }
-
-  .chain-scroll[data-density="full"] .chain-table {
-    min-width: 1040px;
   }
 
   .chain-table thead th,
@@ -1477,8 +1566,14 @@ html.dark .is-itm {
     max-width: 100%;
   }
 
-  .toolbar-tools .feed-chip {
+  .toolbar-tools .feed-chip,
+  .toolbar-tools .updates-btn {
     grid-column: 1 / -1;
+  }
+
+  .toolbar-tools .updates-btn {
+    width: 100%;
+    justify-content: center;
   }
 
   .identity {
@@ -1547,9 +1642,9 @@ html.dark .is-itm {
     min-width: 0;
   }
 
-  .chain-table thead .strike-cell {
+  .chain-table thead tr.column-head .strike-cell {
     position: sticky;
-    top: 0;
+    top: 28px;
     left: auto;
   }
 
@@ -1614,7 +1709,18 @@ html.dark .is-itm {
   }
 
   .chain-scroll[data-density="full"] .chain-table {
-    min-width: 1040px;
+    min-width: max-content;
     width: max-content;
+    table-layout: auto;
+  }
+
+  .chain-scroll[data-density="full"] th,
+  .chain-scroll[data-density="full"] td {
+    min-width: 76px;
+  }
+
+  .chain-scroll[data-density="full"] .strike-cell {
+    width: 88px;
+    min-width: 88px;
   }
 }

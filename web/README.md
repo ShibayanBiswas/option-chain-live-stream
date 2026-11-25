@@ -1,6 +1,6 @@
 # Option Chain Live Stream
 
-Anand Rathi Wealth desk for every NSE and BSE index that lists options, especially NIFTY and SENSEX. Equity is only Anand Rathi Wealth. The chain is one table: calls, one strike column, puts. Quotes arrive by server-sent events from the exchange REST feeds.
+Anand Rathi Wealth desk for NIFTY 50, SENSEX, and Anand Rathi Wealth. The chain is one table: calls, one strike column, puts. Quotes arrive by server-sent events from the exchange REST feeds.
 
 ## Run
 

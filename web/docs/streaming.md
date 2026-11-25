@@ -20,4 +20,4 @@ The NSE websocket `wss://streamer.nseindia.com/streams/fo/mbp` was removed. It w
 
 ## Latency
 
-`latencyMs` is the exchange request time. The chip shows that number. It never shows Live while the session is closed, and a cached BSE book shows Delayed.
+`latencyMs` is the exchange request time. The chip shows that number. It says REST, Closed, Delayed, Waiting, Connecting, or Stale. It never shows Live while the session is closed, and a cached BSE book shows Delayed.

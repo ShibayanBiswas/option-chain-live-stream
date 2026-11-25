@@ -40,8 +40,12 @@ export function selectDesk(input: {
   bseEquities: Array<{ symbol: string; scrip: number }>;
 }): DeskUniverse {
   const indexes = [
-    ...input.nseIndexes.map((symbol) => asInstrument(symbol, "NSE", "INDEX")),
-    ...input.bseIndexes.map((row) => asInstrument(row.symbol, "BSE", "INDEX", row.scrip)),
+    ...input.nseIndexes
+      .filter((symbol) => symbol.replace(/[^A-Z0-9]/gi, "").toUpperCase() === "NIFTY")
+      .map((symbol) => asInstrument(symbol, "NSE", "INDEX")),
+    ...input.bseIndexes
+      .filter((row) => row.symbol.replace(/[^A-Z0-9]/gi, "").toUpperCase() === "SENSEX")
+      .map((row) => asInstrument(row.symbol, "BSE", "INDEX", row.scrip)),
   ];
   const equities: Instrument[] = [];
   if (input.nseEquities.some((symbol) => isWealthEquity(symbol))) {

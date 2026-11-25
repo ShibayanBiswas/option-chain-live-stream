@@ -68,12 +68,12 @@ export function visibleColumns(
   density: "focus" | "full" = "full",
   options?: { marketOpen?: boolean },
 ): ColumnKey[] {
+  void options;
   if (density === "focus") return COLLAPSED;
-  const marketOpen = options?.marketOpen ?? true;
   return SIDE_COLUMNS.filter((col) => {
     const quoteColumn = col.key === "bid" || col.key === "ask" || col.key === "bidQty" || col.key === "askQty";
-    if (!marketOpen && quoteColumn) return true;
-    if (col.key === "delta" || col.key === "theta" || col.key === "pChg") return true;
+    if (col.key === "delta" || col.key === "theta") return false;
+    if (col.key === "pChg") return true;
     if (col.always || col.focus || col.key === "iv") return true;
     if (quoteColumn) {
       return rows.some(

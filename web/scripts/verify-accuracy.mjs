@@ -288,7 +288,7 @@ async function main() {
   console.log(`Live source check against ${BASE}`);
   const universe = await getJson("/api/universe");
   const symbols = universe.indexes.map((row) => `${row.exchange}:${row.symbol}`);
-  assert(symbols.includes("NSE:NIFTY") && symbols.includes("BSE:SENSEX"), `index book ${symbols.join(",")}`);
+  assert(symbols.join(",") === "NSE:NIFTY,BSE:SENSEX", `index book ${symbols.join(",")}`);
   assert(universe.equities.every((row) => row.symbol === "ANANDRATHI"), "equity book is not only Anand Rathi");
   const books = [
     ...universe.indexes.map((row) => ({ ...row, type: row.nseType || "Indices" })),

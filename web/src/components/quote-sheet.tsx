@@ -3,20 +3,14 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
 
-import { daysToExpiry } from "@/lib/expiry";
 import { formatCompact, formatNumber, formatPrice, formatSigned } from "@/lib/format";
-import { blackScholes, deltaFromIv } from "@/lib/greeks";
 import type { ChainRow, OptionQuote } from "@/lib/types";
 
 export function QuoteSheet({
   row,
-  spot,
-  expiry,
   onClose,
 }: {
   row: ChainRow | null;
-  spot: number | null;
-  expiry: string;
   onClose: () => void;
 }) {
   return (
@@ -33,10 +27,10 @@ export function QuoteSheet({
             className="quote-sheet"
             role="dialog"
             aria-label={`Strike ${row.strike}`}
-            initial={{ x: 28, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: 28, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 340, damping: 30 }}
+            initial={{ y: 12, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 12, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 320, damping: 28 }}
             onClick={(event) => event.stopPropagation()}
           >
             <header className="sheet-head">
@@ -49,8 +43,8 @@ export function QuoteSheet({
               </button>
             </header>
             <div className="sheet-grid">
-              <QuoteCard title="Call" quote={row.ce} tone="call" strike={row.strike} spot={spot} expiry={expiry} />
-              <QuoteCard title="Put" quote={row.pe} tone="put" strike={row.strike} spot={spot} expiry={expiry} />
+              <QuoteCard title="Calls" quote={row.ce} tone="call" />
+              <QuoteCard title="Puts" quote={row.pe} tone="put" />
             </div>
           </motion.aside>
         </motion.div>
@@ -63,59 +57,34 @@ function QuoteCard({
   title,
   quote,
   tone,
-  strike,
-  spot,
-  expiry,
 }: {
   title: string;
   quote: OptionQuote;
   tone: "call" | "put";
-  strike: number;
-  spot: number | null;
-  expiry: string;
 }) {
-  const days = daysToExpiry(expiry);
-  const kind = tone === "call" ? "call" : "put";
-  const delta = deltaFromIv({ spot, strike, ivPercent: quote.iv, days, type: kind });
-  const theta = blackScholes({
-    spot: spot ?? 0,
-    strike,
-    rate: 0.065,
-    sigma: (quote.iv ?? 0) / 100,
-    timeYears: (days ?? 0) / 365,
-    type: kind,
-  })?.theta;
   const items = [
     ["LTP", formatPrice(quote.lastPrice)],
     ["Chng", formatSigned(quote.change, 2)],
-    ["% Chng", formatNumber(quote.pChange, 2)],
     ["IV", formatPrice(quote.iv)],
     ["OI", formatCompact(quote.oi)],
     ["Chng in OI", formatSigned(quote.oiChg, 0)],
     ["Volume", formatCompact(quote.volume)],
-    ["Bid Qty", formatNumber(quote.bidQty, 0)],
     ["Bid", formatPrice(quote.bid)],
     ["Ask", formatPrice(quote.ask)],
-    ["Ask Qty", formatNumber(quote.askQty, 0)],
-    ["Delta", formatNumber(delta, 2)],
-    ["Theta", formatNumber(theta ?? null, 2)],
   ] as const;
+
+  const visible = items.filter(([, value]) => value !== "—");
+  const rows = visible.length > 0 ? visible : ([["LTP", "—"]] as const);
 
   return (
     <section className={`quote-card ${tone}`}>
       <h3>{title}</h3>
-      <p className="quote-ltp">{formatPrice(quote.lastPrice)}</p>
       <dl>
-        {items.map(([label, value], index) => (
-          <motion.div
-            key={label}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.03 * index }}
-          >
+        {rows.map(([label, value]) => (
+          <div key={label}>
             <dt>{label}</dt>
             <dd>{value}</dd>
-          </motion.div>
+          </div>
         ))}
       </dl>
     </section>

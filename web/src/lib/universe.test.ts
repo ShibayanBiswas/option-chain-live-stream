@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { selectDesk, WEALTH_EQUITY } from "./universe";
 
 describe("desk universe", () => {
-  it("keeps every discovered index and only Anand Rathi Wealth", () => {
+  it("keeps NIFTY, SENSEX, and Anand Rathi Wealth only", () => {
     expect(WEALTH_EQUITY).toBe("ANANDRATHI");
     const book = selectDesk({
       nseIndexes: ["NIFTY", "BANKNIFTY", "FINNIFTY"],
@@ -16,13 +16,9 @@ describe("desk universe", () => {
     });
     expect(book.indexes.map((item) => `${item.exchange}:${item.symbol}`)).toEqual([
       "NSE:NIFTY",
-      "NSE:BANKNIFTY",
-      "NSE:FINNIFTY",
       "BSE:SENSEX",
-      "BSE:SX50",
     ]);
-    expect(book.indexes.find((item) => item.symbol === "BANKNIFTY")?.label).toBe("NIFTY BANK");
-    expect(book.indexes.find((item) => item.symbol === "SX50")?.label).toBe("SENSEX 50");
+    expect(book.indexes.find((item) => item.symbol === "NIFTY")?.label).toBe("NIFTY 50");
     expect(book.equities.map((item) => `${item.exchange}:${item.symbol}`)).toEqual([
       "NSE:ANANDRATHI",
       "BSE:ANANDRATHI",

@@ -38,13 +38,12 @@ export function Terminal() {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Instrument | null>(null);
   const [expiry, setExpiry] = useState("");
-  const [depth] = useState<"near" | "full">("full");
+  const [depth, setDepth] = useState<"near" | "full">("near");
   const [columnOverride, setColumnOverride] = useState<"focus" | "full" | null>(null);
-  const [wide, setWide] = useState(false);
   const [viewport, setViewport] = useState("laptop");
   const [updatesOpen, setUpdatesOpen] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
-  const density = columnOverride ?? (wide ? "full" : "focus");
+  const density = columnOverride ?? "focus";
   const [railOpen, setRailOpen] = useState(false);
   const [picked, setPicked] = useState<ChainRow | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -105,7 +104,6 @@ export function Terminal() {
     if (!node) return;
     const apply = () => {
       const width = node.clientWidth;
-      setWide(width >= 1920);
       setViewport(width >= 1920 ? "tv" : width >= 1440 ? "desktop" : width >= 1100 ? "laptop" : width >= 701 ? "tablet" : "phone");
     };
     const watch = new ResizeObserver(apply);
@@ -258,6 +256,15 @@ export function Terminal() {
           />
           <select
             className="toolbar-select"
+            aria-label="Strikes"
+            value={depth}
+            onChange={(event) => setDepth(event.target.value as "near" | "full")}
+          >
+            <option value="near">Spot Focus</option>
+            <option value="full">All Strikes</option>
+          </select>
+          <select
+            className="toolbar-select"
             aria-label="Columns"
             value={density}
             onChange={(event) => setColumnOverride(event.target.value as "focus" | "full")}
@@ -266,6 +273,9 @@ export function Terminal() {
             <option value="focus">Focus</option>
             <option value="full">All Columns</option>
           </select>
+          <button className="updates-btn" type="button" onClick={() => setUpdatesOpen(true)}>
+            Updates
+          </button>
           </div>
         </motion.header>
       <aside className={cn("rail", !railOpen && "is-collapsed", railOpen && "is-sheet")} aria-hidden={!railOpen}>
@@ -306,14 +316,19 @@ export function Terminal() {
 
         <div className="book-tools">
           <span className="range-label" aria-label="Strike range">{strikeRange}</span>
-          <button className="updates-btn" type="button" onClick={() => setUpdatesOpen(true)}>
-            Updates
-          </button>
           <button className="icon-btn" type="button" onClick={() => {
             const row = document.getElementById(`strike-${snapshot?.totals.atm ?? ""}`);
             const scroller = row?.closest(".chain-scroll");
             if (!(row instanceof HTMLElement) || !(scroller instanceof HTMLElement)) return;
+            const cell = row.querySelector(".strike-cell");
+            const delta =
+              cell instanceof HTMLElement
+                ? cell.getBoundingClientRect().left - scroller.getBoundingClientRect().left
+                : 0;
             scroller.scrollTop = Math.max(0, row.offsetTop - scroller.clientHeight / 2);
+            if (cell instanceof HTMLElement) {
+              scroller.scrollLeft = Math.max(0, scroller.scrollLeft + delta - scroller.clientWidth / 2 + cell.clientWidth / 2);
+            }
           }}>
             Jump to spot
           </button>
@@ -331,12 +346,7 @@ export function Terminal() {
           )}
         </div>
       </section>
-      <QuoteSheet
-        row={picked}
-        spot={snapshot?.spot ?? null}
-        expiry={snapshot?.expiry ?? ""}
-        onClose={() => setPicked(null)}
-      />
+      <QuoteSheet row={picked} onClose={() => setPicked(null)} />
       <UpdatesDialog open={updatesOpen} onClose={() => setUpdatesOpen(false)} />
       <CommandPalette
         open={paletteOpen}

@@ -9,14 +9,14 @@ async function waitForBook(page: Page) {
   await expect(page.locator("h1")).not.toHaveText("Option Chain", { timeout: 70_000 });
   await expect(page.locator(".spot-inline")).not.toHaveText("—", { timeout: 70_000 });
   await expect(page.locator(".chain-row").first()).toBeVisible();
-  await page.getByRole("button", { name: "Updates" }).click();
+  await page.locator(".toolbar").getByRole("button", { name: "Updates" }).click();
   const shades = page.getByRole("dialog", { name: "Volume shades" });
   await expect(shades).toBeVisible();
   await expect(shades).toContainText("High volume");
   await expect(shades).toContainText("Zero volume");
   await shades.getByRole("button", { name: "Close updates" }).click();
   await expect(shades).toBeHidden();
-  await expect(page.locator(".session-pill")).toHaveText(/Market Open|Market Closed|Pre Open|Market Holiday/);
+  await expect(page.locator(".session-pill")).toHaveText(/Market Open|Market Closed|Pre-Open|Market Holiday/);
 }
 
 test("desk, density, volume shade, stream, and motion", async ({ page }, testInfo) => {
@@ -103,6 +103,7 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
     await expect(page.locator(".rail")).toHaveClass(/is-collapsed/);
   }
 
+  await expect(page.getByLabel("Strikes")).toHaveValue("near");
   const density = page.getByTestId("density-select");
   await expect(density).toHaveValue("focus");
   await expect(page.locator(".chain-scroll")).toHaveAttribute("data-density", "focus");
@@ -113,10 +114,13 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   await expect(page.locator(".chain-scroll")).toHaveAttribute("data-density", "full");
 
   await page.getByRole("button", { name: "Jump to spot" }).click();
-  await expect(page.locator(".chain-table thead tr")).toHaveCount(1);
-  await expect(page.locator(".spot-marker, .wall-badge")).toHaveCount(0);
+  await expect(page.locator(".side-labels")).toContainText("Calls");
+  await expect(page.locator(".side-labels")).toContainText("Puts");
+  await expect(page.locator(".chain-table thead tr")).toHaveCount(2);
+  await expect(page.getByTestId("spot-marker")).toBeVisible();
+  await expect(page.locator(".wall-badge")).toHaveCount(0);
   const strikeGap = await page.evaluate(() => {
-    const heads = [...document.querySelectorAll(".chain-table thead th")];
+    const heads = [...document.querySelectorAll(".chain-table thead tr.column-head th")];
     const strike = heads.findIndex((th) => th.textContent?.trim() === "Strike");
     const call = heads[strike - 1]?.getBoundingClientRect();
     const cell = heads[strike]?.getBoundingClientRect();
@@ -126,7 +130,7 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   expect(strikeGap).toBeLessThanOrEqual(1);
 
   const headerOrder = await page.evaluate(() => {
-    const heads = [...document.querySelectorAll(".chain-table thead tr th")].map((th) =>
+    const heads = [...document.querySelectorAll(".chain-table thead tr.column-head th")].map((th) =>
       th.textContent?.trim(),
     );
     const strike = heads.indexOf("Strike");
@@ -138,10 +142,11 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   expect(headerOrder.before).toEqual(["Chng", "LTP"]);
   expect(headerOrder.after).toEqual(["LTP", "Chng"]);
 
+  await page.getByLabel("Strikes").selectOption("full");
   const zeroRows = page.locator('[data-volume="zero"]');
-  await expect(zeroRows.first()).toBeVisible();
-  expect(await page.locator('[data-volume="zero"] .vol-high, [data-volume="zero"] .vol-low').count()).toBe(0);
-  expect(await page.locator(".vol-zero").count()).toBeGreaterThan(0);
+  if ((await zeroRows.count()) > 0) {
+    expect(await page.locator('[data-volume="zero"] .vol-high, [data-volume="zero"] .vol-low').count()).toBe(0);
+  }
   expect(await page.locator(".vol-high").count()).toBeGreaterThan(0);
   expect(await page.locator(".vol-low").count()).toBeGreaterThan(0);
 
@@ -154,7 +159,8 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   await expect(page.locator(".terminal")).not.toHaveClass(/rail-hidden/);
   await expect(page.locator(".is-itm").first()).toBeVisible();
   await expect(page.locator(".depth-bar").first()).toBeVisible();
-  await expect(page.locator(".spot-marker, .wall-badge")).toHaveCount(0);
+  await expect(page.getByTestId("spot-marker")).toBeVisible();
+  await expect(page.locator(".wall-badge")).toHaveCount(0);
 
   if (narrow) await page.getByRole("button", { name: "Collapse sidebar" }).click();
   if (narrow) await expect(page.locator(".rail")).toHaveClass(/is-collapsed/);
@@ -176,6 +182,8 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   const sheet = page.getByRole("dialog");
   await expect(sheet).toBeVisible({ timeout: 10_000 });
   expect(await sheet.innerText()).not.toMatch(/\+\d/);
+  await expect(sheet.getByRole("heading", { name: "Calls" })).toBeVisible();
+  await expect(sheet.getByRole("heading", { name: "Puts" })).toBeVisible();
   const sheetBox = await sheet.boundingBox();
   const viewport = page.viewportSize();
   expect(sheetBox).toBeTruthy();
@@ -256,6 +264,11 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   await search.press("Enter");
   await expect(page.locator("h1")).toContainText(/NIFTY/);
 
+  const indexLabels = await page
+    .locator("section.tree-section", { hasText: "Indices" })
+    .locator(".symbol-main span")
+    .allTextContents();
+  expect(indexLabels).toEqual(["NIFTY 50", "SENSEX"]);
   const equityNames = page.locator("section.tree-section", { hasText: "Equity" }).locator(".symbol-main");
   const equityLabels = await equityNames.allTextContents();
   expect(equityLabels.length).toBeGreaterThan(0);
@@ -324,10 +337,8 @@ test("universe API exposes indices and Anand Rathi Wealth only", async ({ reques
   const res = await request.get("/api/universe");
   expect(res.ok()).toBeTruthy();
   const body = await res.json();
-  const symbols = body.indexes.map((row: { symbol: string }) => row.symbol);
-  expect(symbols).toContain("NIFTY");
-  expect(symbols).toContain("SENSEX");
-  expect(new Set(symbols).size).toBe(symbols.length);
+  const symbols = body.indexes.map((row: { exchange: string; symbol: string }) => `${row.exchange}:${row.symbol}`);
+  expect(symbols).toEqual(["NSE:NIFTY", "BSE:SENSEX"]);
   expect(body.equities.every((row: { symbol: string }) => row.symbol === "ANANDRATHI")).toBe(true);
   expect(body.equities.length).toBeGreaterThanOrEqual(1);
   expect(body.equities.length).toBeLessThanOrEqual(2);

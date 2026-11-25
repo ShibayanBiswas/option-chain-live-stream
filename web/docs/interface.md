@@ -8,15 +8,15 @@ The expiry menu groups Weekly and Monthly and shows the days left. Past expiries
 
 ## Header
 
-The header spans the width of the desk, above the sidebar. It shows the contract, the spot, the session, the feed chip, the expiry, and the column control. The feed chip says REST, Closed, Delayed, Waiting, Connecting, or Stale. It does not say Live while the market is closed.
+The header spans the width of the desk, above the sidebar. It shows the contract, the spot, the session, the feed chip, the expiry, Spot Focus or All Strikes, the column control, and Updates. Updates opens the volume key. The feed chip says REST, Closed, Delayed, Waiting, Connecting, or Stale. It does not say Live while the market is closed.
 
 ## Option chain
 
-One table and one header row: calls, Strike, puts. The last price sits against the strike. There is no gap between that last-price cell and the strike, and there is no second strike row.
+One table. The top header row reads Calls, then the strike column, then Puts. The row under it is the column names, with one Strike heading. The last price sits against the strike. There is no gap between that last-price cell and the strike. A gold line between the two strikes around the live price reads Spot, and the at-the-money strike is outlined.
 
-The NSE columns are OI, Chng in OI, Volume, IV, LTP, Chng, Bid Qty, Bid, Ask and Ask Qty, plus % Chng, Delta and Theta. Focus shows Volume, Chng in OI, OI, Chng and LTP. A phone in Focus shows OI and LTP. A TV at 1920 px opens every column. Desktop, laptop and tablet stay on Focus until All Columns is chosen.
+The NSE columns are OI, Chng in OI, Volume, IV, LTP, Chng, and % Chng. Bid Qty, Bid, Ask and Ask Qty join All Columns when the book has a quote. All Columns gives each column a readable width and scrolls inside the chain. Focus shows Volume, Chng in OI, OI, Chng and LTP. A phone in Focus shows OI and LTP. Every screen starts on Focus and Spot Focus.
 
-Updates opens the volume key. Gold is high volume, blue is low volume, grey is zero volume. A green flash is a higher print and a red flash is a lower print. There is no gold line on a strike. Clicking a strike opens Call and Put with those same fields.
+Gold is high volume, blue is low volume, grey is zero volume. A green flash is a higher print and a red flash is a lower print. There is no gold line under a round strike. Clicking a strike opens a card with Calls on one side and Puts on the other.
 
 The range label reads like `24,450 – 26,250 · 37 strikes`. Jump to spot scrolls the chain. The page itself does not scroll.
 
