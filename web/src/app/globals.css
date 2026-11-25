@@ -2126,8 +2126,26 @@ html.dark .inward-captions .pe-zone {
   white-space: nowrap;
 }
 
-.inward .chain-table tbody td {
+.chain-scroll.inward .chain-table tbody tr {
   height: 46px;
+}
+
+.chain-scroll.inward .chain-table tbody td {
+  height: 46px;
+  max-height: 46px;
+  padding-top: 0;
+  padding-bottom: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+  vertical-align: middle;
+  line-height: 1.2;
+}
+
+.chain-scroll.inward .spot-marker,
+.chain-scroll.inward .spot-marker td {
+  height: 22px;
+  max-height: 22px;
+  padding: 0;
 }
 
 .chain-scroll[data-density="custom"] .ltp-chng {

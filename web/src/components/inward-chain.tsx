@@ -104,93 +104,69 @@ export function InwardChain({
     const mid = midRef.current;
     if (!calls || !puts || !mid) return;
     const max = (el: HTMLElement) => Math.max(0, el.scrollWidth - el.clientWidth);
-    let writing = false;
+    let leader: HTMLElement | null = null;
+    let silent = false;
     let moved = false;
-    const at = { callsX: calls.scrollLeft, callsY: calls.scrollTop, putsX: puts.scrollLeft, putsY: puts.scrollTop, midY: mid.scrollTop };
-    const write = (el: HTMLElement, left: number | null, top: number | null) => {
-      if (left != null && Math.abs(el.scrollLeft - left) > 0.5) el.scrollLeft = left;
-      if (top != null && Math.abs(el.scrollTop - top) > 0.5) el.scrollTop = top;
+    const same = (a: number, b: number) => Math.abs(a - b) <= 1;
+    const mirrorX = (source: HTMLElement) => {
+      if (source === mid) return;
+      const other = source === calls ? puts : calls;
+      const sourceMax = max(source);
+      const otherMax = max(other);
+      const next = source === calls
+        ? (sourceMax === 0 ? 0 : ((sourceMax - source.scrollLeft) / sourceMax) * otherMax)
+        : (sourceMax === 0 ? otherMax : otherMax - (source.scrollLeft / sourceMax) * otherMax);
+      if (!same(other.scrollLeft, next)) other.scrollLeft = next;
     };
-    const remember = () => {
-      at.callsX = calls.scrollLeft;
-      at.callsY = calls.scrollTop;
-      at.putsX = puts.scrollLeft;
-      at.putsY = puts.scrollTop;
-      at.midY = mid.scrollTop;
+    const follow = (source: HTMLElement) => {
+      if (silent || (leader && leader !== source)) return;
+      leader = source;
+      silent = true;
+      const top = source.scrollTop;
+      for (const pane of [calls, puts, mid]) {
+        if (pane !== source && !same(pane.scrollTop, top)) pane.scrollTop = top;
+      }
+      mirrorX(source);
+      silent = false;
+      moved = true;
     };
     const park = () => {
       if (moved) return;
-      writing = true;
-      write(calls, max(calls), null);
-      write(puts, 0, null);
-      remember();
-      writing = false;
+      silent = true;
+      const callsMax = max(calls);
+      if (!same(calls.scrollLeft, callsMax)) calls.scrollLeft = callsMax;
+      if (!same(puts.scrollLeft, 0)) puts.scrollLeft = 0;
+      silent = false;
     };
-    const fromCalls = () => {
-      if (writing) return;
-      const dx = Math.abs(calls.scrollLeft - at.callsX) > 0.5;
-      const dy = Math.abs(calls.scrollTop - at.callsY) > 0.5;
-      if (!dx && !dy) return;
-      writing = true;
-      moved = true;
-      if (dx) {
-        const cMax = max(calls);
-        const pMax = max(puts);
-        const revealed = cMax - calls.scrollLeft;
-        write(puts, cMax === 0 ? 0 : (revealed / cMax) * pMax, null);
-      }
-      if (dy) {
-        write(puts, null, calls.scrollTop);
-        write(mid, null, calls.scrollTop);
-      }
-      remember();
-      writing = false;
+    const claim = (event: Event) => {
+      const pane = event.currentTarget;
+      if (pane instanceof HTMLElement) leader = pane;
     };
-    const fromPuts = () => {
-      if (writing) return;
-      const dx = Math.abs(puts.scrollLeft - at.putsX) > 0.5;
-      const dy = Math.abs(puts.scrollTop - at.putsY) > 0.5;
-      if (!dx && !dy) return;
-      writing = true;
-      moved = true;
-      if (dx) {
-        const cMax = max(calls);
-        const pMax = max(puts);
-        write(calls, pMax === 0 ? cMax : cMax - (puts.scrollLeft / pMax) * cMax, null);
-      }
-      if (dy) {
-        write(calls, null, puts.scrollTop);
-        write(mid, null, puts.scrollTop);
-      }
-      remember();
-      writing = false;
-    };
-    const fromMid = () => {
-      if (writing) return;
-      if (Math.abs(mid.scrollTop - at.midY) <= 0.5) return;
-      writing = true;
-      moved = true;
-      write(calls, null, mid.scrollTop);
-      write(puts, null, mid.scrollTop);
-      remember();
-      writing = false;
-    };
-    calls.addEventListener("scroll", fromCalls, { passive: true });
-    puts.addEventListener("scroll", fromPuts, { passive: true });
-    mid.addEventListener("scroll", fromMid, { passive: true });
+    const onCalls = () => follow(calls);
+    const onPuts = () => follow(puts);
+    const onMid = () => follow(mid);
+    calls.addEventListener("scroll", onCalls, { passive: true });
+    puts.addEventListener("scroll", onPuts, { passive: true });
+    mid.addEventListener("scroll", onMid, { passive: true });
+    for (const pane of [calls, puts, mid]) {
+      pane.addEventListener("pointerdown", claim);
+      pane.addEventListener("wheel", claim, { passive: true });
+      pane.addEventListener("touchstart", claim, { passive: true });
+    }
     park();
     const watch = new ResizeObserver(park);
     watch.observe(calls);
     watch.observe(puts);
-    const callTable = calls.querySelector("table");
-    const putTable = puts.querySelector("table");
-    if (callTable) watch.observe(callTable);
-    if (putTable) watch.observe(putTable);
     return () => {
-      calls.removeEventListener("scroll", fromCalls);
-      puts.removeEventListener("scroll", fromPuts);
-      mid.removeEventListener("scroll", fromMid);
       watch.disconnect();
+      calls.removeEventListener("scroll", onCalls);
+      puts.removeEventListener("scroll", onPuts);
+      mid.removeEventListener("scroll", onMid);
+      for (const pane of [calls, puts, mid]) {
+        pane.removeEventListener("pointerdown", claim);
+        pane.removeEventListener("wheel", claim);
+        pane.removeEventListener("touchstart", claim);
+      }
     };
   }, [layoutKey]);
 

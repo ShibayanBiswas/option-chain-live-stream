@@ -90,9 +90,13 @@ export function CustomLtpBoard({
   const { ref: hostRef, width } = useChainWidth();
   const pin = chainOverflows(width, columns.length * 2, "custom");
 
+  const parked = useRef("");
   useEffect(() => {
+    const key = `${symbol}:${chosen.join(",")}:${pin}:${strikes.length}`;
+    if (parked.current === key || atm == null) return;
+    parked.current = key;
     centerBook(atm);
-  }, [atm, chosen, symbol, pin]);
+  }, [atm, chosen, pin, strikes.length, symbol]);
 
   if (loaded.length === 0) return <div className="board-wait">Opening the expiries</div>;
 
