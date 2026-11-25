@@ -115,8 +115,24 @@ export function groupExpiries(expiries: string[], now = new Date()) {
 }
 
 export function upcomingExpiry(expiries: string[], current: string, now = new Date()): string {
-  const live = expiries.filter((raw) => isListedExpiryLive(raw, now));
-  const pool = live.length > 0 ? live : expiries;
+  const pool = liveExpiries(expiries, now);
   if (current && pool.includes(current)) return current;
   return pool[0] ?? "";
+}
+
+export function upcomingExpiries(expiries: string[], count: number, now = new Date()): string[] {
+  const pool = liveExpiries(expiries, now);
+  const n = Math.max(1, Math.min(Math.floor(count) || 1, pool.length));
+  return pool.slice(0, n);
+}
+
+function liveExpiries(expiries: string[], now: Date): string[] {
+  const live = expiries.filter((raw) => isListedExpiryLive(raw, now));
+  const pool = (live.length > 0 ? live : expiries).slice();
+  pool.sort((a, b) => {
+    const da = describeExpiry(a, now)?.date.getTime() ?? 0;
+    const db = describeExpiry(b, now)?.date.getTime() ?? 0;
+    return da - db;
+  });
+  return pool;
 }

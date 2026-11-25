@@ -1,4 +1,4 @@
-import { BseBlockedError, discoverBseUnderlyings, getBseExpiries } from "./bse";
+import { BseBlockedError, discoverBseUnderlyings } from "./bse";
 import { listCachedBse } from "./bse-cache";
 import { indexLabel } from "./index-match";
 import { discoverNseBook } from "./nse";
@@ -51,8 +51,6 @@ export function selectDesk(input: {
   if (input.nseEquities.some((symbol) => isWealthEquity(symbol))) {
     equities.push(asInstrument(WEALTH_EQUITY, "NSE", "EQUITY"));
   }
-  const bseWealth = input.bseEquities.find((row) => isWealthEquity(row.symbol));
-  if (bseWealth) equities.push(asInstrument(WEALTH_EQUITY, "BSE", "EQUITY", bseWealth.scrip));
   return { indexes, equities, refreshedAt: new Date().toISOString() };
 }
 
@@ -66,23 +64,12 @@ export async function loadUniverse(force = false): Promise<DeskUniverse> {
 
   const nse = await discoverNseBook();
   let bseIndexes: Instrument[] = [];
-  let bseWealth: Instrument | null = null;
 
   try {
-    const [indexes, stocks] = await Promise.all([
-      discoverBseUnderlyings("IO"),
-      discoverBseUnderlyings("SO").catch(() => []),
-    ]);
+    const indexes = await discoverBseUnderlyings("IO");
     bseIndexes = indexes.map((row) =>
       asInstrument(row.symbol.replace(/\s+/g, ""), "BSE", "INDEX", row.scrip),
     );
-    const wealth = stocks.find((row) => isWealthEquity(row.symbol));
-    if (wealth) {
-      const expiries = await getBseExpiries(wealth.scrip, "SO").catch(() => []);
-      if (expiries.length > 0) {
-        bseWealth = asInstrument(WEALTH_EQUITY, "BSE", "EQUITY", wealth.scrip);
-      }
-    }
   } catch (err) {
     if (!(err instanceof BseBlockedError)) {
       console.error("bse universe", err);
@@ -100,7 +87,7 @@ export async function loadUniverse(force = false): Promise<DeskUniverse> {
     nseIndexes: nse.indexes,
     nseEquities: nse.equities,
     bseIndexes: bseIndexes.map((item) => ({ symbol: item.symbol, scrip: item.bseScrip ?? 1 })),
-    bseEquities: bseWealth ? [{ symbol: bseWealth.symbol, scrip: bseWealth.bseScrip ?? 0 }] : [],
+    bseEquities: [],
   });
 
   cache = { at: Date.now(), value };

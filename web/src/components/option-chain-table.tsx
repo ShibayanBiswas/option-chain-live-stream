@@ -1,8 +1,6 @@
 "use client";
 
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { motion, useReducedMotion } from "framer-motion";
-
 import { columnHint, columnLabel, putColumns, visibleColumns } from "@/lib/columns";
 import { daysToExpiry } from "@/lib/expiry";
 import { blackScholes, deltaFromIv } from "@/lib/greeks";
@@ -102,7 +100,6 @@ export function OptionChainTable({
   density: "focus" | "full";
   onSelect: (row: ChainRow) => void;
 }) {
-  const reduce = useReducedMotion();
   const narrow = useNarrow();
   const callCols = useMemo(() => {
     const cols = visibleColumns(snapshot.rows, density, { marketOpen: snapshot.marketOpen });
@@ -154,17 +151,15 @@ export function OptionChainTable({
     scroller.scrollTo({
       top: Math.max(0, top),
       left: Math.max(0, left),
-      behavior: reduce ? "auto" : "smooth",
+      behavior: "auto",
     });
-  }, [density, reduce, snapshot.expiry, snapshot.symbol, spotStrike]);
+  }, [density, snapshot.expiry, snapshot.symbol, spotStrike]);
 
   return (
-    <motion.div
+    <div
       className="chain-scroll"
       data-density={density}
       data-compact={narrow && density === "focus" ? "true" : undefined}
-      initial={reduce ? false : { opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
     >
       <table className="chain-table">
         <thead>
@@ -266,7 +261,7 @@ export function OptionChainTable({
           })}
         </tbody>
       </table>
-    </motion.div>
+    </div>
   );
 }
 

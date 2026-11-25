@@ -228,7 +228,6 @@ export async function getNseOptionChain(params: {
   type: "Indices" | "Equity";
   segment: Segment;
 }): Promise<OptionChainSnapshot> {
-  const started = Date.now();
   const expiries = await getNseContractInfo(params.symbol);
   const expiry = upcomingExpiry(expiries, params.expiry ?? "");
 
@@ -241,7 +240,11 @@ export async function getNseOptionChain(params: {
     `&symbol=${encodeURIComponent(params.symbol)}` +
     `&expiry=${encodeURIComponent(expiry)}`;
 
-  const raw = await fetchJson<NseChainResponse>(path);
+  const started = Date.now();
+  const [raw, market] = await Promise.all([
+    fetchJson<NseChainResponse>(path),
+    getNseMarketStatus().catch(() => null),
+  ]);
   const all = raw.records?.data ?? [];
   const filtered = (raw.filtered?.data?.length ? raw.filtered.data : all).filter(
     (row) => {
@@ -272,7 +275,6 @@ export async function getNseOptionChain(params: {
 
   const rows = Array.from(byStrike.values()).sort((a, b) => a.strike - b.strike);
   const spot = parseLooseNumber(raw.records?.underlyingValue);
-  const market = await getNseMarketStatus().catch(() => null);
   const marketOpen = market?.open ?? false;
   assertBookShape({
     strikes: rows.map((row) => row.strike),

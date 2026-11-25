@@ -24,6 +24,9 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   fs.mkdirSync(shotDir, { recursive: true });
   if (testInfo.project.name === "phone" || testInfo.project.name === "phone-narrow") {
     await expect(page.locator(".feed-chip")).toContainText(/Closed|Delayed|REST|Waiting|Connecting/, { timeout: 25_000 });
+    await page.locator(".toolbar").evaluate((bar) => {
+      bar.scrollLeft = 0;
+    });
     await page.waitForTimeout(400);
     const viewport = page.viewportSize();
     const fitted = await page.evaluate(() => {
@@ -48,20 +51,23 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
       const kpis = document.querySelector(".kpi-row");
       const chainWidth = chain instanceof HTMLElement ? chain.getBoundingClientRect().width : 0;
       const tableWidth = table instanceof HTMLElement ? table.getBoundingClientRect().width : 0;
+      const chainBox = chain instanceof HTMLElement ? chain.getBoundingClientRect() : null;
       return {
-        session: inside(".session-pill"),
+        name: inside("h1"),
         feed: inside(".feed-chip"),
         expiry: inside("[aria-label='Expiry']"),
-        strikes: inside("[aria-label='Strike range']"),
+        strikes: inside("[aria-label='Strikes']"),
         columns: inside("[aria-label='Columns']"),
+        chainShare: chainBox ? chainBox.height / window.innerHeight : 0,
         separated,
         chainFits: chain instanceof HTMLElement && chain.scrollWidth <= chain.clientWidth + 2,
         tableFills: tableWidth >= chainWidth - 4,
         kpiFits: kpis instanceof HTMLElement && kpis.scrollWidth <= kpis.clientWidth + 2,
       };
     });
-    expect(fitted).toEqual({
-      session: true,
+    expect(fitted.chainShare).toBeGreaterThanOrEqual(0.9);
+    expect(fitted).toMatchObject({
+      name: true,
       feed: true,
       expiry: true,
       strikes: true,
@@ -271,8 +277,7 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   expect(indexLabels).toEqual(["NIFTY 50", "SENSEX"]);
   const equityNames = page.locator("section.tree-section", { hasText: "Equity" }).locator(".symbol-main");
   const equityLabels = await equityNames.allTextContents();
-  expect(equityLabels.length).toBeGreaterThan(0);
-  expect(equityLabels.length).toBeLessThanOrEqual(2);
+  expect(equityLabels).toHaveLength(1);
   expect(equityLabels.every((label) => /Anand Rathi Wealth|ANANDRATHI/i.test(label))).toBe(true);
   await equityNames.first().click();
   await expect(page.locator("h1")).toHaveText("Anand Rathi Wealth");
@@ -340,6 +345,5 @@ test("universe API exposes indices and Anand Rathi Wealth only", async ({ reques
   const symbols = body.indexes.map((row: { exchange: string; symbol: string }) => `${row.exchange}:${row.symbol}`);
   expect(symbols).toEqual(["NSE:NIFTY", "BSE:SENSEX"]);
   expect(body.equities.every((row: { symbol: string }) => row.symbol === "ANANDRATHI")).toBe(true);
-  expect(body.equities.length).toBeGreaterThanOrEqual(1);
-  expect(body.equities.length).toBeLessThanOrEqual(2);
+  expect(body.equities).toEqual([expect.objectContaining({ exchange: "NSE", symbol: "ANANDRATHI" })]);
 });

@@ -105,7 +105,7 @@ export function InstrumentTree({
                 exit={reduce ? undefined : { height: 0, opacity: 0 }}
                 className="tree-body"
               >
-                {group.blocks.map((block) => (
+                {group.blocks.map((block) => block.rows.length === 0 ? null : (
                   <div key={block.title} className="tree-block">
                     <p className="tree-kicker">{block.title}</p>
                     {block.rows.map((item) => (
@@ -119,7 +119,6 @@ export function InstrumentTree({
                         onTogglePin={onTogglePin}
                       />
                     ))}
-                    {block.rows.length === 0 ? <p className="rail-note">None</p> : null}
                   </div>
                 ))}
               </motion.div>

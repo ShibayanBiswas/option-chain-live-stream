@@ -6,6 +6,7 @@ import { ArrowLeft, Moon, PanelLeft, Search, Sun } from "lucide-react";
 
 import { BrandLogo } from "@/components/brand-logo";
 import { CommandPalette } from "@/components/command-palette";
+import { CustomLtpBoard, expiryChoices } from "@/components/custom-ltp-board";
 import { ExpirySelect } from "@/components/expiry-select";
 import { InstrumentTree } from "@/components/instrument-tree";
 import { OptionChainTable } from "@/components/option-chain-table";
@@ -15,7 +16,7 @@ import { UpdatesDialog } from "@/components/updates-dialog";
 import { useOptionStream } from "@/hooks/use-option-stream";
 import { atmIv } from "@/lib/analytics";
 import { cn } from "@/lib/cn";
-import { displayName, upcomingExpiry } from "@/lib/display";
+import { displayName, upcomingExpiry, upcomingExpiries } from "@/lib/display";
 import { formatCompact, formatNumber, formatPrice } from "@/lib/format";
 import { useTheme } from "@/lib/theme";
 import type { ChainRow, Instrument, TapeQuote } from "@/lib/types";
@@ -39,6 +40,8 @@ export function Terminal() {
   const [selected, setSelected] = useState<Instrument | null>(null);
   const [expiry, setExpiry] = useState("");
   const [depth, setDepth] = useState<"near" | "full">("near");
+  const [view, setView] = useState<"chain" | "custom">("chain");
+  const [expiryCount, setExpiryCount] = useState(4);
   const [columnOverride, setColumnOverride] = useState<"focus" | "full" | null>(null);
   const [viewport, setViewport] = useState("laptop");
   const [updatesOpen, setUpdatesOpen] = useState(false);
@@ -153,6 +156,12 @@ export function Terminal() {
   }, []);
 
   useEffect(() => {
+    if (updatesOpen) return;
+    const bar = document.querySelector(".toolbar");
+    if (bar instanceof HTMLElement) bar.scrollLeft = 0;
+  }, [updatesOpen]);
+
+  useEffect(() => {
     if (statusRef.current !== "error" && status === "error") pushToast("Connection lost");
     if (statusRef.current === "error" && (status === "live" || status === "polling")) {
       pushToast("Connection restored");
@@ -194,6 +203,8 @@ export function Terminal() {
   const delayed = Boolean(snapshot?.stale);
   const feed = delayed ? "Delayed" : !snapshot ? (waiting ? "Connecting" : "REST") : !marketOpen ? "Closed" : waiting ? "Waiting" : "REST";
   const feedTime = delayed && snapshot?.asOf ? snapshot.asOf : snapshot ? `${snapshot.latencyMs} ms` : "…";
+  const expiryMenu = expiryChoices(Math.max(1, upcomingExpiries(snapshot?.expiries ?? [], 8).length));
+  const shownExpiries = expiryMenu.includes(expiryCount) ? expiryCount : (expiryMenu[expiryMenu.length - 1] ?? 4);
   const strikeRange = snapshot?.rows.length
     ? `${formatNumber(snapshot.rows[0]?.strike ?? null, 0)} – ${formatNumber(snapshot.rows[snapshot.rows.length - 1]?.strike ?? null, 0)} · ${snapshot.rows.length} strikes`
     : "";
@@ -224,6 +235,9 @@ export function Terminal() {
             <h1>{selected ? displayName(selected.symbol, selected.label) : "Option Chain"}</h1>
             <LiveSpot value={snapshot?.spot ?? null} />
           </div>
+          <button className="updates-btn" type="button" onClick={() => setUpdatesOpen(true)}>
+            Updates
+          </button>
           <button className="icon-btn" type="button" onClick={toggle} aria-label="Toggle theme">
             {mounted && theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
@@ -246,14 +260,38 @@ export function Terminal() {
           >
             {session}
           </span>
-          <ExpirySelect
-            expiries={snapshot?.expiries ?? []}
-            value={expiry}
-            onChange={(next) => {
-              setExpiry(next);
-              pushToast("Expiry updated");
-            }}
-          />
+          <select
+            className="toolbar-select"
+            aria-label="View"
+            value={view}
+            onChange={(event) => setView(event.target.value as "chain" | "custom")}
+          >
+            <option value="chain">Option Chain</option>
+            <option value="custom">Custom</option>
+          </select>
+          {view === "chain" ? (
+            <ExpirySelect
+              expiries={snapshot?.expiries ?? []}
+              value={expiry}
+              onChange={(next) => {
+                setExpiry(next);
+                pushToast("Expiry updated");
+              }}
+            />
+          ) : (
+            <select
+              className="toolbar-select"
+              aria-label="Expiries"
+              value={shownExpiries}
+              onChange={(event) => setExpiryCount(Number(event.target.value))}
+            >
+              {expiryMenu.map((count) => (
+                <option key={count} value={count}>
+                  {count === 1 ? "1 expiry" : `${count} expiries`}
+                </option>
+              ))}
+            </select>
+          )}
           <select
             className="toolbar-select"
             aria-label="Strikes"
@@ -263,19 +301,18 @@ export function Terminal() {
             <option value="near">Spot Focus</option>
             <option value="full">All Strikes</option>
           </select>
-          <select
-            className="toolbar-select"
-            aria-label="Columns"
-            value={density}
-            onChange={(event) => setColumnOverride(event.target.value as "focus" | "full")}
-            data-testid="density-select"
-          >
-            <option value="focus">Focus</option>
-            <option value="full">All Columns</option>
-          </select>
-          <button className="updates-btn" type="button" onClick={() => setUpdatesOpen(true)}>
-            Updates
-          </button>
+          {view === "chain" ? (
+            <select
+              className="toolbar-select"
+              aria-label="Columns"
+              value={density}
+              onChange={(event) => setColumnOverride(event.target.value as "focus" | "full")}
+              data-testid="density-select"
+            >
+              <option value="focus">Focus</option>
+              <option value="full">All Columns</option>
+            </select>
+          ) : null}
           </div>
         </motion.header>
       <aside className={cn("rail", !railOpen && "is-collapsed", railOpen && "is-sheet")} aria-hidden={!railOpen}>
@@ -334,7 +371,18 @@ export function Terminal() {
           </button>
         </div>
         <div className="board">
-          {snapshot ? (
+          {snapshot && view === "custom" ? (
+            <CustomLtpBoard
+              symbol={selected?.symbol ?? snapshot.symbol}
+              exchange={selected?.exchange ?? snapshot.exchange}
+              segment={selected?.segment ?? snapshot.segment}
+              expiries={snapshot.expiries}
+              count={shownExpiries}
+              depth={depth}
+              primary={snapshot}
+              onSelect={setPicked}
+            />
+          ) : snapshot ? (
             <OptionChainTable
               snapshot={snapshot}
               depth={depth}
@@ -365,7 +413,15 @@ function LiveSpot({ value }: { value: number | null }) {
   const [flash, setFlash] = useState("");
   useEffect(() => {
     if (prev.current != null && value != null && value !== prev.current) {
-      setFlash(value > prev.current ? "tick-up" : "tick-down");
+      setFlash("");
+      const next = value > prev.current ? "tick-up" : "tick-down";
+      const frame = requestAnimationFrame(() => setFlash(next));
+      const clear = window.setTimeout(() => setFlash(""), 600);
+      prev.current = value;
+      return () => {
+        cancelAnimationFrame(frame);
+        window.clearTimeout(clear);
+      };
     }
     prev.current = value;
   }, [value]);

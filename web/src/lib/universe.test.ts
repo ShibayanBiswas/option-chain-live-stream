@@ -19,9 +19,6 @@ describe("desk universe", () => {
       "BSE:SENSEX",
     ]);
     expect(book.indexes.find((item) => item.symbol === "NIFTY")?.label).toBe("NIFTY 50");
-    expect(book.equities.map((item) => `${item.exchange}:${item.symbol}`)).toEqual([
-      "NSE:ANANDRATHI",
-      "BSE:ANANDRATHI",
-    ]);
+    expect(book.equities.map((item) => `${item.exchange}:${item.symbol}`)).toEqual(["NSE:ANANDRATHI"]);
   });
 });

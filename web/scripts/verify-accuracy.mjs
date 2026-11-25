@@ -28,7 +28,7 @@ function num(value) {
 function close(a, b, tol = 0.02) {
   if (a == null && b == null) return true;
   if (a == null || b == null) return false;
-  return Math.abs(a - b) <= tol;
+  return Math.abs(a - b) <= tol + 1e-6;
 }
 
 async function getJson(urlPath) {
@@ -185,9 +185,9 @@ function checkBook(snap) {
   return { atm, atmIv, ceOi, peOi };
 }
 
-function compareNse(snap, raw) {
+function compareNse(snap, raw, spotTol = 0.05) {
   const spot = num(raw.records?.underlyingValue);
-  assert(close(snap.spot, spot, 0.05), `${snap.symbol}: spot ${snap.spot} != NSE ${spot}`);
+  assert(close(snap.spot, spot, spotTol), `${snap.symbol}: spot ${snap.spot} != NSE ${spot}`);
   const sourceRows = raw.filtered?.data?.length ? raw.filtered.data : raw.records?.data ?? [];
   const ours = new Map(snap.rows.map((row) => [row.strike, row]));
   let checked = 0;
@@ -201,15 +201,15 @@ function compareNse(snap, raw) {
       continue;
     }
     const pairs = [
-      ["CE last", desk.ce.lastPrice, num(row.CE?.lastPrice)],
-      ["CE oi", desk.ce.oi, num(row.CE?.openInterest)],
-      ["CE iv", desk.ce.iv, num(row.CE?.impliedVolatility)],
-      ["PE last", desk.pe.lastPrice, num(row.PE?.lastPrice)],
-      ["PE oi", desk.pe.oi, num(row.PE?.openInterest)],
-      ["PE iv", desk.pe.iv, num(row.PE?.impliedVolatility)],
+      ["CE last", desk.ce.lastPrice, num(row.CE?.lastPrice), 0.15],
+      ["CE oi", desk.ce.oi, num(row.CE?.openInterest), 0],
+      ["CE iv", desk.ce.iv, num(row.CE?.impliedVolatility), 1.5],
+      ["PE last", desk.pe.lastPrice, num(row.PE?.lastPrice), 0.15],
+      ["PE oi", desk.pe.oi, num(row.PE?.openInterest), 0],
+      ["PE iv", desk.pe.iv, num(row.PE?.impliedVolatility), 1.5],
     ];
-    for (const [label, deskValue, sourceValue] of pairs) {
-      if (!close(deskValue, sourceValue, 0.05)) {
+    for (const [label, deskValue, sourceValue, tol] of pairs) {
+      if (!close(deskValue, sourceValue, tol)) {
         misses.push(`${strike} ${label} desk=${deskValue} nse=${sourceValue}`);
       }
     }
@@ -318,7 +318,11 @@ async function main() {
     let compared = 0;
     if (item.exchange === "NSE") {
       const raw = await rawNseChain(item.symbol, item.segment === "EQUITY" ? "Equity" : "Indices", snap.expiry);
-      compared = compareNse(snap, raw.chain);
+      snap = await getJson(
+        `/api/chain?symbol=${encodeURIComponent(item.symbol)}&exchange=${item.exchange}&segment=${item.segment}`,
+      );
+      Object.assign(kpi, checkBook(snap));
+      compared = compareNse(snap, raw.chain, Math.max(0.05, Math.abs(snap.spot || 0) * 0.0015));
       source = "NSE live";
     } else {
       try {

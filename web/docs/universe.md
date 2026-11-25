@@ -10,7 +10,7 @@ If BSE blocks the request, SENSEX falls back to contract code `1` in `src/data/b
 
 ## Equity
 
-Anand Rathi Wealth only (`ANANDRATHI`), on NSE and on BSE when BSE lists stock options for it. Every other equity is dropped.
+Anand Rathi Wealth only (`ANANDRATHI`), on NSE. It is not listed under BSE. Every other equity is dropped.
 
 ## Expiry
 

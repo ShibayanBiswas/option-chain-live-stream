@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { upcomingExpiries } from "./display";
 import { blackScholes } from "./greeks";
 import { daysToExpiry, isListedExpiryLive, toIstIso } from "./expiry";
 import { classifySession, gateSession } from "./session";
@@ -8,6 +9,13 @@ import { assertBookShape } from "./schema";
 describe("expiry and session", () => {
   const beforeClose = new Date("2026-11-24T15:00:00+05:30");
   const afterClose = new Date("2026-11-24T15:31:00+05:30");
+
+  it("keeps the next upcoming expiries in date order", () => {
+    const now = new Date("2026-11-25T10:00:00+05:30");
+    expect(
+      upcomingExpiries(["08-Dec-2026", "01-Dec-2026", "24-Nov-2026", "15-Dec-2026"], 2, now),
+    ).toEqual(["01-Dec-2026", "08-Dec-2026"]);
+  });
 
   it("drops a contract after the 15:30 IST cutoff on expiry day", () => {
     expect(isListedExpiryLive("24-Nov-2026", beforeClose)).toBe(true);

@@ -76,7 +76,7 @@ export async function GET(req: Request) {
         lastSessionCheck = Date.now();
 
         while (!closed && Date.now() - started < 50_000) {
-          await new Promise((resolve) => setTimeout(resolve, marketOpen ? 2_000 : 10_000));
+          await new Promise((resolve) => setTimeout(resolve, marketOpen ? 500 : 10_000));
           if (closed) break;
           if (!marketOpen && Date.now() - lastSessionCheck < 60_000) continue;
           await pull(false).catch((err) => {

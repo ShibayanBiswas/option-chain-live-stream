@@ -20,7 +20,7 @@ export function chainCacheKey(parts: {
 }
 
 function freshMs(value: OptionChainSnapshot): number {
-  return value.marketOpen ? 2_000 : 30_000;
+  return value.marketOpen ? 400 : 30_000;
 }
 
 export function readChainCache(

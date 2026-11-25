@@ -8,7 +8,9 @@ The expiry menu groups Weekly and Monthly and shows the days left. Past expiries
 
 ## Header
 
-The header spans the width of the desk, above the sidebar. It shows the contract, the spot, the session, the feed chip, the expiry, Spot Focus or All Strikes, the column control, and Updates. Updates opens the volume key. The feed chip says REST, Closed, Delayed, Waiting, Connecting, or Stale. It does not say Live while the market is closed.
+The header spans the width of the desk, above the sidebar. It shows the contract, the spot, the session, the feed chip, Option Chain or Custom, the expiry, Spot Focus or All Strikes, the column control, and Updates. Updates opens the volume key. The feed chip says REST, Closed, Delayed, Waiting, Connecting, or Stale. It does not say Live while the market is closed.
+
+Custom replaces the single expiry with the next upcoming expiries. The count is 2, 3, 4, 5, 6 or 8, and it stops at the last live expiry. Each column is one expiry. The cell is the call LTP over the put LTP. The strike stays on the left.
 
 ## Option chain
 
@@ -22,4 +24,4 @@ The range label reads like `24,450 – 26,250 · 37 strikes`. Jump to spot scrol
 
 ## Mobile
 
-Focus fits the width. The strike stays in the row. The contract list opens from the header and closes with Back.
+Focus fits the width. On a phone the chain is about 95 percent of the screen, under one header row, and the summary tiles stay off that screen. The strike stays in the row. The contract list opens from the header and closes with Back.

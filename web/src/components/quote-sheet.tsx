@@ -27,10 +27,10 @@ export function QuoteSheet({
             className="quote-sheet"
             role="dialog"
             aria-label={`Strike ${row.strike}`}
-            initial={{ y: 12, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 12, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 320, damping: 28 }}
+            initial={{ y: 28, opacity: 0, scale: 0.98 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: 20, opacity: 0, scale: 0.98 }}
+            transition={{ type: "spring", stiffness: 380, damping: 30 }}
             onClick={(event) => event.stopPropagation()}
           >
             <header className="sheet-head">
