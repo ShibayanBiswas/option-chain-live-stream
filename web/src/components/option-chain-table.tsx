@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { columnHint, columnLabel, putColumns, visibleColumns } from "@/lib/columns";
-import { focusStrikes } from "@/lib/display";
+import { focusStrikes, spotSlot } from "@/lib/display";
 import { yearFractionToExpiry } from "@/lib/expiry";
 import { blackScholes } from "@/lib/greeks";
 import { centerBook, chainOverflows, InwardChain, useChainWidth } from "@/components/inward-chain";
@@ -161,16 +161,17 @@ export function OptionChainTable({
     centerBook(spotStrike);
   }, [density, pin, rows.length, snapshot.expiry, snapshot.symbol, spotStrike]);
 
+  const spotPlace = spotSlot(rows.map((row) => row.strike), snapshot.spot);
   const lineProps = (row: ChainRow, index: number) => {
-    const previous = rows[index - 1];
     const spot = snapshot.spot;
-    const showSpot = spot != null && previous != null && previous.strike < spot && row.strike > spot;
+    const showSpot = spotPlace?.index === index && spotPlace.place === "before";
+    const showSpotAfter = spotPlace?.index === index && spotPlace.place === "after";
     const atSpot = row.strike === spotStrike;
     const callQuiet = !row.ce.volume;
     const putQuiet = !row.pe.volume;
     const itmCall = spot != null && row.strike < spot;
     const itmPut = spot != null && row.strike > spot;
-    return { previous, spot, showSpot, atSpot, callQuiet, putQuiet, itmCall, itmPut };
+    return { spot, showSpot, showSpotAfter, atSpot, callQuiet, putQuiet, itmCall, itmPut };
   };
 
   if (pin) {
@@ -192,7 +193,7 @@ export function OptionChainTable({
           </th>
         ))}
         rows={rows.map((row, index) => {
-          const { spot, showSpot, atSpot, callQuiet, putQuiet, itmCall, itmPut } = lineProps(row, index);
+          const { spot, showSpot, showSpotAfter, atSpot, callQuiet, putQuiet, itmCall, itmPut } = lineProps(row, index);
           return {
             key: String(row.strike),
             id: `strike-${row.strike}`,
@@ -210,6 +211,7 @@ export function OptionChainTable({
               if (event.key === "Enter") onSelect(row);
             },
             spot: showSpot ? `Spot ${formatPrice(spot)}` : null,
+            spotAfter: showSpotAfter ? `Spot ${formatPrice(spot)}` : null,
             strike: formatNumber(row.strike, 0),
             call: callCols.map((key) => (
               <SideCell
@@ -283,14 +285,7 @@ export function OptionChainTable({
         </thead>
         <tbody>
           {rows.map((row, index) => {
-            const previous = rows[index - 1];
-            const spot = snapshot.spot;
-            const showSpot = spot != null && previous != null && previous.strike < spot && row.strike > spot;
-            const atSpot = row.strike === spotStrike;
-            const callQuiet = !row.ce.volume;
-            const putQuiet = !row.pe.volume;
-            const itmCall = spot != null && row.strike < spot;
-            const itmPut = spot != null && row.strike > spot;
+            const { spot, showSpot, showSpotAfter, atSpot, callQuiet, putQuiet, itmCall, itmPut } = lineProps(row, index);
             const span = callCols.length + peCols.length + 1;
             return (
               <Fragment key={row.strike}>
@@ -351,6 +346,13 @@ export function OptionChainTable({
                     />
                   ))}
                 </tr>
+                {showSpotAfter ? (
+                  <tr className="spot-marker" data-testid="spot-marker">
+                    <td colSpan={span}>
+                      <span>Spot {formatPrice(spot)}</span>
+                    </td>
+                  </tr>
+                ) : null}
               </Fragment>
             );
           })}

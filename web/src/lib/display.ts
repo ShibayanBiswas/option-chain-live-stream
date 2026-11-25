@@ -136,6 +136,24 @@ export function upcomingExpiry(expiries: string[], current: string, now = new Da
   return pool[0] ?? "";
 }
 
+/**
+ * Where the spot bar sits in a sorted strike list.
+ * On the strike when the spot lands on one, between strikes otherwise,
+ * and above the first or below the last when the spot is outside the book.
+ */
+export function spotSlot(
+  strikes: number[],
+  spot: number | null,
+): { index: number; place: "before" | "after" } | null {
+  if (spot == null || !Number.isFinite(spot) || strikes.length === 0) return null;
+  for (let index = 0; index < strikes.length; index += 1) {
+    const strike = strikes[index]!;
+    const previous = index === 0 ? null : strikes[index - 1]!;
+    if ((previous == null || previous < spot) && strike >= spot) return { index, place: "before" };
+  }
+  return { index: strikes.length - 1, place: "after" };
+}
+
 /** Spot Focus is 18 strikes below the at-the-money strike and 18 above it. Indexes step by 100. Equity keeps the listed strikes. */
 export function focusStrikes(
   strikes: number[],

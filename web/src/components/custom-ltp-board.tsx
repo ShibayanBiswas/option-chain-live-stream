@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
 import { centerBook, chainOverflows, InwardChain, useChainWidth } from "@/components/inward-chain";
-import { describeExpiry, focusStrikes, upcomingExpiries } from "@/lib/display";
+import { describeExpiry, focusStrikes, spotSlot, upcomingExpiries } from "@/lib/display";
 import { formatNumber, formatPrice } from "@/lib/format";
 import { applyLtpPatch, type LtpPatch, type LtpSlice } from "@/lib/ltp-slice";
 import { cn } from "@/lib/cn";
@@ -100,11 +100,15 @@ export function CustomLtpBoard({
 
   if (loaded.length === 0) return <div className="board-wait">Opening the expiries</div>;
 
+  const spotPlace = spotSlot(strikes, spot);
   const customRows = strikes.map((strike, index) => {
-    const previous = strikes[index - 1];
-    const showSpot = spot != null && previous != null && previous < spot && strike > spot;
     const nearest = columns.map((column) => chainRow(column.book, strike)).find((row) => row != null) ?? null;
-    return { strike, showSpot, nearest };
+    return {
+      strike,
+      showSpot: spotPlace?.index === index && spotPlace.place === "before",
+      showSpotAfter: spotPlace?.index === index && spotPlace.place === "after",
+      nearest,
+    };
   });
 
   if (pin) {
@@ -121,7 +125,7 @@ export function CustomLtpBoard({
         putHead={columns.map((column) => (
           <th key={`pe-${column.expiry}`} scope="col" className="pe-zone">{shortExpiry(column.expiry)}</th>
         ))}
-        rows={customRows.map(({ strike, showSpot, nearest }) => ({
+        rows={customRows.map(({ strike, showSpot, showSpotAfter, nearest }) => ({
           key: String(strike),
           id: `strike-${strike}`,
           className: cn("chain-row", strike === atm && "is-atm"),
@@ -129,6 +133,7 @@ export function CustomLtpBoard({
             if (nearest) onSelect(nearest);
           },
           spot: showSpot ? `Spot ${formatPrice(spot)}` : null,
+          spotAfter: showSpotAfter ? `Spot ${formatPrice(spot)}` : null,
           strike: formatNumber(strike, 0),
           call: callCols.map((column) => (
             <PriceCell
@@ -181,10 +186,7 @@ export function CustomLtpBoard({
           </tr>
         </thead>
         <tbody>
-          {strikes.map((strike, index) => {
-            const previous = strikes[index - 1];
-            const showSpot = spot != null && previous != null && previous < spot && strike > spot;
-            const nearest = columns.map((column) => chainRow(column.book, strike)).find((row) => row != null) ?? null;
+          {customRows.map(({ strike, showSpot, showSpotAfter, nearest }) => {
             return (
               <Fragment key={strike}>
                 {showSpot ? (
@@ -229,6 +231,13 @@ export function CustomLtpBoard({
                     />
                   ))}
                 </tr>
+                {showSpotAfter ? (
+                  <tr className="spot-marker" data-testid="spot-marker">
+                    <td colSpan={span}>
+                      <span>Spot {formatPrice(spot)}</span>
+                    </td>
+                  </tr>
+                ) : null}
               </Fragment>
             );
           })}

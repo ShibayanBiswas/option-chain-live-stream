@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { focusStrikes, groupExpiries, upcomingExpiries } from "./display";
+import { focusStrikes, groupExpiries, spotSlot, upcomingExpiries } from "./display";
 import { blackScholes } from "./greeks";
 import { joinSetCookies } from "./http";
 import { daysToExpiry, isListedExpiryLive, toIstIso, yearFractionToExpiry } from "./expiry";
@@ -29,6 +29,16 @@ describe("expiry and session", () => {
   it("keeps the listed equity strikes in spot focus", () => {
     const strikes = [2400, 2450, 2500, 2550, 2600, 2650];
     expect(focusStrikes(strikes, 2520, "near", 2500, "EQUITY")).toEqual(strikes);
+  });
+
+  it("places the spot bar on an exact equity strike and outside the book", () => {
+    const strikes = [2360, 2380, 2400];
+    expect(spotSlot(strikes, 2380)).toEqual({ index: 1, place: "before" });
+    expect(spotSlot(strikes, 2370)).toEqual({ index: 1, place: "before" });
+    expect(spotSlot(strikes, 1700)).toEqual({ index: 0, place: "before" });
+    expect(spotSlot(strikes, 3000)).toEqual({ index: 2, place: "after" });
+    expect(spotSlot(strikes, null)).toBeNull();
+    expect(spotSlot([], 2380)).toBeNull();
   });
 
   it("keeps the next upcoming expiries in date order", () => {

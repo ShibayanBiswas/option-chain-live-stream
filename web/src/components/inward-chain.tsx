@@ -11,6 +11,7 @@ export type InwardRow = {
   onClick?: () => void;
   onKeyDown?: (event: React.KeyboardEvent<HTMLTableRowElement>) => void;
   spot?: string | null;
+  spotAfter?: string | null;
   call: ReactNode;
   strike: ReactNode;
   put: ReactNode;
@@ -93,7 +94,7 @@ export function InwardChain({
     hostRef(node);
   }, [hostRef]);
 
-  const spotText = rows.find((line) => line.spot)?.spot ?? "";
+  const spotText = rows.find((line) => line.spot)?.spot ?? rows.find((line) => line.spotAfter)?.spotAfter ?? "";
 
   useLayoutEffect(() => {
     const root = rootRef.current;
@@ -261,10 +262,10 @@ export function InwardChain({
     };
   }, [layoutKey, spotText]);
 
-  const spotRow = (line: InwardRow, span: number, label: boolean) =>
-    line.spot ? (
+  const spotRow = (text: string | null | undefined, span: number, label: boolean) =>
+    text ? (
       <tr className="spot-marker" data-testid={label ? "spot-marker" : undefined}>
-        <td colSpan={span}>{label ? <span>{line.spot}</span> : null}</td>
+        <td colSpan={span}>{label ? <span>{text}</span> : null}</td>
       </tr>
     ) : null;
 
@@ -276,9 +277,9 @@ export function InwardChain({
       data-inward="true"
       data-compact={compact ? "true" : undefined}
     >
-      {rows.some((line) => line.spot) ? (
+      {spotText ? (
         <div className="spot-float" aria-hidden="true">
-          <span>{rows.find((line) => line.spot)?.spot}</span>
+          <span>{spotText}</span>
         </div>
       ) : null}
       <div className="inward-captions side-labels">
@@ -317,7 +318,7 @@ export function InwardChain({
             <tbody>
               {rows.map((line) => (
                 <Fragment key={line.key}>
-                  {spotRow(line, callSpan, false)}
+                  {spotRow(line.spot, callSpan, false)}
                   <tr
                     className={line.className}
                     data-volume={line.volume}
@@ -325,6 +326,7 @@ export function InwardChain({
                   >
                     {line.call}
                   </tr>
+                  {spotRow(line.spotAfter, callSpan, false)}
                 </Fragment>
               ))}
             </tbody>
@@ -335,7 +337,7 @@ export function InwardChain({
             <tbody>
               {rows.map((line) => (
                 <Fragment key={line.key}>
-                  {spotRow(line, 1, true)}
+                  {spotRow(line.spot, 1, true)}
                   <tr
                     id={line.id}
                     tabIndex={line.tabIndex}
@@ -346,6 +348,7 @@ export function InwardChain({
                   >
                     <td className="strike-cell">{line.strike}</td>
                   </tr>
+                  {spotRow(line.spotAfter, 1, true)}
                 </Fragment>
               ))}
             </tbody>
@@ -356,7 +359,7 @@ export function InwardChain({
             <tbody>
               {rows.map((line) => (
                 <Fragment key={line.key}>
-                  {spotRow(line, putSpan, false)}
+                  {spotRow(line.spot, putSpan, false)}
                   <tr
                     className={line.className}
                     data-volume={line.volume}
@@ -364,6 +367,7 @@ export function InwardChain({
                   >
                     {line.put}
                   </tr>
+                  {spotRow(line.spotAfter, putSpan, false)}
                 </Fragment>
               ))}
             </tbody>

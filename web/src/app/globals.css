@@ -2150,8 +2150,8 @@ html.dark .inward-captions .pe-zone {
   line-height: 1.2;
 }
 
-.chain-scroll.inward .spot-marker,
-.chain-scroll.inward .spot-marker td {
+.chain-scroll.inward .chain-table tbody tr.spot-marker,
+.chain-scroll.inward .chain-table tbody tr.spot-marker td {
   height: 22px;
   max-height: 22px;
   padding: 0;
