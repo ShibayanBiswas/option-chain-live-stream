@@ -1,5 +1,6 @@
 import { loadOptionChain, publicChainError } from "@/lib/chain-service";
 import { nextStreamEvent } from "@/lib/diff";
+import { applyOptionTick, openNseOptionSocket, overlayContractFields } from "@/lib/nse-ws";
 import type { OptionChainSnapshot } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -7,8 +8,8 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 /**
- * The NSE fo/mbp websocket has not been proven in a market-hours capture.
- * This stream is REST polling. It does not invent a websocket feed.
+ * NSE prices come from wss://streamer.nseindia.com/streams/fo/mbp when that socket sends frames.
+ * Open interest and IV still come from the option-chain API. BSE stays on that API.
  * The in-memory chain cache is per function instance.
  */
 
@@ -71,14 +72,69 @@ export async function GET(req: Request) {
       };
 
       let heartbeat: ReturnType<typeof setInterval> | undefined;
+      let socket: ReturnType<typeof openNseOptionSocket> | null = null;
+      let usingSocket = false;
       try {
         controller.enqueue(encoder.encode("retry: 3000\n\n"));
-        await pull(true);
+        const first = await pull(true);
+        snapshot = first;
         lastSessionCheck = Date.now();
         beat();
         heartbeat = setInterval(beat, 10_000);
 
+        const nse = (exchange ?? "NSE").toUpperCase() !== "BSE";
+        if (nse && marketOpen && first) {
+          const expiryForSocket = first.expiry;
+          socket = openNseOptionSocket(
+            symbol,
+            expiryForSocket,
+            (tick) => {
+              if (closed || !snapshot) return;
+              const applied = applyOptionTick(snapshot, tick);
+              if (!applied) return;
+              usingSocket = true;
+              send("patch", {
+                symbol: applied.snapshot.symbol,
+                expiry: applied.snapshot.expiry,
+                spot: applied.snapshot.spot,
+                timestamp: applied.snapshot.timestamp,
+                latencyMs: applied.snapshot.latencyMs,
+                feed: "websocket" as const,
+                totals: applied.snapshot.totals,
+                cells: applied.cells,
+              });
+              snapshot = applied.snapshot;
+              stamp = applied.snapshot.timestamp;
+            },
+            (state) => {
+              if (state === "error" || state === "closed") usingSocket = false;
+            },
+          );
+          await new Promise((resolve) => setTimeout(resolve, 2_500));
+          if (!usingSocket) {
+            socket.close();
+            socket = null;
+          }
+        }
+
+        let lastContractPull = Date.now();
         while (!closed && Date.now() - started < 50_000) {
+          if (usingSocket && snapshot) {
+            if (Date.now() - lastContractPull >= 30_000) {
+              const fresh = await loadOptionChain({ symbol, expiry, exchange, segment }).catch(() => null);
+              if (fresh && snapshot) {
+                const merged = overlayContractFields(snapshot, fresh);
+                merged.feed = "websocket";
+                const event = nextStreamEvent(snapshot, merged, false);
+                snapshot = merged;
+                marketOpen = fresh.marketOpen;
+                if (event.type === "patch") send("patch", event.patch);
+              }
+              lastContractPull = Date.now();
+            }
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            continue;
+          }
           const previousStamp = stamp;
           if (!marketOpen && Date.now() - lastSessionCheck < 60_000) {
             await new Promise((resolve) => setTimeout(resolve, 10_000));
@@ -96,6 +152,7 @@ export async function GET(req: Request) {
       } catch (err) {
         send("notice", { message: publicMessage(err) });
       } finally {
+        socket?.close();
         if (heartbeat) clearInterval(heartbeat);
         if (!closed) {
           closed = true;

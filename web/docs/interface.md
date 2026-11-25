@@ -8,7 +8,7 @@ The expiry menu groups Weekly and Monthly and shows the days left. Past expiries
 
 ## Header
 
-The header spans the width of the desk, above the sidebar. It opens on Custom. Option Chain is the single-expiry book. Updates on Custom explains the board. Updates on Option Chain opens the volume key. The feed chip says REST, Closed, Delayed, Waiting, Connecting, or Stale. It does not say Live while the market is closed.
+The header spans the width of the desk, above the sidebar. It opens on Custom. Option Chain is the single-expiry book. Updates on Custom explains the board. Updates on Option Chain opens the volume key. The feed chip says WebSocket while NSE frames are updating the book. Otherwise it says REST, Closed, Delayed, Waiting, Connecting, or Stale. It does not say Live.
 
 Custom uses the same Calls, Strike and Puts layout, the same price and change format, the spot line, and Jump to spot. Each column is one upcoming expiry. The count runs from one expiry through every live expiry. The nearest expiry sits against the strike.
 

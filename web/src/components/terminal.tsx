@@ -274,7 +274,7 @@ export function Terminal() {
             title={`Exchange snapshot · refreshes about every 30 s. Fetch ${snapshot?.latencyMs ?? "—"} ms`}
           >
             <span className={cn("live-dot", status === "error" && "is-off", (waiting || quiet) && "is-stale")} />
-            <span>{quiet ? "Stale" : feed}</span>
+            <span>{quiet ? "Stale" : snapshot?.feed === "websocket" ? "WebSocket" : feed}</span>
             <em>{age?.label ?? "…"}</em>
           </div>
           <span

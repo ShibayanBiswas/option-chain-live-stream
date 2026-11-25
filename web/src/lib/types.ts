@@ -48,8 +48,8 @@ export type OptionChainSnapshot = {
   latencyMs: number;
   source: "nse" | "bse";
   marketOpen: boolean;
-  /** REST polling. A websocket feed is not claimed until a market-hours capture proves it. */
-  feed: "rest" | "polling";
+  /** "websocket" only after an NSE fo/mbp frame has updated this book. */
+  feed: "rest" | "polling" | "websocket";
   stale?: boolean;
   asOf?: string | null;
   expiryIso?: string | null;

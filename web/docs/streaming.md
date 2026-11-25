@@ -13,7 +13,7 @@
 
 While the market is open the stream asks the exchange again every 500ms when the exchange timestamp moved, and waits 3 seconds when it did not. A chain younger than 400ms is reused. While the market is closed the server keeps the chain it already sent and checks the session about once a minute. BSE uses the same 09:15–15:30 IST derivatives session when its payload has no market-status field.
 
-The NSE websocket `wss://streamer.nseindia.com/streams/fo/mbp` was removed. It was never observed during market hours. The feed is REST polling.
+NSE prices use `wss://streamer.nseindia.com/streams/fo/mbp`. On 25 Nov 2026, during market hours, that socket completed the handshake and sent a few hundred frames in about 12 seconds, with the timestamp moving every second. A frame carries the last price, change, bid, ask and volume. It does not carry open interest or IV, so those still come from the option-chain API about every 30 seconds. If the socket sends nothing, the stream falls back to that API. BSE has no equivalent socket here, so SENSEX stays on the BSE chain API. The chip says WebSocket only after a frame has updated the book.
 
 ## Client
 
