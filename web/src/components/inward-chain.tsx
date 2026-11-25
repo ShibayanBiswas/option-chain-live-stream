@@ -104,54 +104,76 @@ export function InwardChain({
     const mid = midRef.current;
     if (!calls || !puts || !mid) return;
     const max = (el: HTMLElement) => Math.max(0, el.scrollWidth - el.clientWidth);
-    let source: "calls" | "puts" | "mid" | null = null;
-    let token = 0;
+    let writing = false;
     let moved = false;
-    const release = (mine: number) => {
-      requestAnimationFrame(() => {
-        if (token === mine) source = null;
-      });
+    const at = { callsX: calls.scrollLeft, callsY: calls.scrollTop, putsX: puts.scrollLeft, putsY: puts.scrollTop, midY: mid.scrollTop };
+    const write = (el: HTMLElement, left: number | null, top: number | null) => {
+      if (left != null && Math.abs(el.scrollLeft - left) > 0.5) el.scrollLeft = left;
+      if (top != null && Math.abs(el.scrollTop - top) > 0.5) el.scrollTop = top;
+    };
+    const remember = () => {
+      at.callsX = calls.scrollLeft;
+      at.callsY = calls.scrollTop;
+      at.putsX = puts.scrollLeft;
+      at.putsY = puts.scrollTop;
+      at.midY = mid.scrollTop;
     };
     const park = () => {
       if (moved) return;
-      source = "calls";
-      const mine = ++token;
-      calls.scrollLeft = max(calls);
-      puts.scrollLeft = 0;
-      release(mine);
+      writing = true;
+      write(calls, max(calls), null);
+      write(puts, 0, null);
+      remember();
+      writing = false;
     };
     const fromCalls = () => {
-      if (source && source !== "calls") return;
-      if (!source) moved = true;
-      source = "calls";
-      const mine = ++token;
-      const cMax = max(calls);
-      const pMax = max(puts);
-      const revealed = cMax - calls.scrollLeft;
-      puts.scrollLeft = cMax === 0 ? 0 : (revealed / cMax) * pMax;
-      puts.scrollTop = calls.scrollTop;
-      mid.scrollTop = calls.scrollTop;
-      release(mine);
+      if (writing) return;
+      const dx = Math.abs(calls.scrollLeft - at.callsX) > 0.5;
+      const dy = Math.abs(calls.scrollTop - at.callsY) > 0.5;
+      if (!dx && !dy) return;
+      writing = true;
+      moved = true;
+      if (dx) {
+        const cMax = max(calls);
+        const pMax = max(puts);
+        const revealed = cMax - calls.scrollLeft;
+        write(puts, cMax === 0 ? 0 : (revealed / cMax) * pMax, null);
+      }
+      if (dy) {
+        write(puts, null, calls.scrollTop);
+        write(mid, null, calls.scrollTop);
+      }
+      remember();
+      writing = false;
     };
     const fromPuts = () => {
-      if (source && source !== "puts") return;
-      if (!source) moved = true;
-      source = "puts";
-      const mine = ++token;
-      const cMax = max(calls);
-      const pMax = max(puts);
-      calls.scrollLeft = pMax === 0 ? cMax : cMax - (puts.scrollLeft / pMax) * cMax;
-      calls.scrollTop = puts.scrollTop;
-      mid.scrollTop = puts.scrollTop;
-      release(mine);
+      if (writing) return;
+      const dx = Math.abs(puts.scrollLeft - at.putsX) > 0.5;
+      const dy = Math.abs(puts.scrollTop - at.putsY) > 0.5;
+      if (!dx && !dy) return;
+      writing = true;
+      moved = true;
+      if (dx) {
+        const cMax = max(calls);
+        const pMax = max(puts);
+        write(calls, pMax === 0 ? cMax : cMax - (puts.scrollLeft / pMax) * cMax, null);
+      }
+      if (dy) {
+        write(calls, null, puts.scrollTop);
+        write(mid, null, puts.scrollTop);
+      }
+      remember();
+      writing = false;
     };
     const fromMid = () => {
-      if (source && source !== "mid") return;
-      source = "mid";
-      const mine = ++token;
-      calls.scrollTop = mid.scrollTop;
-      puts.scrollTop = mid.scrollTop;
-      release(mine);
+      if (writing) return;
+      if (Math.abs(mid.scrollTop - at.midY) <= 0.5) return;
+      writing = true;
+      moved = true;
+      write(calls, null, mid.scrollTop);
+      write(puts, null, mid.scrollTop);
+      remember();
+      writing = false;
     };
     calls.addEventListener("scroll", fromCalls, { passive: true });
     puts.addEventListener("scroll", fromPuts, { passive: true });

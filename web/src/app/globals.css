@@ -185,6 +185,7 @@ html.dark .bg-mesh::before {
 
 .chain-scroll {
   overflow: auto;
+  overflow-anchor: none;
   flex: 1;
   min-height: 0;
   border-radius: 14px;
@@ -316,7 +317,6 @@ html.dark .chain-scroll .chain-table thead tr.side-labels .pe-zone {
 }
 
 .chain-scroll {
-  overflow-anchor: none;
   scroll-padding-top: 56px;
 }
 
@@ -1994,9 +1994,13 @@ html.dark .is-itm {
   }
 
   .chain-scroll {
-    height: auto;
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
     padding-bottom: 0;
     scroll-padding-bottom: 12px;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x pan-y;
   }
 }
 
@@ -2070,10 +2074,12 @@ html.dark .inward-captions .pe-zone {
 
 .inward-pane {
   overflow: auto;
+  overflow-anchor: none;
   min-width: 0;
   min-height: 0;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
   scroll-behavior: auto;
 }
 
