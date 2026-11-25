@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { upcomingExpiries } from "./display";
+import { focusStrikes, upcomingExpiries } from "./display";
 import { blackScholes } from "./greeks";
 import { daysToExpiry, isListedExpiryLive, toIstIso } from "./expiry";
 import { classifySession, gateSession } from "./session";
@@ -9,6 +9,13 @@ import { assertBookShape } from "./schema";
 describe("expiry and session", () => {
   const beforeClose = new Date("2026-11-24T15:00:00+05:30");
   const afterClose = new Date("2026-11-24T15:31:00+05:30");
+
+  it("keeps spot focus inside 200 points and leaves the rest for all strikes", () => {
+    expect(focusStrikes([25500, 25600, 25800, 26000, 26100], 25800, "near")).toEqual([25600, 25800, 26000]);
+    expect(focusStrikes([25500, 25600, 25800, 26000, 26100], 25800, "full")).toEqual([
+      25500, 25600, 25800, 26000, 26100,
+    ]);
+  });
 
   it("keeps the next upcoming expiries in date order", () => {
     const now = new Date("2026-11-25T10:00:00+05:30");

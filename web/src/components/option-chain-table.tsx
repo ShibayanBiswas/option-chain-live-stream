@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { columnHint, columnLabel, putColumns, visibleColumns } from "@/lib/columns";
+import { focusStrikes } from "@/lib/display";
 import { daysToExpiry } from "@/lib/expiry";
 import { blackScholes, deltaFromIv } from "@/lib/greeks";
 import { cn } from "@/lib/cn";
@@ -110,11 +111,9 @@ export function OptionChainTable({
   const spotStrike = snapshot.totals.atm;
 
   const rows = useMemo(() => {
-    if (depth === "full" || spotStrike == null) return snapshot.rows;
-    const idx = snapshot.rows.findIndex((row) => row.strike === spotStrike);
-    if (idx < 0) return snapshot.rows;
-    return snapshot.rows.slice(Math.max(0, idx - 18), Math.min(snapshot.rows.length, idx + 19));
-  }, [depth, snapshot.rows, spotStrike]);
+    const allowed = new Set(focusStrikes(snapshot.rows.map((row) => row.strike), snapshot.spot, depth));
+    return snapshot.rows.filter((row) => allowed.has(row.strike));
+  }, [depth, snapshot.rows, snapshot.spot]);
 
   const scales = useMemo(() => {
     const oi = Math.max(1, ...rows.flatMap((row) => [row.ce.oi ?? 0, row.pe.oi ?? 0]));

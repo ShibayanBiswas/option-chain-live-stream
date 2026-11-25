@@ -120,6 +120,12 @@ export function upcomingExpiry(expiries: string[], current: string, now = new Da
   return pool[0] ?? "";
 }
 
+export function focusStrikes(strikes: number[], spot: number | null, depth: "near" | "full"): number[] {
+  if (depth === "full" || spot == null) return strikes;
+  const near = strikes.filter((strike) => Math.abs(strike - spot) <= 200);
+  return near.length > 0 ? near : strikes;
+}
+
 export function upcomingExpiries(expiries: string[], count: number, now = new Date()): string[] {
   const pool = liveExpiries(expiries, now);
   const n = Math.max(1, Math.min(Math.floor(count) || 1, pool.length));

@@ -40,7 +40,7 @@ export function Terminal() {
   const [selected, setSelected] = useState<Instrument | null>(null);
   const [expiry, setExpiry] = useState("");
   const [depth, setDepth] = useState<"near" | "full">("near");
-  const [view, setView] = useState<"chain" | "custom">("chain");
+  const [view, setView] = useState<"chain" | "custom">("custom");
   const [expiryCount, setExpiryCount] = useState(4);
   const [columnOverride, setColumnOverride] = useState<"focus" | "full" | null>(null);
   const [viewport, setViewport] = useState("laptop");

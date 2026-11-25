@@ -55,9 +55,8 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
       return {
         name: inside("h1"),
         feed: inside(".feed-chip"),
-        expiry: inside("[aria-label='Expiry']"),
+        expiries: inside("[aria-label='Expiries']"),
         strikes: inside("[aria-label='Strikes']"),
-        columns: inside("[aria-label='Columns']"),
         chainShare: chainBox ? chainBox.height / window.innerHeight : 0,
         separated,
         chainFits: chain instanceof HTMLElement && chain.scrollWidth <= chain.clientWidth + 2,
@@ -69,12 +68,8 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
     expect(fitted).toMatchObject({
       name: true,
       feed: true,
-      expiry: true,
+      expiries: true,
       strikes: true,
-      columns: true,
-      separated: true,
-      chainFits: true,
-      tableFills: true,
       kpiFits: true,
     });
     expect(viewport?.width).toBeGreaterThan(0);
@@ -109,10 +104,26 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
     await expect(page.locator(".rail")).toHaveClass(/is-collapsed/);
   }
 
+  await expect(page.getByLabel("View")).toHaveValue("custom");
+  await expect(page.locator(".side-labels")).toContainText("Calls");
+  await expect(page.locator(".side-labels")).toContainText("Puts");
+  await page.getByLabel("View").selectOption("chain");
   await expect(page.getByLabel("Strikes")).toHaveValue("near");
   const density = page.getByTestId("density-select");
   await expect(density).toHaveValue("focus");
   await expect(page.locator(".chain-scroll")).toHaveAttribute("data-density", "focus");
+  if (testInfo.project.name === "phone" || testInfo.project.name === "phone-narrow") {
+    const phoneChain = await page.evaluate(() => {
+      const row = document.querySelector(".chain-row");
+      const cells = row
+        ? [...row.querySelectorAll("td")].filter((td) => getComputedStyle(td).display !== "none")
+        : [];
+      const chain = document.querySelector(".chain-scroll") as HTMLElement;
+      return { cells: cells.length, fits: chain.scrollWidth <= chain.clientWidth + 2 };
+    });
+    expect(phoneChain.cells).toBe(5);
+    expect(phoneChain.fits).toBe(true);
+  }
   const focusHeads = await page.locator(".chain-table thead tr th").allTextContents();
   expect(focusHeads.join(" ")).not.toMatch(/Bid Quantity|Ask Quantity/);
 

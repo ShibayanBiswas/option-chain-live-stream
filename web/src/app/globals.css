@@ -192,6 +192,17 @@ html.dark .bg-mesh::before {
   background: var(--ar-surface);
 }
 
+.chain-scroll[data-density="custom"] .chain-table {
+  width: max-content;
+  min-width: 100%;
+  table-layout: auto;
+}
+
+.chain-scroll[data-density="custom"] .chain-table th,
+.chain-scroll[data-density="custom"] .chain-table td {
+  min-width: 72px;
+}
+
 .chain-table {
   width: 100%;
   border-collapse: separate;
@@ -1667,7 +1678,8 @@ html.dark .is-itm {
     max-width: 92px;
   }
 
-  .toolbar-select[aria-label="Expiry"] {
+  .toolbar-select[aria-label="Expiry"],
+  .toolbar-select[aria-label="Expiries"] {
     order: 3;
     width: 108px;
   }
@@ -1739,8 +1751,9 @@ html.dark .is-itm {
     padding-right: 2px;
   }
 
-  .toolbar .toolbar-select[aria-label="Expiry"] {
-    width: 70px;
+  .toolbar .toolbar-select[aria-label="Expiry"],
+  .toolbar .toolbar-select[aria-label="Expiries"] {
+    width: 78px;
   }
 
   .toolbar .toolbar-select[aria-label="Strikes"] {
@@ -1931,94 +1944,14 @@ html.dark .is-itm {
   }
 }
 
-.ltp-scroll {
-  overflow: auto;
-}
-
-.ltp-table {
-  width: max-content;
-  min-width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  font-family: var(--font-data);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-}
-
-.ltp-table th,
-.ltp-table td {
-  padding: 8px 12px;
-  border-bottom: 1px solid rgba(120, 113, 108, 0.08);
-  text-align: center;
-  white-space: nowrap;
-}
-
-.ltp-table thead th {
-  position: sticky;
-  top: 0;
-  z-index: 4;
-  background: linear-gradient(180deg, var(--ar-table-head-from), var(--ar-table-head-to));
-  font-family: var(--font-sans);
-  font-size: 11px;
-  font-weight: 650;
-}
-
-.ltp-table .strike-cell {
-  position: sticky;
-  left: 0;
-  z-index: 3;
-  min-width: 88px;
-  background: var(--ar-surface);
-  font-weight: 700;
-  text-align: center;
-}
-
-.ltp-table thead .strike-cell {
-  z-index: 6;
-  background: linear-gradient(180deg, var(--ar-table-head-from), var(--ar-table-head-to));
-}
-
-.ltp-expiry,
-.ltp-side {
-  display: block;
-}
-
-.ltp-side {
-  margin-top: 2px;
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ar-muted);
-  font-weight: 600;
-}
-
-.ltp-pair {
-  display: grid;
-  gap: 2px;
-  width: 100%;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-
-.ltp-table tr.is-atm td {
-  background: var(--atm-tint);
-}
-
-.ltp-table tr.is-atm .strike-cell {
-  color: var(--ar-gold-dark);
-  animation: atm-glow 2.6s ease-in-out infinite;
-}
-
 @media (max-width: 360px) {
   .toolbar .feed-chip {
     max-width: 58px;
   }
 
-  .toolbar .toolbar-select[aria-label="Expiry"] {
-    width: 58px;
+  .toolbar .toolbar-select[aria-label="Expiry"],
+  .toolbar .toolbar-select[aria-label="Expiries"] {
+    width: 70px;
   }
 
   .toolbar .toolbar-select[aria-label="Strikes"] {
