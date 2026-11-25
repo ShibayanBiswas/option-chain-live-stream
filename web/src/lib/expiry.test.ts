@@ -11,13 +11,17 @@ describe("expiry and session", () => {
   const beforeClose = new Date("2026-11-24T15:00:00+05:30");
   const afterClose = new Date("2026-11-24T15:31:00+05:30");
 
-  it("keeps spot focus on the 18 strikes either side of at the money", () => {
-    const strikes = Array.from({ length: 50 }, (_, index) => 24000 + index * 50);
+  it("keeps spot focus on 100-point strikes either side of at the money", () => {
+    const strikes = Array.from({ length: 100 }, (_, index) => 23000 + index * 50);
     const near = focusStrikes(strikes, 25210, "near", 25200);
+    expect(near.every((strike) => strike % 100 === 0)).toBe(true);
     expect(near).toHaveLength(37);
-    expect(near[0]).toBe(24300);
-    expect(near.at(-1)).toBe(26100);
+    expect(near[0]).toBe(23400);
+    expect(near.at(-1)).toBe(27000);
     expect(near).toContain(25200);
+    for (let index = 1; index < near.length; index += 1) {
+      expect(near[index]! - near[index - 1]!).toBe(100);
+    }
     expect(focusStrikes(strikes, 25210, "full", 25200)).toEqual(strikes);
     expect(focusStrikes([25500, 25600, 25800], 25800, "near", 25800)).toEqual([25500, 25600, 25800]);
   });

@@ -136,7 +136,7 @@ export function upcomingExpiry(expiries: string[], current: string, now = new Da
   return pool[0] ?? "";
 }
 
-/** Spot Focus is the 18 strikes below the at-the-money strike and the 18 above it. */
+/** Spot Focus keeps strikes 100 apart: 18 below the at-the-money strike and 18 above it. */
 export function focusStrikes(
   strikes: number[],
   spot: number | null,
@@ -144,16 +144,18 @@ export function focusStrikes(
   atm?: number | null,
 ): number[] {
   if (depth === "full" || strikes.length === 0) return strikes;
+  const stepped = strikes.filter((strike) => strike % 100 === 0);
+  const book = stepped.length > 0 ? stepped : strikes;
   const anchor = atm ?? spot;
-  if (anchor == null) return strikes;
-  let idx = strikes.indexOf(anchor);
+  if (anchor == null) return book;
+  let idx = book.indexOf(anchor);
   if (idx < 0) {
-    idx = strikes.reduce(
-      (best, strike, index) => (Math.abs(strike - anchor) < Math.abs(strikes[best]! - anchor) ? index : best),
+    idx = book.reduce(
+      (best, strike, index) => (Math.abs(strike - anchor) < Math.abs(book[best]! - anchor) ? index : best),
       0,
     );
   }
-  return strikes.slice(Math.max(0, idx - 18), Math.min(strikes.length, idx + 19));
+  return book.slice(Math.max(0, idx - 18), Math.min(book.length, idx + 19));
 }
 
 export function upcomingExpiries(expiries: string[], count: number, now = new Date()): string[] {

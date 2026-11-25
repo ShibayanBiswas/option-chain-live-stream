@@ -66,6 +66,8 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
     let link: Link = freshLink();
     let dropTimer: number | null = null;
     let retryTimer: number | null = null;
+    let generation = 0;
+    let awaitingStream = false;
 
     const stopPoll = () => {
       if (pollRef.current) {
@@ -110,6 +112,7 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
       const result = noteDelivery(link, Number.isFinite(id) ? id : 0);
       link = result.link;
       if (!result.apply) return false;
+      awaitingStream = false;
       if (wasPolling) stopPoll();
       clearDrop();
       lastBeat.current = Date.now();
@@ -119,7 +122,15 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
     };
 
     const connectSse = () => {
-      esRef.current?.close();
+      generation += 1;
+      const mine = generation;
+      awaitingStream = true;
+      link = { ...link, lastId: 0 };
+      const previous = esRef.current;
+      if (previous) {
+        previous.onerror = null;
+        previous.close();
+      }
       const qs = new URLSearchParams({
         symbol,
         exchange,
@@ -128,9 +139,10 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
       });
       const es = new EventSource(`/api/stream?${qs}`);
       esRef.current = es;
+      const current = () => !cancelled && mine === generation;
 
       es.addEventListener("chain", (evt) => {
-        if (cancelled || !accept(evt)) return;
+        if (!current() || !accept(evt)) return;
         try {
           applySnapshot(JSON.parse((evt as MessageEvent).data));
         } catch {
@@ -139,7 +151,7 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
       });
 
       es.addEventListener("patch", (evt) => {
-        if (cancelled || !accept(evt)) return;
+        if (!current() || !accept(evt)) return;
         try {
           applyIncomingPatch(JSON.parse((evt as MessageEvent).data) as ChainPatch);
         } catch {
@@ -148,7 +160,7 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
       });
 
       es.addEventListener("socket", (evt) => {
-        if (cancelled) return;
+        if (!current()) return;
         try {
           const payload = JSON.parse((evt as MessageEvent).data) as { state?: "open" | "closed" | "error" };
           if (payload.state) setSocketState(payload.state);
@@ -158,7 +170,7 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
       });
 
       es.addEventListener("notice", (evt) => {
-        if (cancelled) return;
+        if (!current()) return;
         try {
           const payload = JSON.parse((evt as MessageEvent).data);
           setError(payload.message || "Stream interrupted");
@@ -168,18 +180,18 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
       });
 
       es.addEventListener("heartbeat", (evt) => {
-        if (cancelled || !accept(evt)) return;
+        if (!current() || !accept(evt)) return;
         lastBeat.current = Date.now();
       });
 
       es.addEventListener("rotate", () => {
-        if (cancelled) return;
-        es.close();
+        if (!current()) return;
         connectSse();
       });
 
       es.onerror = () => {
-        if (cancelled) return;
+        if (!current()) return;
+        awaitingStream = false;
         es.close();
         const dropped = noteDrop(link);
         link = dropped.link;
@@ -194,7 +206,12 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
 
     const onHide = () => {
       if (document.hidden) {
-        esRef.current?.close();
+        const previous = esRef.current;
+        if (previous) {
+          previous.onerror = null;
+          previous.close();
+        }
+        awaitingStream = false;
         stopPoll();
         return;
       }
@@ -206,6 +223,7 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
     };
     document.addEventListener("visibilitychange", onHide);
     const staleTimer = window.setInterval(() => {
+      if (awaitingStream) return;
       if (lastBeat.current > 0 && Date.now() - lastBeat.current > 20_000) setQuiet(true);
     }, 5_000);
 

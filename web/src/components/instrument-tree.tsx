@@ -58,7 +58,10 @@ export function InstrumentTree({
       },
     ];
   }, [equities, indexes, q]);
-  const pinned = [...indexes, ...equities].filter((item) => pins.includes(`${item.exchange}:${item.symbol}`));
+  const pinned = [...indexes, ...equities].filter((item) => {
+    if (item.segment === "INDEX" && item.symbol !== "NIFTY" && item.symbol !== "SENSEX") return false;
+    return pins.includes(`${item.exchange}:${item.symbol}`);
+  });
 
   return (
     <div className="tree">
@@ -113,7 +116,6 @@ export function InstrumentTree({
                       ? "SENSEX"
                       : "";
                   const lead = pin ? block.rows.filter((item) => item.symbol === pin) : block.rows;
-                  const rest = pin ? block.rows.filter((item) => item.symbol !== pin) : [];
                   const row = (item: Instrument) => (
                     <Row
                       key={`${item.exchange}-${item.symbol}`}
@@ -129,12 +131,6 @@ export function InstrumentTree({
                     <div key={block.title} className="tree-block">
                       <p className="tree-kicker">{block.title}</p>
                       {lead.map(row)}
-                      {rest.length > 0 ? (
-                        <details className="more-book" open={query.trim().length > 0}>
-                          <summary>More {block.title} indices</summary>
-                          {rest.map(row)}
-                        </details>
-                      ) : null}
                     </div>
                   );
                 })}

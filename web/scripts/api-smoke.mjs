@@ -44,7 +44,8 @@ await check("universe indices + wealth equity only", async () => {
   assert(ok, `universe ${json?.error || "failed"}`);
   assert(Array.isArray(json.indexes) && json.indexes.length > 0, "indexes missing");
   const symbols = json.indexes.map((row) => `${row.exchange}:${row.symbol}`);
-  assert(symbols.join(",") === "NSE:NIFTY,BSE:SENSEX", `index book should be NIFTY and SENSEX, got ${symbols.join(",")}`);
+  assert(symbols.includes("NSE:NIFTY") && symbols.includes("BSE:SENSEX"), `NIFTY and SENSEX missing: ${symbols.join(",")}`);
+  assert(symbols[0] === "NSE:NIFTY", `NIFTY should lead, got ${symbols[0]}`);
   assert(Array.isArray(json.equities), "equities missing");
   assert(
     json.equities.every((row) => row.symbol === "ANANDRATHI"),
