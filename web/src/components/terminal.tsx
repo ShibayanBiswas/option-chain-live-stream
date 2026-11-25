@@ -11,6 +11,7 @@ import { InstrumentTree } from "@/components/instrument-tree";
 import { OptionChainTable } from "@/components/option-chain-table";
 import { QuoteSheet } from "@/components/quote-sheet";
 import { Toasts } from "@/components/toasts";
+import { UpdatesDialog } from "@/components/updates-dialog";
 import { useOptionStream } from "@/hooks/use-option-stream";
 import { atmIv } from "@/lib/analytics";
 import { cn } from "@/lib/cn";
@@ -40,6 +41,8 @@ export function Terminal() {
   const [depth] = useState<"near" | "full">("full");
   const [columnOverride, setColumnOverride] = useState<"focus" | "full" | null>(null);
   const [wide, setWide] = useState(false);
+  const [viewport, setViewport] = useState("laptop");
+  const [updatesOpen, setUpdatesOpen] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
   const density = columnOverride ?? (wide ? "full" : "focus");
   const [railOpen, setRailOpen] = useState(false);
@@ -100,9 +103,14 @@ export function Terminal() {
     if (window.matchMedia("(min-width: 981px)").matches) setRailOpen(true);
     const node = stageRef.current;
     if (!node) return;
-    const watch = new ResizeObserver(() => setWide(node.clientWidth >= 1600));
+    const apply = () => {
+      const width = node.clientWidth;
+      setWide(width >= 1920);
+      setViewport(width >= 1920 ? "tv" : width >= 1440 ? "desktop" : width >= 1100 ? "laptop" : width >= 701 ? "tablet" : "phone");
+    };
+    const watch = new ResizeObserver(apply);
     watch.observe(node);
-    setWide(node.clientWidth >= 1600);
+    apply();
     return () => watch.disconnect();
   }, []);
 
@@ -194,7 +202,7 @@ export function Terminal() {
 
   return (
     <MotionConfig reducedMotion="user">
-    <div className={cn("terminal bg-mesh", !railOpen && "rail-hidden")} ref={stageRef}>
+    <div className={cn("terminal bg-mesh", !railOpen && "rail-hidden")} data-viewport={viewport} ref={stageRef}>
       <motion.header
           className="toolbar"
           initial={{ opacity: 0 }}
@@ -216,7 +224,7 @@ export function Terminal() {
           </button>
           <div className="identity">
             <h1>{selected ? displayName(selected.symbol, selected.label) : "Option Chain"}</h1>
-            <strong className="spot-inline">{formatPrice(snapshot?.spot ?? null)}</strong>
+            <LiveSpot value={snapshot?.spot ?? null} />
           </div>
           <button className="icon-btn" type="button" onClick={toggle} aria-label="Toggle theme">
             {mounted && theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -298,7 +306,9 @@ export function Terminal() {
 
         <div className="book-tools">
           <span className="range-label" aria-label="Strike range">{strikeRange}</span>
-          <span className="heat-key">High volume is gold. Low volume is blue. Zero volume is grey.</span>
+          <button className="updates-btn" type="button" onClick={() => setUpdatesOpen(true)}>
+            Updates
+          </button>
           <button className="icon-btn" type="button" onClick={() => {
             const row = document.getElementById(`strike-${snapshot?.totals.atm ?? ""}`);
             const scroller = row?.closest(".chain-scroll");
@@ -321,7 +331,13 @@ export function Terminal() {
           )}
         </div>
       </section>
-      <QuoteSheet row={picked} onClose={() => setPicked(null)} />
+      <QuoteSheet
+        row={picked}
+        spot={snapshot?.spot ?? null}
+        expiry={snapshot?.expiry ?? ""}
+        onClose={() => setPicked(null)}
+      />
+      <UpdatesDialog open={updatesOpen} onClose={() => setUpdatesOpen(false)} />
       <CommandPalette
         open={paletteOpen}
         instruments={instruments}
@@ -334,6 +350,18 @@ export function Terminal() {
   );
 }
 
+function LiveSpot({ value }: { value: number | null }) {
+  const prev = useRef<number | null>(null);
+  const [flash, setFlash] = useState("");
+  useEffect(() => {
+    if (prev.current != null && value != null && value !== prev.current) {
+      setFlash(value > prev.current ? "tick-up" : "tick-down");
+    }
+    prev.current = value;
+  }, [value]);
+  return <strong className={cn("spot-inline", flash && `is-${flash}`)}>{formatPrice(value)}</strong>;
+}
+
 function Kpi({ label, value, index }: { label: string; value: string; index: number }) {
   return (
     <motion.article
@@ -344,7 +372,7 @@ function Kpi({ label, value, index }: { label: string; value: string; index: num
       whileHover={{ y: -2 }}
     >
       <p>{label}</p>
-      <strong>{value}</strong>
+      <strong key={value}>{value}</strong>
     </motion.article>
   );
 }

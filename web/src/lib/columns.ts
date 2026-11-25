@@ -16,18 +16,18 @@ export type SideColumn = {
  */
 /** Outside to inside, so the last price sits against the strike. */
 export const SIDE_COLUMNS: SideColumn[] = [
-  { key: "pChg", label: "% Change" },
+  { key: "pChg", label: "% Chng" },
   { key: "theta", label: "Theta" },
   { key: "delta", label: "Delta" },
-  { key: "bidQty", label: "Bid Quantity" },
+  { key: "bidQty", label: "Bid Qty" },
   { key: "bid", label: "Bid" },
   { key: "ask", label: "Ask" },
-  { key: "askQty", label: "Ask Quantity" },
-  { key: "oiChg", label: "OI Change", focus: true },
+  { key: "askQty", label: "Ask Qty" },
+  { key: "oiChg", label: "Chng in OI", focus: true },
   { key: "oi", label: "OI", always: true, focus: true },
   { key: "volume", label: "Volume", always: true, focus: true },
   { key: "iv", label: "IV" },
-  { key: "chng", label: "Change", focus: true },
+  { key: "chng", label: "Chng", focus: true },
   { key: "ltp", label: "LTP", always: true, focus: true },
 ];
 

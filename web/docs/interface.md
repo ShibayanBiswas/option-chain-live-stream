@@ -14,9 +14,9 @@ The header spans the width of the desk, above the sidebar. It shows the contract
 
 One table and one header row: calls, Strike, puts. The last price sits against the strike. There is no gap between that last-price cell and the strike, and there is no second strike row.
 
-Focus shows volume, open-interest change, open interest, change, and last. A phone in Focus shows open interest and last on each side of the strike. All Columns adds the remaining fields. A wide window of 1600 px or more opens All Columns until the column control is changed.
+The NSE columns are OI, Chng in OI, Volume, IV, LTP, Chng, Bid Qty, Bid, Ask and Ask Qty, plus % Chng, Delta and Theta. Focus shows Volume, Chng in OI, OI, Chng and LTP. A phone in Focus shows OI and LTP. A TV at 1920 px opens every column. Desktop, laptop and tablet stay on Focus until All Columns is chosen.
 
-Zero-volume strikes are grey. High and low volume last prices are marked, and the legend sits above the book. There is no gold or brown line on a strike, including round strikes such as 24,500 and 26,000.
+Updates opens the volume key. Gold is high volume, blue is low volume, grey is zero volume. A green flash is a higher print and a red flash is a lower print. There is no gold line on a strike. Clicking a strike opens Call and Put with those same fields.
 
 The range label reads like `24,450 – 26,250 · 37 strikes`. Jump to spot scrolls the chain. The page itself does not scroll.
 

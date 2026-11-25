@@ -9,6 +9,13 @@ async function waitForBook(page: Page) {
   await expect(page.locator("h1")).not.toHaveText("Option Chain", { timeout: 70_000 });
   await expect(page.locator(".spot-inline")).not.toHaveText("—", { timeout: 70_000 });
   await expect(page.locator(".chain-row").first()).toBeVisible();
+  await page.getByRole("button", { name: "Updates" }).click();
+  const shades = page.getByRole("dialog", { name: "Volume shades" });
+  await expect(shades).toBeVisible();
+  await expect(shades).toContainText("High volume");
+  await expect(shades).toContainText("Zero volume");
+  await shades.getByRole("button", { name: "Close updates" }).click();
+  await expect(shades).toBeHidden();
   await expect(page.locator(".session-pill")).toHaveText(/Market Open|Market Closed|Pre Open|Market Holiday/);
 }
 
@@ -128,8 +135,8 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
       after: heads.slice(strike + 1, strike + 3),
     };
   });
-  expect(headerOrder.before).toEqual(["Change", "LTP"]);
-  expect(headerOrder.after).toEqual(["LTP", "Change"]);
+  expect(headerOrder.before).toEqual(["Chng", "LTP"]);
+  expect(headerOrder.after).toEqual(["LTP", "Chng"]);
 
   const zeroRows = page.locator('[data-volume="zero"]');
   await expect(zeroRows.first()).toBeVisible();
