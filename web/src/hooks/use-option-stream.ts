@@ -49,6 +49,8 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
     const res = await fetch(`/api/chain?${qs}`, { cache: "no-store" });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Failed to fetch chain");
+    lastBeat.current = Date.now();
+    setQuiet(false);
     applySnapshot(data as OptionChainSnapshot);
     return data as OptionChainSnapshot;
   }, [applySnapshot, exchange, expiry, segment, symbol]);
@@ -110,6 +112,7 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
       if (!result.apply) return false;
       if (wasPolling) stopPoll();
       clearDrop();
+      lastBeat.current = Date.now();
       setQuiet(false);
       setStatus("live");
       return true;

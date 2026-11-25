@@ -216,11 +216,16 @@ export function Terminal() {
     [book],
   );
   const marketOpen = snapshot ? snapshot.marketOpen : book?.market?.open === true;
+  const phone = viewport === "phone";
   const session = marketOpen
-    ? "Market Open"
+    ? phone
+      ? "Open"
+      : "Market Open"
     : book?.market?.phase === "preopen"
       ? "Pre-Open"
-      : (book?.market?.message ?? "Market Closed");
+      : phone
+        ? "Closed"
+        : (book?.market?.message ?? "Market Closed");
   const waiting = status === "connecting" || status === "polling";
   const delayed = Boolean(snapshot?.stale);
   const feed = delayed ? "Delayed" : !snapshot ? (waiting ? "Connecting" : "REST") : !marketOpen ? "Closed" : waiting ? "Waiting" : "REST";
@@ -269,7 +274,11 @@ export function Terminal() {
             className={cn("feed-chip", ageTone)}
             data-state={waiting ? "waiting" : quiet ? "waiting" : status}
             aria-live="polite"
-            title={`Exchange snapshot · refreshes about every 30 s. Fetch ${snapshot?.latencyMs ?? "—"} ms`}
+            title={
+              snapshot?.feed === "websocket"
+                ? `Exchange websocket · prices as frames arrive. Fetch ${snapshot.latencyMs} ms`
+                : `Exchange snapshot · refreshes about every 30 s. Fetch ${snapshot?.latencyMs ?? "—"} ms`
+            }
           >
             <span className={cn("live-dot", status === "error" && "is-off", (waiting || quiet) && "is-stale")} />
             <span>{quiet ? "Stale" : snapshot?.feed === "websocket" ? "WebSocket" : feed}</span>
@@ -293,7 +302,7 @@ export function Terminal() {
             value={view}
             onChange={(event) => setView(event.target.value as "chain" | "custom")}
           >
-            <option value="chain">Option Chain</option>
+            <option value="chain">{phone ? "Chain" : "Option Chain"}</option>
             <option value="custom">Custom</option>
           </select>
           {view === "chain" ? (
@@ -314,10 +323,16 @@ export function Terminal() {
               {(viewport === "phone" ? expiryMenu.filter((count) => count <= 2) : expiryMenu).map((count) => (
                 <option key={count} value={count}>
                   {count === liveExpiryCount && liveExpiryCount > 1
-                    ? `${count} expiries, all`
+                    ? phone
+                      ? `${count} exp`
+                      : `${count} expiries, all`
                     : count === 1
-                      ? "1 expiry"
-                      : `${count} expiries`}
+                      ? phone
+                        ? "1 exp"
+                        : "1 expiry"
+                      : phone
+                        ? `${count} exp`
+                        : `${count} expiries`}
                 </option>
               ))}
             </select>
@@ -328,8 +343,8 @@ export function Terminal() {
             value={depth}
             onChange={(event) => setDepth(event.target.value as "near" | "full")}
           >
-            <option value="near">Spot Focus</option>
-            <option value="full">All Strikes</option>
+            <option value="near">{phone ? "Focus" : "Spot Focus"}</option>
+            <option value="full">{phone ? "All" : "All Strikes"}</option>
           </select>
           {view === "chain" ? (
             <select
@@ -340,7 +355,7 @@ export function Terminal() {
               data-testid="density-select"
             >
               <option value="focus">Focus</option>
-              <option value="full">All Columns</option>
+              <option value="full">{phone ? "All" : "All Columns"}</option>
             </select>
           ) : null}
           </div>

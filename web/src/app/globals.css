@@ -351,6 +351,18 @@ html.dark .chain-scroll .chain-table thead tr.side-labels .pe-zone {
   animation: spot-sheen 2.8s ease-in-out infinite;
 }
 
+.chain-scroll:not(.inward) .spot-marker td {
+  text-align: left !important;
+}
+
+.chain-scroll:not(.inward) .spot-marker span {
+  position: sticky;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-left: 0;
+  margin-right: 0;
+}
+
 .chain-table tbody {
   animation: book-in 0.55s ease;
 }
@@ -2170,13 +2182,14 @@ html.dark .inward-captions .pe-zone {
 
 @media (max-width: 700px) {
   .toolbar {
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     align-items: center;
-    height: 56px;
-    min-height: 56px;
-    max-height: 56px;
-    overflow-x: auto;
-    overflow-y: hidden;
+    align-content: flex-start;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    overflow: visible;
+    row-gap: 6px;
   }
 
   .toolbar-main,
@@ -2184,15 +2197,50 @@ html.dark .inward-captions .pe-zone {
     display: flex;
     flex-wrap: nowrap;
     align-items: center;
-    width: max-content;
+    width: 100%;
+    min-width: 0;
     height: 44px;
   }
 
+  .toolbar-main > *,
+  .toolbar-tools > * {
+    order: 0;
+  }
+
+  .toolbar-tools {
+    gap: 4px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+
+  .toolbar-tools .feed-chip,
+  .toolbar-tools .session-pill {
+    flex: 0 0 auto;
+    width: auto;
+  }
+
+  .toolbar-tools .toolbar-select {
+    flex: 1 1 0;
+    width: 0;
+    min-width: 0;
+    max-width: none;
+    padding-left: 6px;
+    padding-right: 16px;
+  }
+
   .identity {
+    flex: 1 1 auto;
     flex-direction: row;
     align-items: center;
     gap: 6px;
     min-width: 0;
+    overflow: hidden;
+  }
+
+  .identity h1,
+  .spot-inline {
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .toolbar .feed-chip em {
@@ -2204,14 +2252,21 @@ html.dark .inward-captions .pe-zone {
   .toolbar .toolbar-select,
   .toolbar .session-pill,
   .toolbar .feed-chip {
+    order: 0;
     min-width: 44px;
     min-height: 44px;
     height: 44px;
     flex: 0 0 auto;
   }
 
+  .toolbar-tools .toolbar-select {
+    flex: 1 1 0;
+    width: 0;
+    min-width: 0;
+  }
+
   .rail.is-sheet:not(.is-collapsed) {
-    top: 64px;
+    top: 112px;
   }
 
   .pin-btn {
