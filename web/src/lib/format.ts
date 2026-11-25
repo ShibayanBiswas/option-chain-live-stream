@@ -30,10 +30,8 @@ export function formatNumber(
 }
 
 export function formatPrice(value: number | null | undefined): string {
-  if (value === null || value === undefined || !Number.isFinite(value) || value === 0) {
-    return "—";
-  }
-  return formatNumber(value, 1);
+  if (value === null || value === undefined || !Number.isFinite(value)) return "—";
+  return formatNumber(value, 2);
 }
 
 export function formatCompact(value: number | null | undefined): string {
@@ -53,8 +51,25 @@ export function formatPct(value: number | null | undefined): string {
 }
 
 export function formatSigned(value: number | null | undefined, digits = 2): string {
-  if (value === null || value === undefined || !Number.isFinite(value) || value === 0) {
-    return "—";
-  }
+  if (value === null || value === undefined || !Number.isFinite(value)) return "—";
   return formatNumber(value, digits);
+}
+
+/** Exchange snapshot clock in IST, and how many seconds have passed since it. */
+export function formatDataAge(
+  timestamp: string | null | undefined,
+  now = Date.now(),
+): { label: string; seconds: number } | null {
+  if (!timestamp) return null;
+  const at = Date.parse(timestamp);
+  if (!Number.isFinite(at)) return null;
+  const seconds = Math.max(0, Math.round((now - at) / 1000));
+  const clock = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).format(new Date(at));
+  return { label: `Updated ${clock} IST · ${seconds}s ago`, seconds };
 }

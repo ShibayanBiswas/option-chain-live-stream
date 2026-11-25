@@ -13,6 +13,7 @@ export async function GET() {
     const market = await getNseMarketStatus();
     return NextResponse.json({
       ok: true,
+      commit: process.env.VERCEL_GIT_COMMIT_SHA ?? null,
       latencyMs: Date.now() - started,
       nse: market,
       cache: chainCacheStats(),

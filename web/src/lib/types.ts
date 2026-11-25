@@ -13,6 +13,10 @@ export type OptionQuote = {
   bidQty: number | null;
   ask: number | null;
   askQty: number | null;
+  delta?: number | null;
+  gamma?: number | null;
+  theta?: number | null;
+  vega?: number | null;
 };
 
 export type ChainRow = {
@@ -93,5 +97,7 @@ export type ColumnKey =
   | "ask"
   | "askQty"
   | "delta"
+  | "gamma"
   | "theta"
+  | "vega"
   | "pChg";

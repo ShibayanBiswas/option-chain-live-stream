@@ -4,13 +4,13 @@ Two groups: **Indices** and **Equity**.
 
 ## Indices
 
-The desk lists two indexes: NIFTY 50 on NSE and SENSEX on BSE. Other discovered indexes are not shown.
+`DESK_SCOPE` in `src/lib/config.ts` is the only switch. `all` (the default) lists every NSE index option book and every BSE index option book. NIFTY 50 is first under NSE and SENSEX is first under BSE. The rest sit under More NSE indices and More BSE indices. `core` keeps only NIFTY and SENSEX.
 
-If BSE blocks the request, SENSEX falls back to contract code `1` in `src/data/bse-cache.json`. That chain is marked stale.
+If BSE discovery fails, the last cached index list is served and the universe is marked stale. There is no hard-coded SENSEX contract code.
 
 ## Equity
 
-Anand Rathi Wealth only (`ANANDRATHI`), on NSE. It is not listed under BSE. Every other equity is dropped.
+Anand Rathi Wealth only (`ANANDRATHI`), on NSE and on BSE when BSE lists stock options for it. Every other equity is dropped.
 
 ## Expiry
 

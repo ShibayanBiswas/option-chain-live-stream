@@ -98,20 +98,36 @@ export function matchTape<T extends { symbol: string; exchange?: string }>(
   return hits.find((quote) => quote.exchange === exchange) ?? hits.find((quote) => !quote.exchange);
 }
 
+/**
+ * Monthly is the last listed expiry of each calendar month.
+ * Anything more than 120 days out is Long dated, even when it is that month's last expiry.
+ */
 export function groupExpiries(expiries: string[], now = new Date()) {
   const weekly: ExpiryInfo[] = [];
   const monthly: ExpiryInfo[] = [];
+  const longDated: ExpiryInfo[] = [];
   const other: string[] = [];
-  for (const raw of expiries) {
-    const info = describeExpiry(raw, now);
-    if (!info) {
-      other.push(raw);
-      continue;
-    }
-    if (!isListedExpiryLive(raw, now)) continue;
-    (info.bucket === "monthly" ? monthly : weekly).push(info);
+  const live = expiries
+    .map((raw) => {
+      const info = describeExpiry(raw, now);
+      if (!info) other.push(raw);
+      return info;
+    })
+    .filter((info): info is ExpiryInfo => info != null && isListedExpiryLive(info.raw, now))
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
+  const near = live.filter((info) => info.days <= 120);
+  const lastOfMonth = new Set<string>();
+  const seen = new Map<string, string>();
+  for (const info of near) {
+    seen.set(`${info.date.getFullYear()}-${info.date.getMonth()}`, info.raw);
   }
-  return { weekly, monthly, other };
+  for (const raw of seen.values()) lastOfMonth.add(raw);
+  for (const info of live) {
+    if (info.days > 120) longDated.push(info);
+    else if (lastOfMonth.has(info.raw)) monthly.push(info);
+    else weekly.push(info);
+  }
+  return { weekly, monthly, longDated, other };
 }
 
 export function upcomingExpiry(expiries: string[], current: string, now = new Date()): string {

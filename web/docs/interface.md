@@ -16,11 +16,13 @@ Custom uses the same Calls, Strike and Puts layout, the same price and change fo
 
 One table. The top header row reads Calls, then the strike column, then Puts. The row under it is the column names, with one Strike heading. The last price sits against the strike. There is no gap between that last-price cell and the strike. A gold line between the two strikes around the live price reads Spot, and the at-the-money strike is outlined.
 
-The NSE columns are OI, Chng in OI, Volume, IV, LTP, Chng, and % Chng. Bid Qty, Bid, Ask and Ask Qty join All Columns when the book has a quote. All Columns gives each column a readable width. When that book is wider than the screen, the strike stays fixed and the call and put columns scroll inward, with the last price against the strike. Focus shows Volume, Chng in OI, OI, Chng and LTP. A phone in Focus shows OI and LTP. Every screen starts on Focus and Spot Focus.
+The columns read toward the strike: Bid Quantity, Bid, Ask, Ask Quantity, Vega, Gamma, Theta, Delta, IV, Volume, OI Change, OI, % Change, Change, LTP. Bid and ask columns appear when the book has a quote. Greeks appear in All Columns. When that book is wider than the screen, the strike stays fixed and the call and put columns scroll inward, with the last price against the strike. Focus shows Volume, OI Change, OI, Change and LTP. A phone in Focus shows OI and LTP. Every screen starts on Custom and Spot Focus.
 
 Gold is high volume, blue is low volume, grey is zero volume. A green flash is a higher print and a red flash is a lower print. There is no gold line under a round strike. Clicking a strike opens a card with Calls on one side and Puts on the other.
 
-Spot Focus keeps the 18 strikes below the at-the-money strike and the 18 above it. All Strikes shows the whole book. Strike numbers sit in the centre of the column. Prices and price changes show one decimal. Implied volatility stays at two decimals. Jump to spot scrolls Custom and the option chain. The page itself does not scroll.
+Spot Focus keeps the 18 strikes below the at-the-money strike and the 18 above it. All Strikes shows the whole book. Strike numbers sit in the centre of the column. Premiums, bids, asks, changes and the spot show two decimals. A real zero is `0.00`. A missing value is an em dash. Open interest and volume stay in lakh and crore. Jump to spot scrolls Custom and the option chain. The page itself does not scroll.
+
+The feed chip reads the exchange timestamp: `Updated HH:MM:SS IST · Ns ago`. It turns amber after 45 seconds while the market is open and red after 120 seconds. The tooltip keeps the fetch time. The label is an exchange snapshot that refreshes about every 30 seconds.
 
 ## Mobile
 

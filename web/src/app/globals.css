@@ -2131,3 +2131,34 @@ html.dark .inward-captions .pe-zone {
 .chain-table tbody tr:last-child td {
   border-bottom: 0;
 }
+
+.link-banner {
+  margin: 8px 12px 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 13px;
+}
+
+.feed-chip.is-aged {
+  color: #b45309;
+}
+
+.feed-chip.is-late {
+  color: #b91c1c;
+}
+
+.more-book {
+  margin: 2px 8px 8px;
+}
+
+.more-book summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 6px 4px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}

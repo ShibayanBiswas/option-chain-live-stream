@@ -3,6 +3,7 @@ import { upcomingExpiry } from "./display";
 import { expiryIso, toIstIso } from "./expiry";
 import { assertBookShape } from "./schema";
 import { parseLooseNumber } from "./format";
+import { derivativesSessionOpen } from "./session";
 import { httpsGet, httpsGetJson } from "./http";
 import type { ChainRow, OptionChainSnapshot, OptionQuote } from "./types";
 
@@ -174,7 +175,7 @@ export async function getBseOptionChain(params: {
     totals: buildTotals(rows, spot),
     latencyMs: Date.now() - started,
     source: "bse",
-    marketOpen: false,
+    marketOpen: derivativesSessionOpen(),
     stale: false,
     feed: "rest",
   };

@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { focusStrikes, upcomingExpiries } from "./display";
+import { focusStrikes, groupExpiries, upcomingExpiries } from "./display";
 import { blackScholes } from "./greeks";
+import { joinSetCookies } from "./http";
 import { daysToExpiry, isListedExpiryLive, toIstIso } from "./expiry";
-import { classifySession, gateSession } from "./session";
+import { classifySession, derivativesSessionOpen, gateSession } from "./session";
 import { assertBookShape } from "./schema";
 
 describe("expiry and session", () => {
@@ -63,6 +64,30 @@ describe("expiry and session", () => {
     expect(() =>
       assertBookShape({ strikes: [100], spot: null, expiry: "a", expiries: ["a"], segment: "INDEX" }),
     ).toThrow(/spot/);
+  });
+
+  it("classifies the last listed expiry of a month, and parks contracts past 120 days", () => {
+    const now = new Date("2026-11-25T10:00:00+05:30");
+    const groups = groupExpiries(
+      ["02-Dec-2026", "09-Dec-2026", "30-Dec-2026", "16-Feb-2027", "23-Feb-2027", "29-Dec-2030"],
+      now,
+    );
+    expect(groups.weekly.map((item) => item.raw)).toEqual(["02-Dec-2026", "09-Dec-2026", "16-Feb-2027"]);
+    expect(groups.monthly.map((item) => item.raw)).toEqual(["30-Dec-2026", "23-Feb-2027"]);
+    expect(groups.longDated.map((item) => item.raw)).toEqual(["29-Dec-2030"]);
+  });
+
+  it("opens the derivatives session on a weekday morning and closes it after 15:30 IST", () => {
+    expect(derivativesSessionOpen(beforeClose)).toBe(true);
+    expect(derivativesSessionOpen(afterClose)).toBe(false);
+    expect(derivativesSessionOpen(new Date("2026-11-28T12:00:00+05:30"))).toBe(false);
+  });
+
+  it("keeps an Expires date intact when joining Set-Cookie headers", () => {
+    const headers = new Headers();
+    headers.append("set-cookie", "a=1; Path=/; HttpOnly");
+    headers.append("set-cookie", "b=2; Expires=Wed, 21 Oct 2026 07:28:00 GMT; Path=/");
+    expect(joinSetCookies(headers)).toBe("a=1; b=2");
   });
 
   it("prices a known at-the-money call above zero with delta near one half", () => {

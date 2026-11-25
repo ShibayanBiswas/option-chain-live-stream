@@ -5,6 +5,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { centerBook, chainOverflows, InwardChain, useChainWidth } from "@/components/inward-chain";
 import { describeExpiry, focusStrikes, upcomingExpiries } from "@/lib/display";
 import { formatNumber, formatPrice, formatSigned } from "@/lib/format";
+import { applyLtpPatch, type LtpPatch, type LtpSlice } from "@/lib/ltp-slice";
 import { cn } from "@/lib/cn";
 import type { ChainRow, Exchange, OptionChainSnapshot, Segment } from "@/lib/types";
 
@@ -33,36 +34,41 @@ export function CustomLtpBoard({
   onSelect: (row: ChainRow) => void;
 }) {
   const chosen = useMemo(() => upcomingExpiries(expiries, count), [count, expiries]);
-  const [extra, setExtra] = useState<Record<string, OptionChainSnapshot>>({});
+  const [extra, setExtra] = useState<Record<string, LtpSlice>>({});
+  const wanted = useMemo(
+    () => chosen.filter((expiry) => expiry !== primary?.expiry).join(","),
+    [chosen, primary?.expiry],
+  );
 
   useEffect(() => {
-    if (!symbol || chosen.length === 0) return;
-    let stop = false;
-    const pull = async () => {
-      await Promise.all(
-        chosen.map(async (expiry) => {
-          try {
-            const qs = new URLSearchParams({ symbol, exchange, segment, expiry });
-            const res = await fetch(`/api/chain?${qs}`, { cache: "no-store" });
-            if (!res.ok || stop) return;
-            const data = (await res.json()) as OptionChainSnapshot;
-            if (stop || !data.expiry) return;
-            setExtra((current) => ({ ...current, [data.expiry]: data }));
-          } catch {
-            /* the next pass retries this expiry */
-          }
-        }),
-      );
+    if (!symbol || !wanted) return;
+    const qs = new URLSearchParams({ symbol, exchange, segment, expiries: wanted });
+    const es = new EventSource(`/api/stream/multi?${qs}`);
+    const take = (evt: Event, apply: (slice: LtpSlice) => void) => {
+      try {
+        apply(JSON.parse((evt as MessageEvent).data) as LtpSlice);
+      } catch {
+        /* the next event replaces a bad frame */
+      }
     };
-    pull().catch(() => undefined);
-    const timer = window.setInterval(() => {
-      pull().catch(() => undefined);
-    }, 2000);
-    return () => {
-      stop = true;
-      window.clearInterval(timer);
-    };
-  }, [chosen, exchange, segment, symbol]);
+    es.addEventListener("slice", (evt) => {
+      take(evt, (slice) => {
+        if (!slice.expiry) return;
+        setExtra((current) => ({ ...current, [slice.expiry]: slice }));
+      });
+    });
+    es.addEventListener("patch", (evt) => {
+      take(evt, (patch) => {
+        const update = patch as unknown as LtpPatch;
+        setExtra((current) => {
+          const slice = current[update.expiry];
+          if (!slice) return current;
+          return { ...current, [update.expiry]: applyLtpPatch(slice, update) };
+        });
+      });
+    });
+    return () => es.close();
+  }, [exchange, segment, symbol, wanted]);
 
   const columns = chosen.map((expiry) => ({
     expiry,
@@ -70,7 +76,7 @@ export function CustomLtpBoard({
   }));
   const loaded = columns.flatMap((column) => (column.book ? [column.book] : []));
   const spot = primary?.spot ?? loaded[0]?.spot ?? null;
-  const atm = primary?.totals.atm ?? loaded[0]?.totals.atm ?? null;
+  const atm = primary?.totals.atm ?? loaded.find(isChain)?.totals.atm ?? null;
   const callCols = [...columns].reverse();
   const strikes = focusStrikes(
     [...new Set(loaded.flatMap((book) => book.rows.map((row) => row.strike)))].sort((a, b) => a - b),
@@ -92,7 +98,7 @@ export function CustomLtpBoard({
   const customRows = strikes.map((strike, index) => {
     const previous = strikes[index - 1];
     const showSpot = spot != null && previous != null && previous < spot && strike > spot;
-    const nearest = columns.find((column) => column.book?.rows.some((row) => row.strike === strike))?.book?.rows.find((row) => row.strike === strike) ?? null;
+    const nearest = columns.map((column) => chainRow(column.book, strike)).find((row) => row != null) ?? null;
     return { strike, showSpot, nearest };
   });
 
@@ -124,11 +130,11 @@ export function CustomLtpBoard({
               key={`ce-${strike}-${column.expiry}`}
               side="ce"
               resetKey={`${symbol}:${column.expiry}`}
-              value={column.book?.rows.find((row) => row.strike === strike)?.ce.lastPrice ?? null}
-              change={column.book?.rows.find((row) => row.strike === strike)?.ce.change ?? null}
+              value={quoteOf(column.book, strike, "ce").last}
+              change={quoteOf(column.book, strike, "ce").change}
               itm={spot != null && strike < spot}
               onClick={() => {
-                const row = column.book?.rows.find((item) => item.strike === strike);
+                const row = chainRow(column.book, strike);
                 if (row) onSelect(row);
               }}
             />
@@ -138,11 +144,11 @@ export function CustomLtpBoard({
               key={`pe-${strike}-${column.expiry}`}
               side="pe"
               resetKey={`${symbol}:${column.expiry}`}
-              value={column.book?.rows.find((row) => row.strike === strike)?.pe.lastPrice ?? null}
-              change={column.book?.rows.find((row) => row.strike === strike)?.pe.change ?? null}
+              value={quoteOf(column.book, strike, "pe").last}
+              change={quoteOf(column.book, strike, "pe").change}
               itm={spot != null && strike > spot}
               onClick={() => {
-                const row = column.book?.rows.find((item) => item.strike === strike);
+                const row = chainRow(column.book, strike);
                 if (row) onSelect(row);
               }}
             />
@@ -175,7 +181,7 @@ export function CustomLtpBoard({
           {strikes.map((strike, index) => {
             const previous = strikes[index - 1];
             const showSpot = spot != null && previous != null && previous < spot && strike > spot;
-            const nearest = columns.find((column) => column.book?.rows.some((row) => row.strike === strike))?.book?.rows.find((row) => row.strike === strike) ?? null;
+            const nearest = columns.map((column) => chainRow(column.book, strike)).find((row) => row != null) ?? null;
             return (
               <Fragment key={strike}>
                 {showSpot ? (
@@ -197,11 +203,11 @@ export function CustomLtpBoard({
                       key={`ce-${strike}-${column.expiry}`}
                       side="ce"
                       resetKey={`${symbol}:${column.expiry}`}
-                      value={column.book?.rows.find((row) => row.strike === strike)?.ce.lastPrice ?? null}
-              change={column.book?.rows.find((row) => row.strike === strike)?.ce.change ?? null}
+                      value={quoteOf(column.book, strike, "ce").last}
+              change={quoteOf(column.book, strike, "ce").change}
                       itm={spot != null && strike < spot}
                       onClick={() => {
-                        const row = column.book?.rows.find((item) => item.strike === strike);
+                        const row = chainRow(column.book, strike);
                         if (row) onSelect(row);
                       }}
                     />
@@ -212,11 +218,11 @@ export function CustomLtpBoard({
                       key={`pe-${strike}-${column.expiry}`}
                       side="pe"
                       resetKey={`${symbol}:${column.expiry}`}
-                      value={column.book?.rows.find((row) => row.strike === strike)?.pe.lastPrice ?? null}
-              change={column.book?.rows.find((row) => row.strike === strike)?.pe.change ?? null}
+                      value={quoteOf(column.book, strike, "pe").last}
+              change={quoteOf(column.book, strike, "pe").change}
                       itm={spot != null && strike > spot}
                       onClick={() => {
-                        const row = column.book?.rows.find((item) => item.strike === strike);
+                        const row = chainRow(column.book, strike);
                         if (row) onSelect(row);
                       }}
                     />
@@ -272,10 +278,34 @@ function PriceCell({
     >
       <span className="quote-num">{formatPrice(value)}</span>
       <span className={cn("ltp-chng", change != null && change < 0 ? "tone-down" : "tone-up")}>
-        {formatSigned(change, 1)}
+        {formatSigned(change, 2)}
       </span>
     </td>
   );
+}
+
+function isChain(book: OptionChainSnapshot | LtpSlice): book is OptionChainSnapshot {
+  return "totals" in book;
+}
+
+function quoteOf(
+  book: OptionChainSnapshot | LtpSlice | null,
+  strike: number,
+  side: "ce" | "pe",
+): { last: number | null; change: number | null } {
+  const row = book?.rows.find((item) => item.strike === strike);
+  if (!row) return { last: null, change: null };
+  if ("ce" in row) {
+    const quote = side === "ce" ? row.ce : row.pe;
+    return { last: quote.lastPrice, change: quote.change };
+  }
+  return side === "ce" ? { last: row.ceLtp, change: row.ceChg } : { last: row.peLtp, change: row.peChg };
+}
+
+function chainRow(book: OptionChainSnapshot | LtpSlice | null, strike: number): ChainRow | null {
+  const row = book?.rows.find((item) => item.strike === strike);
+  if (!row || !("ce" in row)) return null;
+  return row;
 }
 
 function shortExpiry(raw: string): string {

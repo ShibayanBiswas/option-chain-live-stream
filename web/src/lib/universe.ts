@@ -1,5 +1,6 @@
 import { BseBlockedError, discoverBseUnderlyings } from "./bse";
 import { listCachedBse } from "./bse-cache";
+import { deskScope, type DeskScope } from "./config";
 import { indexLabel } from "./index-match";
 import { discoverNseBook } from "./nse";
 import type { Exchange, Instrument, Segment } from "./types";
@@ -8,6 +9,7 @@ export type DeskUniverse = {
   indexes: Instrument[];
   equities: Instrument[];
   refreshedAt: string;
+  stale?: boolean;
 };
 
 let cache: { at: number; value: DeskUniverse } | null = null;
@@ -33,24 +35,35 @@ function asInstrument(
   };
 }
 
-export function selectDesk(input: {
-  nseIndexes: string[];
-  nseEquities: string[];
-  bseIndexes: Array<{ symbol: string; scrip: number }>;
-  bseEquities: Array<{ symbol: string; scrip: number }>;
-}): DeskUniverse {
+function pinFirst(rows: Instrument[], pin: string): Instrument[] {
+  return [...rows].sort((a, b) => {
+    if (a.symbol === pin) return -1;
+    if (b.symbol === pin) return 1;
+    return a.label.localeCompare(b.label);
+  });
+}
+
+export function selectDesk(
+  input: {
+    nseIndexes: string[];
+    nseEquities: string[];
+    bseIndexes: Array<{ symbol: string; scrip: number }>;
+    bseEquities: Array<{ symbol: string; scrip: number }>;
+  },
+  scope: DeskScope = deskScope(),
+): DeskUniverse {
+  const nse = input.nseIndexes.map((symbol) => asInstrument(symbol, "NSE", "INDEX"));
+  const bse = input.bseIndexes.map((row) => asInstrument(row.symbol, "BSE", "INDEX", row.scrip));
   const indexes = [
-    ...input.nseIndexes
-      .filter((symbol) => symbol.replace(/[^A-Z0-9]/gi, "").toUpperCase() === "NIFTY")
-      .map((symbol) => asInstrument(symbol, "NSE", "INDEX")),
-    ...input.bseIndexes
-      .filter((row) => row.symbol.replace(/[^A-Z0-9]/gi, "").toUpperCase() === "SENSEX")
-      .map((row) => asInstrument(row.symbol, "BSE", "INDEX", row.scrip)),
+    ...pinFirst(scope === "core" ? nse.filter((item) => item.symbol === "NIFTY") : nse, "NIFTY"),
+    ...pinFirst(scope === "core" ? bse.filter((item) => item.symbol === "SENSEX") : bse, "SENSEX"),
   ];
   const equities: Instrument[] = [];
   if (input.nseEquities.some((symbol) => isWealthEquity(symbol))) {
     equities.push(asInstrument(WEALTH_EQUITY, "NSE", "EQUITY"));
   }
+  const bseWealth = input.bseEquities.find((row) => isWealthEquity(row.symbol));
+  if (bseWealth) equities.push(asInstrument(WEALTH_EQUITY, "BSE", "EQUITY", bseWealth.scrip));
   return { indexes, equities, refreshedAt: new Date().toISOString() };
 }
 
@@ -63,32 +76,37 @@ export async function loadUniverse(force = false): Promise<DeskUniverse> {
   if (!force && cache && Date.now() - cache.at < TTL_MS) return cache.value;
 
   const nse = await discoverNseBook();
-  let bseIndexes: Instrument[] = [];
+  let stale = false;
+  let bseIndexes: Array<{ symbol: string; scrip: number }> = [];
+  let bseEquities: Array<{ symbol: string; scrip: number }> = [];
 
   try {
-    const indexes = await discoverBseUnderlyings("IO");
-    bseIndexes = indexes.map((row) =>
-      asInstrument(row.symbol.replace(/\s+/g, ""), "BSE", "INDEX", row.scrip),
-    );
+    bseIndexes = (await discoverBseUnderlyings("IO")).map((row) => ({
+      symbol: row.symbol.replace(/\s+/g, ""),
+      scrip: row.scrip,
+    }));
   } catch (err) {
-    if (!(err instanceof BseBlockedError)) {
-      console.error("bse universe", err);
-    }
-    bseIndexes = listCachedBse().map((row) =>
-      asInstrument(row.symbol, "BSE", "INDEX", row.scrip),
-    );
+    if (!(err instanceof BseBlockedError)) console.error("bse universe", err);
+    stale = true;
+    bseIndexes = listCachedBse().map((row) => ({ symbol: row.symbol, scrip: row.scrip }));
   }
 
-  if (!bseIndexes.some((item) => item.symbol === "SENSEX")) {
-    bseIndexes.push(asInstrument("SENSEX", "BSE", "INDEX", 1));
+  try {
+    bseEquities = (await discoverBseUnderlyings("SO"))
+      .filter((row) => isWealthEquity(row.symbol))
+      .map((row) => ({ symbol: row.symbol.replace(/\s+/g, ""), scrip: row.scrip }));
+  } catch (err) {
+    if (!(err instanceof BseBlockedError)) console.error("bse equity", err);
+    stale = true;
   }
 
   const value = selectDesk({
     nseIndexes: nse.indexes,
     nseEquities: nse.equities,
-    bseIndexes: bseIndexes.map((item) => ({ symbol: item.symbol, scrip: item.bseScrip ?? 1 })),
-    bseEquities: [],
+    bseIndexes,
+    bseEquities,
   });
+  value.stale = stale;
 
   cache = { at: Date.now(), value };
   return value;

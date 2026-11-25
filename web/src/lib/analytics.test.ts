@@ -113,7 +113,9 @@ describe("diff", () => {
       rows: [row(100, { lastPrice: 11 }), row(110)],
     };
     const patch = diffChain(base, next);
-    expect(patch?.rows.map((item) => item.strike)).toEqual([100, 110]);
+    expect(patch?.cells.filter((cell) => cell[0] === 100)).toEqual([[100, "ce", "ltp", 11]]);
+    expect(patch?.cells.some((cell) => cell[0] === 110 && cell[2] === "ltp")).toBe(true);
+    expect(JSON.stringify(patch).length).toBeLessThan(800);
     const merged = applyPatch(base, patch!);
     expect(merged.rows).toHaveLength(2);
     expect(merged.rows[0]?.ce.lastPrice).toBe(11);

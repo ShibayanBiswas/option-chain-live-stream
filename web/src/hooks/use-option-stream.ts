@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { applyPatch, type ChainPatch } from "@/lib/diff";
+import { freshLink, LOST_AFTER_MS, noteDelivery, noteDrop, noteLost, type Link } from "@/lib/stream-link";
 import type { OptionChainSnapshot } from "@/lib/types";
 
 type Status = "idle" | "connecting" | "live" | "polling" | "error";
@@ -60,6 +61,10 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
     setSocketState("idle");
     setError(null);
 
+    let link: Link = freshLink();
+    let dropTimer: number | null = null;
+    let retryTimer: number | null = null;
+
     const stopPoll = () => {
       if (pollRef.current) {
         clearInterval(pollRef.current);
@@ -69,7 +74,7 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
 
     const startPoll = () => {
       stopPoll();
-      setStatus("polling");
+      setStatus((current) => (current === "error" ? current : "polling"));
       pollRef.current = setInterval(() => {
         fetchOnce().catch((err) => {
           if (!cancelled) {
@@ -77,7 +82,37 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
             setError(err instanceof Error ? err.message : "Poll failed");
           }
         });
-      }, 1500);
+      }, link.pollMs);
+    };
+
+    const clearDrop = () => {
+      if (dropTimer != null) {
+        window.clearTimeout(dropTimer);
+        dropTimer = null;
+      }
+    };
+
+    const armLost = () => {
+      if (dropTimer != null) return;
+      dropTimer = window.setTimeout(() => {
+        if (cancelled) return;
+        link = noteLost(link);
+        setStatus("error");
+        setError("Connection lost · retrying");
+      }, LOST_AFTER_MS);
+    };
+
+    const accept = (evt: Event) => {
+      const id = Number((evt as MessageEvent).lastEventId);
+      const wasPolling = link.polling;
+      const result = noteDelivery(link, Number.isFinite(id) ? id : 0);
+      link = result.link;
+      if (!result.apply) return false;
+      if (wasPolling) stopPoll();
+      clearDrop();
+      setQuiet(false);
+      setStatus("live");
+      return true;
     };
 
     const connectSse = () => {
@@ -92,20 +127,18 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
       esRef.current = es;
 
       es.addEventListener("chain", (evt) => {
-        if (cancelled) return;
+        if (cancelled || !accept(evt)) return;
         try {
           applySnapshot(JSON.parse((evt as MessageEvent).data));
-          setStatus("live");
         } catch {
           /* ignore parse */
         }
       });
 
       es.addEventListener("patch", (evt) => {
-        if (cancelled) return;
+        if (cancelled || !accept(evt)) return;
         try {
           applyIncomingPatch(JSON.parse((evt as MessageEvent).data) as ChainPatch);
-          setStatus("live");
         } catch {
           /* ignore parse */
         }
@@ -131,11 +164,9 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
         }
       });
 
-      es.addEventListener("heartbeat", () => {
-        if (cancelled) return;
+      es.addEventListener("heartbeat", (evt) => {
+        if (cancelled || !accept(evt)) return;
         lastBeat.current = Date.now();
-        setQuiet(false);
-        setUpdatedAt(Date.now());
       });
 
       es.addEventListener("rotate", () => {
@@ -147,29 +178,28 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
       es.onerror = () => {
         if (cancelled) return;
         es.close();
-        failures += 1;
-        if (failures >= 3) {
-          startPoll();
-          window.setTimeout(() => {
-            if (!cancelled) connectSse();
-          }, 60_000);
-          return;
-        }
-        const delay = Math.min(30_000, 1000 * 2 ** (failures - 1));
-        window.setTimeout(() => {
+        const dropped = noteDrop(link);
+        link = dropped.link;
+        armLost();
+        if (dropped.startPoll) startPoll();
+        if (retryTimer != null) window.clearTimeout(retryTimer);
+        retryTimer = window.setTimeout(() => {
           if (!cancelled) connectSse();
-        }, delay);
+        }, dropped.retryMs);
       };
     };
 
-    let failures = 0;
     const onHide = () => {
       if (document.hidden) {
         esRef.current?.close();
         stopPoll();
         return;
       }
-      connectSse();
+      fetchOnce()
+        .catch(() => undefined)
+        .finally(() => {
+          if (!cancelled) connectSse();
+        });
     };
     document.addEventListener("visibilitychange", onHide);
     const staleTimer = window.setInterval(() => {
@@ -192,6 +222,8 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
       cancelled = true;
       document.removeEventListener("visibilitychange", onHide);
       window.clearInterval(staleTimer);
+      if (retryTimer != null) window.clearTimeout(retryTimer);
+      clearDrop();
       esRef.current?.close();
       esRef.current = null;
       stopPoll();

@@ -16,18 +16,20 @@ export type SideColumn = {
  */
 /** Outside to inside, so the last price sits against the strike. */
 export const SIDE_COLUMNS: SideColumn[] = [
-  { key: "pChg", label: "% Chng" },
-  { key: "theta", label: "Theta" },
-  { key: "delta", label: "Delta" },
-  { key: "bidQty", label: "Bid Qty" },
+  { key: "bidQty", label: "Bid Quantity" },
   { key: "bid", label: "Bid" },
   { key: "ask", label: "Ask" },
-  { key: "askQty", label: "Ask Qty" },
-  { key: "oiChg", label: "Chng in OI", focus: true },
-  { key: "oi", label: "OI", always: true, focus: true },
-  { key: "volume", label: "Volume", always: true, focus: true },
+  { key: "askQty", label: "Ask Quantity" },
+  { key: "vega", label: "Vega" },
+  { key: "gamma", label: "Gamma" },
+  { key: "theta", label: "Theta" },
+  { key: "delta", label: "Delta" },
   { key: "iv", label: "IV" },
-  { key: "chng", label: "Chng", focus: true },
+  { key: "volume", label: "Volume", always: true, focus: true },
+  { key: "oiChg", label: "OI Change", focus: true },
+  { key: "oi", label: "OI", always: true, focus: true },
+  { key: "pChg", label: "% Change" },
+  { key: "chng", label: "Change", focus: true },
   { key: "ltp", label: "LTP", always: true, focus: true },
 ];
 
@@ -58,8 +60,13 @@ function quoteField(q: OptionQuote, key: ColumnKey): number | null {
     case "pChg":
       return q.pChange;
     case "delta":
+      return q.delta ?? null;
+    case "gamma":
+      return q.gamma ?? null;
     case "theta":
-      return null;
+      return q.theta ?? null;
+    case "vega":
+      return q.vega ?? null;
   }
 }
 
@@ -72,7 +79,7 @@ export function visibleColumns(
   if (density === "focus") return COLLAPSED;
   return SIDE_COLUMNS.filter((col) => {
     const quoteColumn = col.key === "bid" || col.key === "ask" || col.key === "bidQty" || col.key === "askQty";
-    if (col.key === "delta" || col.key === "theta") return false;
+    if (col.key === "delta" || col.key === "gamma" || col.key === "theta" || col.key === "vega") return true;
     if (col.key === "pChg") return true;
     if (col.always || col.focus || col.key === "iv") return true;
     if (quoteColumn) {
@@ -107,7 +114,9 @@ const HINTS: Record<ColumnKey, string> = {
   ask: "Best ask",
   askQty: "Quantity at the best ask",
   delta: "Black-Scholes delta from exchange IV",
+  gamma: "Black-Scholes gamma",
   theta: "Black-Scholes theta per day",
+  vega: "Black-Scholes vega",
   pChg: "Percent change",
 };
 

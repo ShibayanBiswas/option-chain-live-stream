@@ -78,6 +78,16 @@ function execCurl(args: string[]): Promise<{ stdout: string; code: number }> {
   });
 }
 
+/** Pair name=value from each Set-Cookie. Do not split the header on commas: Expires dates contain them. */
+export function joinSetCookies(headers: { getSetCookie?: () => string[]; get(name: string): string | null }): string {
+  const listed = headers.getSetCookie?.() ?? [];
+  const lines = listed.length > 0 ? listed : [];
+  return lines
+    .map((line) => line.split(";")[0]?.trim() ?? "")
+    .filter(Boolean)
+    .join("; ");
+}
+
 async function fetchOnce(url: string, headers: Record<string, string>, host: string): Promise<HttpResult> {
   const cookie = memoryCookies.get(host);
   const response = await fetch(url, {
@@ -88,8 +98,8 @@ async function fetchOnce(url: string, headers: Record<string, string>, host: str
     signal: AbortSignal.timeout(5_000),
     redirect: "follow",
   });
-  const setCookie = response.headers.get("set-cookie");
-  if (setCookie) memoryCookies.set(host, setCookie.split(",").map((part) => part.split(";")[0]).join("; "));
+  const setCookie = joinSetCookies(response.headers);
+  if (setCookie) memoryCookies.set(host, setCookie);
   return { status: response.status, body: await response.text(), cookies: memoryCookies.get(host) ?? "" };
 }
 

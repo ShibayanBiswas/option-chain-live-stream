@@ -1,4 +1,5 @@
 import { BseBlockedError, getBseOptionChain } from "./bse";
+import { derivativesSessionOpen } from "./session";
 import { getBseCachedChain } from "./bse-cache";
 import { chainCacheKey, coalesceChain, readChainCache, recordPcr, writeChainCache } from "./chain-cache";
 import { getNseOptionChain } from "./nse";
@@ -44,7 +45,7 @@ async function loadFresh(params: {
         ...cached,
         segment: instrument.segment,
         stale: true,
-        marketOpen: false,
+        marketOpen: derivativesSessionOpen(),
       };
     }
   }

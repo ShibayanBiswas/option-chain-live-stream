@@ -37,6 +37,15 @@ export function ExpirySelect({
           ))}
         </optgroup>
       ) : null}
+      {groups.longDated.length > 0 ? (
+        <optgroup label="Long dated">
+          {groups.longDated.map((item) => (
+            <option key={item.raw} value={item.raw}>
+              {item.label}
+            </option>
+          ))}
+        </optgroup>
+      ) : null}
       {groups.other.map((item) => (
         <option key={item} value={item}>
           {item}

@@ -39,8 +39,10 @@ describe("visibleColumns", () => {
     expect(cols).not.toContain("bid");
     expect(cols).not.toContain("ask");
     expect(cols).toContain("pChg");
-    expect(cols).not.toContain("delta");
-    expect(cols).not.toContain("theta");
+    expect(cols).toContain("delta");
+    expect(cols).toContain("theta");
+    expect(cols).toContain("gamma");
+    expect(cols).toContain("vega");
   });
 
   it("hides empty bid ask in full density when the market is open", () => {

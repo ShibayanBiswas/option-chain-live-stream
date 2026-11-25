@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 
 const CUSTOM = [
-  { swatch: "price", name: "Last price", detail: "Each cell is the last price, shown to one decimal." },
+  { swatch: "price", name: "Last price", detail: "Each cell is the last price, shown to two decimals." },
   { swatch: "change", name: "Change", detail: "The figure under the price is today's change. Green is up, red is down." },
   { swatch: "expiry", name: "Expiries", detail: "Calls sit on the left, far date to near. Puts sit on the right, near date to far. The nearest expiry is against the strike." },
   { swatch: "atm", name: "At the money", detail: "The strike nearest the live price is outlined in gold. A spot line sits between the two surrounding strikes." },

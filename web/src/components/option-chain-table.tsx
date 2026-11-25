@@ -4,7 +4,7 @@ import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type R
 import { columnHint, columnLabel, putColumns, visibleColumns } from "@/lib/columns";
 import { focusStrikes } from "@/lib/display";
 import { daysToExpiry } from "@/lib/expiry";
-import { blackScholes, deltaFromIv } from "@/lib/greeks";
+import { blackScholes } from "@/lib/greeks";
 import { centerBook, chainOverflows, InwardChain, useChainWidth } from "@/components/inward-chain";
 import { cn } from "@/lib/cn";
 import { formatCompact, formatNumber, formatPrice, formatSigned, isEmptyValue } from "@/lib/format";
@@ -35,8 +35,13 @@ function readField(q: OptionQuote, key: ColumnKey): number | null {
     case "pChg":
       return q.pChange;
     case "delta":
+      return q.delta ?? null;
+    case "gamma":
+      return q.gamma ?? null;
     case "theta":
-      return null;
+      return q.theta ?? null;
+    case "vega":
+      return q.vega ?? null;
   }
 }
 
@@ -388,18 +393,16 @@ function SideCell({
   const days = daysToExpiry(expiry);
   const kind = side === "ce" ? "call" : "put";
   const value =
-    field === "delta"
-      ? deltaFromIv({ spot, strike, ivPercent: quote.iv, days, type: kind })
-      : field === "theta"
-        ? blackScholes({
-            spot: spot ?? 0,
-            strike,
-            rate: 0.065,
-            sigma: (quote.iv ?? 0) / 100,
-            timeYears: (days ?? 0) / 365,
-            type: kind,
-          })?.theta ?? null
-        : readField(quote, field);
+    field === "delta" || field === "gamma" || field === "theta" || field === "vega"
+      ? blackScholes({
+          spot: spot ?? 0,
+          strike,
+          rate: 0.065,
+          sigma: (quote.iv ?? 0) / 100,
+          timeYears: Math.max(days ?? 0, 0) / 365,
+          type: kind,
+        })?.[field] ?? null
+      : readField(quote, field);
   const tone =
     field === "chng" || field === "oiChg"
       ? value && value > 0

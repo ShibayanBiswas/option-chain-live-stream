@@ -105,22 +105,39 @@ export function InstrumentTree({
                 exit={reduce ? undefined : { height: 0, opacity: 0 }}
                 className="tree-body"
               >
-                {group.blocks.map((block) => block.rows.length === 0 ? null : (
-                  <div key={block.title} className="tree-block">
-                    <p className="tree-kicker">{block.title}</p>
-                    {block.rows.map((item) => (
-                      <Row
-                        key={`${item.exchange}-${item.symbol}`}
-                        item={item}
-                        selected={selected}
-                        tape={tape}
-                        pinned={pins.includes(`${item.exchange}:${item.symbol}`)}
-                        onSelect={onSelect}
-                        onTogglePin={onTogglePin}
-                      />
-                    ))}
-                  </div>
-                ))}
+                {group.blocks.map((block) => {
+                  if (block.rows.length === 0) return null;
+                  const pin = group.id === "indices" && block.title === "NSE"
+                    ? "NIFTY"
+                    : group.id === "indices" && block.title === "BSE"
+                      ? "SENSEX"
+                      : "";
+                  const lead = pin ? block.rows.filter((item) => item.symbol === pin) : block.rows;
+                  const rest = pin ? block.rows.filter((item) => item.symbol !== pin) : [];
+                  const row = (item: Instrument) => (
+                    <Row
+                      key={`${item.exchange}-${item.symbol}`}
+                      item={item}
+                      selected={selected}
+                      tape={tape}
+                      pinned={pins.includes(`${item.exchange}:${item.symbol}`)}
+                      onSelect={onSelect}
+                      onTogglePin={onTogglePin}
+                    />
+                  );
+                  return (
+                    <div key={block.title} className="tree-block">
+                      <p className="tree-kicker">{block.title}</p>
+                      {lead.map(row)}
+                      {rest.length > 0 ? (
+                        <details className="more-book" open={query.trim().length > 0}>
+                          <summary>More {block.title} indices</summary>
+                          {rest.map(row)}
+                        </details>
+                      ) : null}
+                    </div>
+                  );
+                })}
               </motion.div>
             ) : null}
           </AnimatePresence>

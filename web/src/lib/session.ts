@@ -30,6 +30,11 @@ const CLOSED: SessionInfo = { phase: "closed", open: false, label: "Market Close
  * The exchange sometimes keeps yesterday's "Open" after the close.
  * Cash hours are 09:15–15:30 IST. A trade date before today is not this session.
  */
+/** Weekday 09:15–15:30 IST. Used when an exchange payload has no session of its own. */
+export function derivativesSessionOpen(now = new Date()): boolean {
+  return gateSession({ phase: "open", open: true, label: "Market Open" }, "", now).open;
+}
+
 export function gateSession(info: SessionInfo, tradeDate: string, now = new Date()): SessionInfo {
   if (info.phase === "holiday") return info;
   const weekday = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Kolkata", weekday: "short" }).format(now);

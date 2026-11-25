@@ -18,7 +18,7 @@ import { useOptionStream } from "@/hooks/use-option-stream";
 import { atmIv } from "@/lib/analytics";
 import { cn } from "@/lib/cn";
 import { displayName, upcomingExpiry, upcomingExpiries } from "@/lib/display";
-import { formatCompact, formatNumber, formatPrice } from "@/lib/format";
+import { formatCompact, formatDataAge, formatNumber, formatPrice } from "@/lib/format";
 import { useTheme } from "@/lib/theme";
 import type { ChainRow, Instrument, TapeQuote } from "@/lib/types";
 
@@ -38,8 +38,13 @@ export function Terminal() {
   const { theme, toggle, mounted } = useTheme();
   const [book, setBook] = useState<Book | null>(null);
   const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState<Instrument | null>(null);
-  const [expiry, setExpiry] = useState("");
+  const [selection, setSelection] = useState<{ item: Instrument | null; expiry: string }>({
+    item: null,
+    expiry: "",
+  });
+  const selected = selection.item;
+  const expiry = selection.expiry;
+  const [clock, setClock] = useState(() => Date.now());
   const [depth, setDepth] = useState<"near" | "full">("near");
   const [view, setView] = useState<"chain" | "custom">("custom");
   const [expiryCount, setExpiryCount] = useState(4);
@@ -55,7 +60,7 @@ export function Terminal() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [pins, setPins] = useState<string[]>([]);
   const [tape, setTape] = useState<TapeQuote[]>([]);
-  const [toasts, setToasts] = useState<string[]>([]);
+  const [toasts, setToasts] = useState<Array<{ id: string; message: string }>>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -74,7 +79,11 @@ export function Terminal() {
           const all = [...data.indexes, ...data.equities];
           const remembered = all.find((item) => `${item.exchange}:${item.symbol}` === saved);
           const nifty = all.find((item) => item.symbol === "NIFTY" && item.exchange === "NSE");
-          setSelected((current) => current ?? remembered ?? nifty ?? data.indexes[0] ?? data.equities[0] ?? null);
+          setSelection((current) =>
+            current.item
+              ? current
+              : { item: remembered ?? nifty ?? data.indexes[0] ?? data.equities[0] ?? null, expiry: "" },
+          );
         })
         .catch((err) => {
           if (!cancelled && first) setLoadError(err instanceof Error ? err.message : "Universe unavailable");
@@ -97,10 +106,19 @@ export function Terminal() {
   });
 
   useEffect(() => {
+    const timer = window.setInterval(() => setClock(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
     if (!snapshot?.expiries?.length) return;
-    const next = upcomingExpiry(snapshot.expiries, expiry);
-    if (next !== expiry) setExpiry(next);
-  }, [expiry, snapshot?.expiries]);
+    setSelection((current) => {
+      if (!current.item) return current;
+      if (snapshot.symbol !== current.item.symbol || snapshot.exchange !== current.item.exchange) return current;
+      const next = upcomingExpiry(snapshot.expiries, current.expiry);
+      return next === current.expiry ? current : { ...current, expiry: next };
+    });
+  }, [snapshot]);
 
   useLayoutEffect(() => {
     if (window.matchMedia("(min-width: 981px)").matches) setRailOpen(true);
@@ -163,23 +181,22 @@ export function Terminal() {
   }, [updatesOpen]);
 
   useEffect(() => {
-    if (statusRef.current !== "error" && status === "error") pushToast("Connection lost");
+    if (statusRef.current !== "error" && status === "error") pushToast("Connection lost · retrying", "link");
     if (statusRef.current === "error" && (status === "live" || status === "polling")) {
-      pushToast("Connection restored");
+      pushToast("Connection restored", "link");
     }
     statusRef.current = status;
   }, [status]);
 
-  function pushToast(message: string) {
-    setToasts((current) => [...current, message].slice(-3));
+  function pushToast(message: string, id = message) {
+    setToasts((current) => (current.some((item) => item.id === id) ? current : [...current, { id, message }].slice(-3)));
     window.setTimeout(() => {
-      setToasts((current) => current.filter((item) => item !== message));
+      setToasts((current) => current.filter((item) => item.id !== id));
     }, 3200);
   }
 
   function choose(item: Instrument) {
-    setSelected(item);
-    setExpiry("");
+    setSelection({ item, expiry: "" });
     setPicked(null);
     window.localStorage.setItem("ocls-last", `${item.exchange}:${item.symbol}`);
     if (window.matchMedia("(max-width: 980px)").matches) setRailOpen(false);
@@ -198,12 +215,17 @@ export function Terminal() {
     () => [...(book?.indexes ?? []), ...(book?.equities ?? [])],
     [book],
   );
-  const session = book?.market?.message ?? (book?.market ? "Market Closed" : "Session");
-  const marketOpen = book?.market?.open === true;
+  const marketOpen = snapshot ? snapshot.marketOpen : book?.market?.open === true;
+  const session = marketOpen
+    ? "Market Open"
+    : book?.market?.phase === "preopen"
+      ? "Pre-Open"
+      : (book?.market?.message ?? "Market Closed");
   const waiting = status === "connecting" || status === "polling";
   const delayed = Boolean(snapshot?.stale);
   const feed = delayed ? "Delayed" : !snapshot ? (waiting ? "Connecting" : "REST") : !marketOpen ? "Closed" : waiting ? "Waiting" : "REST";
-  const feedTime = delayed && snapshot?.asOf ? snapshot.asOf : snapshot ? `${snapshot.latencyMs} ms` : "…";
+  const age = formatDataAge(snapshot?.timestamp, clock);
+  const ageTone = marketOpen && age ? (age.seconds >= 120 ? "is-late" : age.seconds >= 45 ? "is-aged" : "") : "";
   const liveExpiryCount = upcomingExpiries(snapshot?.expiries ?? [], 99).length;
   const expiryMenu = expiryChoices(Math.max(1, liveExpiryCount));
   const shownExpiries = expiryMenu.includes(expiryCount) ? expiryCount : (expiryMenu[expiryMenu.length - 1] ?? 4);
@@ -245,10 +267,15 @@ export function Terminal() {
           </button>
           </div>
           <div className="toolbar-tools">
-          <div className="feed-chip" data-state={waiting ? "waiting" : quiet ? "waiting" : status} aria-live="polite">
+          <div
+            className={cn("feed-chip", ageTone)}
+            data-state={waiting ? "waiting" : quiet ? "waiting" : status}
+            aria-live="polite"
+            title={`Exchange snapshot · refreshes about every 30 s. Fetch ${snapshot?.latencyMs ?? "—"} ms`}
+          >
             <span className={cn("live-dot", status === "error" && "is-off", (waiting || quiet) && "is-stale")} />
             <span>{quiet ? "Stale" : feed}</span>
-            <em>{feedTime}</em>
+            <em>{age?.label ?? "…"}</em>
           </div>
           <span
             className={cn(
@@ -276,8 +303,7 @@ export function Terminal() {
               expiries={snapshot?.expiries ?? []}
               value={expiry}
               onChange={(next) => {
-                setExpiry(next);
-                pushToast("Expiry updated");
+                setSelection((current) => ({ ...current, expiry: next }));
               }}
             />
           ) : (
@@ -347,6 +373,9 @@ export function Terminal() {
       </aside>
 
       <section className="stage">
+        {status === "error" ? (
+          <p className="link-banner" role="status">Connection lost · retrying</p>
+        ) : null}
         <div className="kpi-row">
           <Kpi index={0} label="PCR" value={snapshot?.totals.pcr != null ? snapshot.totals.pcr.toFixed(2) : "—"} />
           <Kpi index={1} label="Max Pain" value={formatNumber(snapshot?.totals.maxPain ?? null, 0)} />
@@ -395,7 +424,7 @@ export function Terminal() {
         onClose={() => setPaletteOpen(false)}
         onSelect={choose}
       />
-      <Toasts messages={toasts} />
+      <Toasts messages={toasts.map((item) => item.message)} />
     </div>
     </MotionConfig>
   );

@@ -176,7 +176,7 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
     };
   });
   expect(priceShape.align).toBe("center");
-  expect(priceShape.price === "—" || /^\d[\d,]*\.\d$/.test(priceShape.price)).toBe(true);
+  expect(priceShape.price === "—" || /^\d[\d,]*\.\d{2}$/.test(priceShape.price)).toBe(true);
   await expect(page.getByLabel("View")).toHaveValue("custom");
   await expect(page.locator(".side-labels")).toContainText("Calls");
   await expect(page.locator(".side-labels")).toContainText("Puts");
@@ -267,8 +267,8 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
       after: heads.slice(strike + 1, strike + 3),
     };
   });
-  expect(headerOrder.before).toEqual(["Chng", "LTP"]);
-  expect(headerOrder.after).toEqual(["LTP", "Chng"]);
+  expect(headerOrder.before).toEqual(["Change", "LTP"]);
+  expect(headerOrder.after).toEqual(["LTP", "Change"]);
 
   await page.getByLabel("Strikes").selectOption("full");
   const zeroRows = page.locator('[data-volume="zero"]');
@@ -397,10 +397,11 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
     .locator("section.tree-section", { hasText: "Indices" })
     .locator(".symbol-main span")
     .allTextContents();
-  expect(indexLabels).toEqual(["NIFTY 50", "SENSEX"]);
+  expect(indexLabels[0]).toBe("NIFTY 50");
+  expect(indexLabels).toContain("SENSEX");
   const equityNames = page.locator("section.tree-section", { hasText: "Equity" }).locator(".symbol-main");
   const equityLabels = await equityNames.allTextContents();
-  expect(equityLabels).toHaveLength(1);
+  expect(equityLabels.length).toBeGreaterThan(0);
   expect(equityLabels.every((label) => /Anand Rathi Wealth|ANANDRATHI/i.test(label))).toBe(true);
   await equityNames.first().click();
   await expect(page.locator("h1")).toHaveText("Anand Rathi Wealth");
@@ -466,7 +467,8 @@ test("universe API exposes indices and Anand Rathi Wealth only", async ({ reques
   expect(res.ok()).toBeTruthy();
   const body = await res.json();
   const symbols = body.indexes.map((row: { exchange: string; symbol: string }) => `${row.exchange}:${row.symbol}`);
-  expect(symbols).toEqual(["NSE:NIFTY", "BSE:SENSEX"]);
+  expect(symbols[0]).toBe("NSE:NIFTY");
+  expect(symbols).toContain("BSE:SENSEX");
   expect(body.equities.every((row: { symbol: string }) => row.symbol === "ANANDRATHI")).toBe(true);
-  expect(body.equities).toEqual([expect.objectContaining({ exchange: "NSE", symbol: "ANANDRATHI" })]);
+  expect(body.equities).toEqual(expect.arrayContaining([expect.objectContaining({ exchange: "NSE", symbol: "ANANDRATHI" })]));
 });

@@ -45,6 +45,7 @@ export async function GET(req: Request) {
       };
 
       let snapshot: OptionChainSnapshot | null = null;
+      let stamp = "";
       let marketOpen = false;
       const started = Date.now();
       let lastSessionCheck = 0;
@@ -63,33 +64,39 @@ export async function GET(req: Request) {
         marketOpen = next.marketOpen;
         const event = nextStreamEvent(snapshot, next, full);
         snapshot = next;
+        stamp = next.timestamp;
         if (event.type === "chain") send("chain", event.snapshot);
         if (event.type === "patch") send("patch", event.patch);
         return next;
       };
 
-      beat();
-      const heartbeat = setInterval(beat, 10_000);
-
+      let heartbeat: ReturnType<typeof setInterval> | undefined;
       try {
         controller.enqueue(encoder.encode("retry: 3000\n\n"));
         await pull(true);
         lastSessionCheck = Date.now();
+        beat();
+        heartbeat = setInterval(beat, 10_000);
 
         while (!closed && Date.now() - started < 50_000) {
-          await new Promise((resolve) => setTimeout(resolve, marketOpen ? 500 : 10_000));
+          const previousStamp = stamp;
+          if (!marketOpen && Date.now() - lastSessionCheck < 60_000) {
+            await new Promise((resolve) => setTimeout(resolve, 10_000));
+            continue;
+          }
           if (closed) break;
-          if (!marketOpen && Date.now() - lastSessionCheck < 60_000) continue;
           await pull(false).catch((err) => {
             send("notice", { message: publicMessage(err) });
           });
           lastSessionCheck = Date.now();
+          const unchanged = previousStamp !== "" && stamp === previousStamp;
+          await new Promise((resolve) => setTimeout(resolve, marketOpen ? (unchanged ? 3_000 : 500) : 10_000));
         }
         send("rotate", { reason: "maxDuration", afterMs: Date.now() - started });
       } catch (err) {
         send("notice", { message: publicMessage(err) });
       } finally {
-        clearInterval(heartbeat);
+        if (heartbeat) clearInterval(heartbeat);
         if (!closed) {
           closed = true;
           controller.close();
