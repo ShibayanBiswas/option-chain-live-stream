@@ -4,7 +4,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
 import { centerBook, chainOverflows, InwardChain, useChainWidth } from "@/components/inward-chain";
 import { describeExpiry, focusStrikes, upcomingExpiries } from "@/lib/display";
-import { formatNumber, formatPrice, formatSigned } from "@/lib/format";
+import { formatNumber, formatPrice } from "@/lib/format";
 import { applyLtpPatch, type LtpPatch, type LtpSlice } from "@/lib/ltp-slice";
 import { cn } from "@/lib/cn";
 import type { ChainRow, Exchange, OptionChainSnapshot, Segment } from "@/lib/types";
@@ -131,7 +131,6 @@ export function CustomLtpBoard({
               side="ce"
               resetKey={`${symbol}:${column.expiry}`}
               value={quoteOf(column.book, strike, "ce").last}
-              change={quoteOf(column.book, strike, "ce").change}
               itm={spot != null && strike < spot}
               onClick={() => {
                 const row = chainRow(column.book, strike);
@@ -145,7 +144,6 @@ export function CustomLtpBoard({
               side="pe"
               resetKey={`${symbol}:${column.expiry}`}
               value={quoteOf(column.book, strike, "pe").last}
-              change={quoteOf(column.book, strike, "pe").change}
               itm={spot != null && strike > spot}
               onClick={() => {
                 const row = chainRow(column.book, strike);
@@ -204,7 +202,6 @@ export function CustomLtpBoard({
                       side="ce"
                       resetKey={`${symbol}:${column.expiry}`}
                       value={quoteOf(column.book, strike, "ce").last}
-              change={quoteOf(column.book, strike, "ce").change}
                       itm={spot != null && strike < spot}
                       onClick={() => {
                         const row = chainRow(column.book, strike);
@@ -219,7 +216,6 @@ export function CustomLtpBoard({
                       side="pe"
                       resetKey={`${symbol}:${column.expiry}`}
                       value={quoteOf(column.book, strike, "pe").last}
-              change={quoteOf(column.book, strike, "pe").change}
                       itm={spot != null && strike > spot}
                       onClick={() => {
                         const row = chainRow(column.book, strike);
@@ -240,14 +236,12 @@ export function CustomLtpBoard({
 function PriceCell({
   side,
   value,
-  change,
   resetKey,
   itm,
   onClick,
 }: {
   side: "ce" | "pe";
   value: number | null;
-  change: number | null;
   resetKey: string;
   itm: boolean;
   onClick: () => void;
@@ -277,9 +271,6 @@ function PriceCell({
       }}
     >
       <span className="quote-num">{formatPrice(value)}</span>
-      <span className={cn("ltp-chng", change != null && change < 0 ? "tone-down" : "tone-up")}>
-        {formatSigned(change, 2)}
-      </span>
     </td>
   );
 }

@@ -645,6 +645,12 @@ html.dark .chain-row.is-zero td {
   display: contents;
 }
 
+.toolbar-icons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -2205,6 +2211,12 @@ html.dark .inward-captions .pe-zone {
   .toolbar-main > *,
   .toolbar-tools > * {
     order: 0;
+  }
+
+  .toolbar-main .toolbar-icons {
+    margin-left: auto;
+    flex: 0 0 auto;
+    gap: 4px;
   }
 
   .toolbar-tools {

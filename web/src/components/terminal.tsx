@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { MotionConfig, motion } from "framer-motion";
-import { ArrowLeft, Moon, PanelLeft, Sun } from "lucide-react";
+import { ArrowLeft, Moon, PanelLeft, RefreshCw, Sun } from "lucide-react";
 
 import { BrandLogo } from "@/components/brand-logo";
 import { CommandPalette } from "@/components/command-palette";
@@ -234,10 +234,6 @@ export function Terminal() {
   const liveExpiryCount = upcomingExpiries(snapshot?.expiries ?? [], 99).length;
   const expiryMenu = expiryChoices(Math.max(1, liveExpiryCount));
   const shownExpiries = expiryMenu.includes(expiryCount) ? expiryCount : (expiryMenu[expiryMenu.length - 1] ?? 4);
-  const fittedExpiries = viewport === "phone" ? Math.min(2, shownExpiries) : shownExpiries;
-  const strikeRange = snapshot?.rows.length
-    ? `${formatNumber(snapshot.rows[0]?.strike ?? null, 0)} – ${formatNumber(snapshot.rows[snapshot.rows.length - 1]?.strike ?? null, 0)} · ${snapshot.rows.length} strikes`
-    : "";
 
   return (
     <MotionConfig reducedMotion="user">
@@ -262,12 +258,17 @@ export function Terminal() {
             <h1>{selected ? displayName(selected.symbol, selected.label) : "Option Chain"}</h1>
             <LiveSpot value={snapshot?.spot ?? null} />
           </div>
-          <button className="updates-btn" type="button" onClick={() => setUpdatesOpen(true)}>
-            Updates
-          </button>
-          <button className="icon-btn" type="button" onClick={toggle} aria-label="Toggle theme">
-            {mounted && theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </button>
+          <div className="toolbar-icons">
+            <button className="icon-btn" type="button" aria-label="Refresh" onClick={() => window.location.reload()}>
+              <RefreshCw className="h-4 w-4" />
+            </button>
+            <button className="icon-btn" type="button" onClick={toggle} aria-label="Toggle theme">
+              {mounted && theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
+            <button className="updates-btn" type="button" onClick={() => setUpdatesOpen(true)}>
+              Updates
+            </button>
+          </div>
           </div>
           <div className="toolbar-tools">
           <div
@@ -317,22 +318,16 @@ export function Terminal() {
             <select
               className="toolbar-select"
               aria-label="Expiries"
-              value={fittedExpiries}
+              value={shownExpiries}
               onChange={(event) => setExpiryCount(Number(event.target.value))}
             >
-              {(viewport === "phone" ? expiryMenu.filter((count) => count <= 2) : expiryMenu).map((count) => (
+              {expiryMenu.map((count) => (
                 <option key={count} value={count}>
                   {count === liveExpiryCount && liveExpiryCount > 1
-                    ? phone
-                      ? `${count} exp`
-                      : `${count} expiries, all`
+                    ? `${count} expiries, all`
                     : count === 1
-                      ? phone
-                        ? "1 exp"
-                        : "1 expiry"
-                      : phone
-                        ? `${count} exp`
-                        : `${count} expiries`}
+                      ? "1 expiry"
+                      : `${count} expiries`}
                 </option>
               ))}
             </select>
@@ -400,7 +395,6 @@ export function Terminal() {
         {error || loadError ? <p className="banner">{error || loadError}</p> : null}
 
         <div className="book-tools">
-          <span className="range-label" aria-label="Strike range">{strikeRange}</span>
           <button className="icon-btn" type="button" onClick={() => centerBook(snapshot?.totals.atm ?? null)}>
             Jump to spot
           </button>
@@ -412,7 +406,7 @@ export function Terminal() {
               exchange={selected?.exchange ?? snapshot.exchange}
               segment={selected?.segment ?? snapshot.segment}
               expiries={snapshot.expiries}
-              count={fittedExpiries}
+              count={shownExpiries}
               depth={depth}
               primary={snapshot}
               onSelect={setPicked}
