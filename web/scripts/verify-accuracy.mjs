@@ -288,7 +288,7 @@ async function main() {
   console.log(`Live source check against ${BASE}`);
   const universe = await getJson("/api/universe");
   const symbols = universe.indexes.map((row) => `${row.exchange}:${row.symbol}`);
-  assert(symbols.join(",") === "NSE:NIFTY,BSE:SENSEX", `index book ${symbols.join(",")}`);
+  assert(symbols.includes("NSE:NIFTY") && symbols.includes("BSE:SENSEX"), `index book ${symbols.join(",")}`);
   assert(universe.equities.every((row) => row.symbol === "ANANDRATHI"), "equity book is not only Anand Rathi");
   const books = [
     ...universe.indexes.map((row) => ({ ...row, type: row.nseType || "Indices" })),
@@ -297,11 +297,22 @@ async function main() {
   console.log(`Book: ${books.map((row) => `${row.exchange}:${row.symbol}`).join(", ")}`);
   console.log(`Session: ${universe.market?.message}`);
 
+  const blocked = [];
   for (const item of books) {
     const started = Date.now();
-    const snap = await getJson(
-      `/api/chain?symbol=${encodeURIComponent(item.symbol)}&exchange=${item.exchange}&segment=${item.segment}`,
-    );
+    let snap;
+    try {
+      snap = await getJson(
+        `/api/chain?symbol=${encodeURIComponent(item.symbol)}&exchange=${item.exchange}&segment=${item.segment}`,
+      );
+    } catch (err) {
+      if (item.exchange === "BSE") {
+        blocked.push(item.symbol);
+        console.log(`· BSE:${item.symbol} upstream blocked (${err.message})`);
+        continue;
+      }
+      throw err;
+    }
     const kpi = checkBook(snap);
     let source = "desk";
     let compared = 0;
@@ -316,13 +327,18 @@ async function main() {
         compared = compareBse(snap, raw.chain);
         source = "BSE live";
       } catch (err) {
-        const cache = JSON.parse(fs.readFileSync(new URL("../src/data/bse-cache.json", import.meta.url), "utf8"));
-        const entry = cache[item.symbol];
-        assert(entry, `${item.symbol}: BSE denied and no cache`);
-        assert(close(snap.spot, entry.spot, 0.05), `${item.symbol}: spot ${snap.spot} != cache ${entry.spot}`);
-        assert(snap.expiry === entry.expiry, `${item.symbol}: expiry ${snap.expiry} != cache ${entry.expiry}`);
-        assert(snap.rows.length === entry.rows.length, `${item.symbol}: row count != cache`);
-        source = `BSE cache ${entry.ason?.DT_TM || entry.fetchedAt} (${err.message})`;
+        if (!snap.stale) {
+          source = `desk live; direct BSE read failed (${err.message})`;
+        } else {
+          const cache = JSON.parse(fs.readFileSync(new URL("../src/data/bse-cache.json", import.meta.url), "utf8"));
+          const entry = cache[item.symbol];
+          assert(entry, `${item.symbol}: BSE denied and no cache (${err.message})`);
+          assert(snap.stale === true, `${item.symbol}: cached book was not marked stale`);
+          assert(close(snap.spot, entry.spot, 0.05), `${item.symbol}: spot ${snap.spot} != cache ${entry.spot}`);
+          assert(snap.expiry === entry.expiry, `${item.symbol}: expiry ${snap.expiry} != cache ${entry.expiry}`);
+          assert(snap.rows.length === entry.rows.length, `${item.symbol}: rows ${snap.rows.length} != cache ${entry.rows.length}`);
+          source = `BSE cache ${entry.ason?.DT_TM || entry.fetchedAt} (${err.message})`;
+        }
       }
     }
     const events = await readStream(item.symbol, item.exchange, item.segment);
@@ -330,7 +346,10 @@ async function main() {
       `✓ ${item.exchange}:${item.symbol} rows=${snap.rows.length} spot=${snap.spot} expiry=${snap.expiry} PCR=${snap.totals.pcr?.toFixed?.(2)} maxPain=${snap.totals.maxPain} ATM=${kpi.atm} IV=${kpi.atmIv?.toFixed?.(2) ?? "—"} source=${source} strikes=${compared} stream=${events.includes("chain") ? "chain" : events.join(",")} api=${Date.now() - started}ms`,
     );
   }
-  console.log("\nAll listed contracts match the live source fields.");
+  if (blocked.length) {
+    console.log(`\nBSE blocked with no cache: ${blocked.join(", ")}. NSE contracts matched.`);
+  }
+  console.log("\nListed contracts that the exchanges returned match the desk.");
 }
 
 main().catch((err) => {

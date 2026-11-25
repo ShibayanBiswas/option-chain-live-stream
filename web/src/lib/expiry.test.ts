@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { blackScholes } from "./greeks";
 import { daysToExpiry, isListedExpiryLive, toIstIso } from "./expiry";
-import { classifySession } from "./session";
+import { classifySession, gateSession } from "./session";
 import { assertBookShape } from "./schema";
 
 describe("expiry and session", () => {
@@ -26,6 +26,15 @@ describe("expiry and session", () => {
     expect(classifySession("Close", "Market is Closed").phase).toBe("closed");
     expect(classifySession("", "Pre-Open session").phase).toBe("pre-open");
     expect(classifySession("Close", "Trading Holiday").phase).toBe("holiday");
+  });
+
+  it("ignores a leftover Open from a previous trade date", () => {
+    const morning = new Date("2026-11-25T08:18:00+05:30");
+    const stale = gateSession(classifySession("Open"), "23-Nov-2026 15:30", morning);
+    expect(stale.open).toBe(false);
+    expect(stale.phase).toBe("closed");
+    const live = gateSession(classifySession("Open"), "25-Nov-2026", new Date("2026-11-25T10:00:00+05:30"));
+    expect(live.open).toBe(true);
   });
 
   it("rejects a book whose strikes are not monotonic or whose index spot is missing", () => {

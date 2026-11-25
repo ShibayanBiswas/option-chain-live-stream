@@ -43,10 +43,10 @@ await check("universe indices + wealth equity only", async () => {
   const { ok, json } = await get("/api/universe");
   assert(ok, `universe ${json?.error || "failed"}`);
   assert(Array.isArray(json.indexes) && json.indexes.length > 0, "indexes missing");
-  const symbols = json.indexes.map((row) => row.symbol);
-  assert(symbols.length === 2, `index book should be NIFTY and SENSEX, got ${symbols.join(",")}`);
-  assert(symbols[0] === "NIFTY" && json.indexes[0].exchange === "NSE", "NIFTY must be the NSE index");
-  assert(symbols[1] === "SENSEX" && json.indexes[1].exchange === "BSE", "SENSEX must be the BSE index");
+  const symbols = json.indexes.map((row) => `${row.exchange}:${row.symbol}`);
+  assert(symbols.includes("NSE:NIFTY"), `NIFTY missing from ${symbols.join(",")}`);
+  assert(symbols.includes("BSE:SENSEX"), `SENSEX missing from ${symbols.join(",")}`);
+  assert(new Set(symbols).size === symbols.length, "duplicate instruments");
   assert(Array.isArray(json.equities), "equities missing");
   assert(
     json.equities.every((row) => row.symbol === "ANANDRATHI"),
@@ -66,6 +66,16 @@ await check("NIFTY chain", async () => {
   assert(Array.isArray(json.rows) && json.rows.length > 10, "rows thin");
   assert(Array.isArray(json.expiries) && json.expiries.length > 0, "expiries");
   assert(json.totals && "atm" in json.totals, "totals");
+  assert(typeof json.spot === "number", "spot missing");
+  assert(String(json.timestamp).includes("+05:30"), `timestamp not IST ${json.timestamp}`);
+  if (json.expiryIso) {
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
+    assert(json.expiryIso >= today, `expired default expiry ${json.expiryIso}`);
+  }
+  for (let i = 1; i < json.rows.length; i += 1) {
+    assert(json.rows[i].strike > json.rows[i - 1].strike, "strikes are not monotonic");
+  }
+  assert(json.stale !== true || json.marketOpen === false, "stale book marked live");
 });
 
 await check("ANANDRATHI NSE chain", async () => {

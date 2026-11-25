@@ -1,30 +1,30 @@
 # Testing
 
-## Unit
+From `web/`:
 
 ```bash
 npm test
+npm run lint
+npm run typecheck
+npm run build
 ```
 
-Node’s built-in test runner (with TypeScript strip types) covers:
+Unit tests cover column sets, expiry cutoff, session text, the Anand Rathi filter, Greeks, and the stream rule that an unchanged book sends no second chain.
 
-- Focus vs full column sets and put-side mirroring (`columns.test.ts`)
-- Signed formatting without plus signs (`format.test.ts`)
-- Wealth equity symbol lock (`universe.test.ts`)
+## API
 
-## API smoke
-
-With the app running on port 3000:
+Start the app, then:
 
 ```bash
 npm run test:api
+npm run verify:accuracy
 ```
 
-Probes `/api/health`, `/api/universe` (indexes are exactly NSE NIFTY and BSE SENSEX, equities are ANANDRATHI only), the NIFTY chain, the Anand Rathi Wealth NSE chain, and SENSEX when BSE is reachable.
+`test:api` checks health, the discovered index list (NIFTY and SENSEX must be present, equities must be Anand Rathi Wealth only), a live NIFTY chain with an unexpired expiry and an IST timestamp, the Anand Rathi Wealth chain, and SENSEX when BSE answers.
 
-`npm run verify:accuracy` fetches the same expiries from NSE and BSE and checks spot, last, open interest, and IV against the desk. When BSE denies the request, SENSEX is checked against the cached book instead.
+`verify:accuracy` compares the desk with the exchange for the contracts it can reach. A BSE block is reported as the cached book, not as a live print.
 
-## Playwright
+## Browser
 
 ```bash
 npm run build
@@ -34,19 +34,4 @@ npm run test:e2e
 
 Projects: desktop 1440, laptop 1280, tablet 768, phone 390, phone-narrow 360.
 
-Coverage includes the chain, focus versus all columns, zero-volume shading, the sidebar, light and dark, the fitted phone book, and the NIFTY / SENSEX / Anand Rathi Wealth book.
-
-Screenshots land in `docs/screenshots/`.
-
-## Production gates
-
-```bash
-npm run lint
-npm run typecheck
-npm run build
-npm test
-npm run test:api
-npm run test:e2e
-```
-
-All of the above must pass before merge.
+The chain test checks one header row, no gap between the call last price and the strike, no spot-marker row, and no strike badges.

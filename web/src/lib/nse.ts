@@ -1,6 +1,7 @@
 import { buildTotals } from "./analytics";
 import { upcomingExpiry } from "./display";
 import { expiryIso, toIstIso } from "./expiry";
+import { classifySession, gateSession } from "./session";
 import { assertBookShape } from "./schema";
 import { parseLooseNumber } from "./format";
 import { httpsGet, httpsGetJson } from "./http";
@@ -194,29 +195,15 @@ async function readMarketStatus() {
     data.marketState?.find((m) => m.market === "Capital Market") ??
     data.marketState?.[0];
   const status = capital?.marketStatus ?? "Unknown";
-  const statusKey = String(status).toLowerCase().replace(/\s+/g, "");
-  const open = statusKey === "open";
-  let phase: "open" | "preopen" | "closed" | "holiday" | "unknown" = "unknown";
-  if (statusKey === "open") phase = "open";
-  else if (statusKey.includes("preopen") || statusKey.includes("pre-open")) phase = "preopen";
-  else if (statusKey.includes("holiday")) phase = "holiday";
-  else if (statusKey === "close" || statusKey === "closed") phase = "closed";
-  const message =
-    phase === "open"
-      ? "Market Open"
-      : phase === "preopen"
-        ? "Pre Open"
-        : phase === "holiday"
-          ? "Market Holiday"
-          : capital?.marketStatusMessage?.includes("Closed")
-            ? "Market Closed"
-            : capital?.marketStatusMessage || "Market Closed";
+  const gated = gateSession(classifySession(status, capital?.marketStatusMessage ?? ""), capital?.tradeDate ?? "");
+  const phase: "open" | "preopen" | "closed" | "holiday" =
+    gated.phase === "pre-open" ? "preopen" : gated.phase;
   return {
     status,
     tradeDate: capital?.tradeDate ?? "",
     niftyLast: parseLooseNumber(capital?.last),
-    message,
-    open,
+    message: gated.label,
+    open: gated.open,
     phase,
   };
 }

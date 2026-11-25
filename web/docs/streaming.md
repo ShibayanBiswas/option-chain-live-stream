@@ -2,23 +2,22 @@
 
 ## Transport
 
-The desk prefers Server-Sent Events from `/api/stream`.
+`/api/stream` is server-sent events.
 
-1. Initial snapshot from the chain service (NSE curl jar or BSE JSON).
-2. While NSE capital market status is **open**, the server attaches to `wss://streamer.nseindia.com/streams/fo/mbp` and merges depth ticks into the book.
-3. Heartbeats keep the SSE channel alive. Clients reconnect on expiry or symbol change.
+1. The first event is `chain`.
+2. A changed strike is a `patch`. An unchanged book sends nothing.
+3. `heartbeat` every 10 seconds carries the session and latency.
+4. `rotate` fires before the 60 second function limit, and the client reconnects.
+5. Event ids increase. The browser is told `retry: 3000`.
 
-Outside open hours (pre-open, closed, holiday) the stream still delivers REST snapshots; socket events are not expected.
+While the market is closed the server keeps the chain it already sent and checks the session about once a minute.
+
+The NSE websocket `wss://streamer.nseindia.com/streams/fo/mbp` was removed. It was never observed during market hours. The feed is REST polling.
+
+## Client
+
+`use-option-stream.ts` retries SSE at 1, 2, 4 and 8 seconds, capped at 30 seconds. After three failures it polls, then tries SSE again after 60 seconds. A hidden tab pauses the stream. Twenty seconds without a heartbeat marks the chip Stale.
 
 ## Latency
 
-Each snapshot carries `latencyMs` from upstream fetch start to response. The toolbar feed chip shows Live / WebSocket / Rest and that latency. Accuracy checks live in `npm run verify:accuracy` and compare desk values to exchange pages when reachable.
-
-## Failure modes
-
-| Condition | Behaviour |
-| --- | --- |
-| NSE Node fetch blocked | Curl cookie jar transport |
-| BSE 403 on edge | Cached index underlyings; equity SO probe skipped |
-| Upstream timeout | 502 with a public error string |
-| Rate pressure | In-memory universe TTL (10 minutes) reduces discovery chatter |
+`latencyMs` is the exchange request time. The chip shows that number. It never shows Live while the session is closed, and a cached BSE book shows Delayed.

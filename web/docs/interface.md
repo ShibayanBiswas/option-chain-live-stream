@@ -2,38 +2,24 @@
 
 ## Navigation
 
-- Sidebar tree: Indices and Equity, each split into NSE and BSE. Sections animate open and closed.
-- Rows show last and change. NIFTY comes from the NSE index tape. SENSEX and Anand Rathi Wealth on NSE and BSE come from the live quote supplement, because those names are not on the NSE index tape.
-- Pins and the last contract are stored in the browser.
-- Command palette: Search contracts, or Ctrl/Cmd+K. Arrow keys and Enter select. Back closes it, and Back also closes a strike and the phone contract list.
-- Expiry menu groups Weekly and Monthly and shows days remaining.
-- On narrow screens the tree starts closed and opens as a bottom sheet.
+The sidebar has Indices and Equity, then NSE and BSE. Pins and the last contract stay in the browser. Search, or Ctrl/Cmd+K, opens the same list. Back closes search, the strike sheet, and the phone list.
 
-## Chrome
+The expiry menu groups Weekly and Monthly and shows the days left. Past expiries are hidden.
 
-- Full-width terminal: left rail + stage, no page gutters.
-- The toolbar opens and closes the contract list. On a phone that list is a sheet with Back.
-- Toolbar: contract, spot, session, expiry, strike window, columns, theme, and the live sync chip. The chip pulses green while the book is in sync, amber while it is connecting or waiting, and shows the upstream latency in milliseconds. On a phone the name stays on the first row and the controls wrap underneath.
+## Header
+
+The header spans the width of the desk, above the sidebar. It shows the contract, the spot, the session, the feed chip, the expiry, and the column control. The feed chip says REST, Closed, Delayed, Waiting, Connecting, or Stale. It does not say Live while the market is closed.
 
 ## Option chain
 
-- Layout: **Calls | Strike | Puts**.
-- Sticky dual header and sticky strike column; tabular figures; ATM / ITM tinting.
-- Column names match the exchanges: OI, Chng in OI, Volume, IV, LTP, Chng, Bid Qty, Bid, Ask, Ask Qty, Strike.
-- Default **Focus Columns**; **All Columns** reveals every non-empty field.
-- Zero-volume strikes shaded; high/low volume last prices highlighted.
-- Strike window controls are **Spot Focus** and **Entire Book** — never “ATM ±N”.
-- Live cells flash without layout shift.
+One table and one header row: calls, Strike, puts. The last price sits against the strike. There is no gap between that last-price cell and the strike, and there is no second strike row.
+
+Focus shows volume, open-interest change, open interest, change, and last. A phone in Focus shows open interest and last on each side of the strike. All Columns adds the remaining fields. A wide window of 1600 px or more opens All Columns until the column control is changed.
+
+Zero-volume strikes are grey. High and low volume last prices are marked, and the legend sits above the book. There is no gold or brown line on a strike, including round strikes such as 24,500 and 26,000.
+
+The range label reads like `24,450 – 26,250 · 37 strikes`. Jump to spot scrolls the chain. The page itself does not scroll.
 
 ## Mobile
 
-- On a phone, Focus is five columns that fit the screen: OI, LTP with the change under it, Strike, then the put side. All Columns still scrolls sideways inside the chain. The summary cards wrap onto two rows. The page itself does not scroll sideways.
-- The strike stays in its column. It is not pinned to the left edge.
-- The instrument list starts closed and opens as a sheet from the toolbar.
-- Touch targets ≥ 44px.
-
-## Copy rules
-
-- Full words in chrome (Indices, Equity, Open Interest) except established derivatives terms (IV, NSE, BSE).
-- No plus signs on gains — colour only.
-- No disclaimer banners in the desk.
+Focus fits the width. The strike stays in the row. The contract list opens from the header and closes with Back.

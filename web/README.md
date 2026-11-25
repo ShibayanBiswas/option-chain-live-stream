@@ -1,11 +1,12 @@
 # Option Chain Live Stream
 
-Anand Rathi Wealth derivatives desk for NSE NIFTY, BSE SENSEX, and ANANDRATHI. The chain streams over server-sent events, and NSE names also merge the exchange websocket when the market is open. The desk is the summary strip and the option chain: Spot Focus or Entire Book, Focus or All Columns.
+Anand Rathi Wealth desk for every NSE and BSE index that lists options, especially NIFTY and SENSEX. Equity is only Anand Rathi Wealth. The chain is one table: calls, one strike column, puts. Quotes arrive by server-sent events from the exchange REST feeds.
 
 ## Run
 
 ```bash
 npm install
+npm test
 npm run typecheck
 npm run build
 npm run start
@@ -16,6 +17,7 @@ Open http://localhost:3000
 With the server running:
 
 ```bash
+npm run test:api
 npm run verify:accuracy
 ```
 
@@ -29,4 +31,4 @@ npm run verify:accuracy
 
 ## Deploy
 
-Vercel project root is this `web` directory. Region intent is Mumbai (`bom1`).
+Vercel project root is this `web` directory. Region is Mumbai (`bom1`). Merging to `main` deploys production.

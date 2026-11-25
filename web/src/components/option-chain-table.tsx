@@ -4,7 +4,6 @@ import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type R
 import { motion, useReducedMotion } from "framer-motion";
 
 import { columnHint, columnLabel, putColumns, visibleColumns } from "@/lib/columns";
-import { chainMarks } from "@/lib/depth";
 import { daysToExpiry } from "@/lib/expiry";
 import { blackScholes, deltaFromIv } from "@/lib/greeks";
 import { cn } from "@/lib/cn";
@@ -112,7 +111,6 @@ export function OptionChainTable({
   }, [density, narrow, snapshot.marketOpen, snapshot.rows]);
   const peCols = useMemo(() => putColumns(callCols), [callCols]);
   const spotStrike = snapshot.totals.atm;
-  const marks = useMemo(() => chainMarks(snapshot.rows), [snapshot.rows]);
 
   const rows = useMemo(() => {
     if (depth === "full" || spotStrike == null) return snapshot.rows;
@@ -185,29 +183,15 @@ export function OptionChainTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, index) => {
-            const previous = rows[index - 1];
+          {rows.map((row) => {
             const spot = snapshot.spot;
-            const showSpot =
-              spot != null &&
-              previous != null &&
-              previous.strike < spot &&
-              row.strike > spot;
             const atSpot = row.strike === spotStrike;
             const callQuiet = !row.ce.volume;
             const putQuiet = !row.pe.volume;
             const itmCall = spot != null && row.strike < spot;
             const itmPut = spot != null && row.strike > spot;
-            const span = callCols.length + peCols.length + 1;
             return (
               <Fragment key={row.strike}>
-                {showSpot ? (
-                  <tr className="spot-marker" data-testid="spot-marker">
-                    <td colSpan={span}>
-                      <span>Spot {formatPrice(spot)}</span>
-                    </td>
-                  </tr>
-                ) : null}
                 <tr
                   id={`strike-${row.strike}`}
                   tabIndex={0}
@@ -240,11 +224,7 @@ export function OptionChainTable({
                       itm={itmCall}
                     />
                   ))}
-                  <td className="strike-cell">
-                    {formatNumber(row.strike, 0)}
-                    {marks.callWall === row.strike ? <em className="wall-badge">Resistance</em> : null}
-                    {marks.putWall === row.strike ? <em className="wall-badge">Support</em> : null}
-                  </td>
+                  <td className="strike-cell">{formatNumber(row.strike, 0)}</td>
                   {peCols.map((key) => (
                     <SideCell
                       key={`pe-${row.strike}-${key}`}

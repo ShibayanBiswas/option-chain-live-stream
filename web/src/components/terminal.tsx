@@ -8,7 +8,6 @@ import { BrandLogo } from "@/components/brand-logo";
 import { CommandPalette } from "@/components/command-palette";
 import { ExpirySelect } from "@/components/expiry-select";
 import { InstrumentTree } from "@/components/instrument-tree";
-import { OiStrip } from "@/components/oi-strip";
 import { OptionChainTable } from "@/components/option-chain-table";
 import { QuoteSheet } from "@/components/quote-sheet";
 import { Toasts } from "@/components/toasts";
@@ -297,7 +296,6 @@ export function Terminal() {
 
         {error || loadError ? <p className="banner">{error || loadError}</p> : null}
 
-        {snapshot ? <OiStrip rows={snapshot.rows} atm={snapshot.totals.atm} /> : null}
         <div className="book-tools">
           <span className="range-label" aria-label="Strike range">{strikeRange}</span>
           <span className="heat-key">High volume is gold. Low volume is blue. Zero volume is grey.</span>

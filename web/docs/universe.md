@@ -1,42 +1,21 @@
 # Universe
 
-Two categories only: **Indices** and **Equity**.
+Two groups: **Indices** and **Equity**.
 
 ## Indices
 
-The book is two index contracts:
+Every NSE and BSE index with listed options is discovered at runtime. The list is not hard-coded. NIFTY and SENSEX are always part of that discovered book. Names such as NIFTY 50 and NIFTY BANK come from a display map and do not decide which symbols exist.
 
-- **NIFTY** on NSE
-- **SENSEX** on BSE
-
-Discovery still reads the exchange lists so the BSE contract code for SENSEX stays current. Every other index is dropped before `/api/universe` responds. If the BSE edge is blocked, SENSEX falls back to contract code `1` from `src/data/bse-cache.json`.
+If BSE blocks the request, SENSEX falls back to contract code `1` in `src/data/bse-cache.json`. That chain is marked stale.
 
 ## Equity
 
-**Anand Rathi Wealth only** (`ANANDRATHI`).
+Anand Rathi Wealth only (`ANANDRATHI`), on NSE and on BSE when BSE lists stock options for it. Every other equity is dropped.
 
-- On NSE, the desk filters the master-quote equity option list down to that symbol.
-- On BSE, the desk probes stock options (`ProductType=SO`), keeps Anand Rathi Wealth when expiries exist, and drops every other equity.
+## Expiry
 
-No other equity symbols are returned by `/api/universe` or fetched by the chain/stream routes through the normal desk path.
+The server selects the nearest contract that is still live in Asia/Kolkata, with a 15:30 cutoff on expiry day. Past expiries stay out of the menu.
 
-## Expiries
+## Session
 
-Every chain response includes the full `expiries` array from the exchange. The toolbar expiry control switches among them; the stream reconnects when the selected expiry changes.
-
-## Market session
-
-`/api/universe` includes a `market` object from NSE market status:
-
-| Phase | Message |
-| --- | --- |
-| open | Market Open |
-| preopen | Pre Open |
-| closed | Market Closed |
-| holiday | Market Holiday |
-
-The session pill and stream behaviour use this state.
-
-## Cache
-
-The combined book is cached in server memory for ten minutes, then rebuilt. Force refresh by restarting the server process. The browser loads the book from `/api/universe` with `Cache-Control: no-store`.
+`/api/universe` includes the NSE market status: open, pre-open, closed, or holiday when the exchange text says so. A trade date from a previous day, a weekend, or a clock outside 09:15–15:30 IST is closed even if the payload still says Open. The client polls this every 60 seconds.

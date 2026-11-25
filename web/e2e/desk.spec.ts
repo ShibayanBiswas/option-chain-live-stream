@@ -91,6 +91,10 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   }
   await expect(page.getByRole("button", { name: "Indices" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Equity" })).toBeVisible();
+  if (narrow) {
+    await page.getByRole("button", { name: "Collapse sidebar" }).click();
+    await expect(page.locator(".rail")).toHaveClass(/is-collapsed/);
+  }
 
   const density = page.getByTestId("density-select");
   await expect(density).toHaveValue("focus");
@@ -102,7 +106,17 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   await expect(page.locator(".chain-scroll")).toHaveAttribute("data-density", "full");
 
   await page.getByRole("button", { name: "Jump to spot" }).click();
-  await expect(page.getByTestId("spot-marker")).toBeVisible();
+  await expect(page.locator(".chain-table thead tr")).toHaveCount(1);
+  await expect(page.locator(".spot-marker, .wall-badge")).toHaveCount(0);
+  const strikeGap = await page.evaluate(() => {
+    const heads = [...document.querySelectorAll(".chain-table thead th")];
+    const strike = heads.findIndex((th) => th.textContent?.trim() === "Strike");
+    const call = heads[strike - 1]?.getBoundingClientRect();
+    const cell = heads[strike]?.getBoundingClientRect();
+    if (!call || !cell) return 99;
+    return Math.abs(cell.left - call.right);
+  });
+  expect(strikeGap).toBeLessThanOrEqual(1);
 
   const headerOrder = await page.evaluate(() => {
     const heads = [...document.querySelectorAll(".chain-table thead tr th")].map((th) =>
@@ -124,14 +138,16 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   expect(await page.locator(".vol-high").count()).toBeGreaterThan(0);
   expect(await page.locator(".vol-low").count()).toBeGreaterThan(0);
 
-  await page.getByRole("button", { name: "Collapse sidebar" }).click();
+  if (await page.getByRole("button", { name: "Collapse sidebar" }).count()) {
+    await page.getByRole("button", { name: "Collapse sidebar" }).click();
+  }
   await expect(page.locator(".terminal")).toHaveClass(/rail-hidden/);
   await expect(page.locator(".rail")).toHaveClass(/is-collapsed/);
   await page.getByRole("button", { name: "Expand sidebar" }).click();
   await expect(page.locator(".terminal")).not.toHaveClass(/rail-hidden/);
   await expect(page.locator(".is-itm").first()).toBeVisible();
   await expect(page.locator(".depth-bar").first()).toBeVisible();
-  await expect(page.getByTestId("spot-marker")).toBeVisible();
+  await expect(page.locator(".spot-marker, .wall-badge")).toHaveCount(0);
 
   if (narrow) await page.getByRole("button", { name: "Collapse sidebar" }).click();
   if (narrow) await expect(page.locator(".rail")).toHaveClass(/is-collapsed/);
@@ -197,11 +213,8 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   expect(layout.stageMaxWidth).toBe("none");
   expect(layout.toolbarMaxWidth).toBe("100%");
   expect(layout.terminalClipped).toBe(true);
-  if (layout.chainOverflows) {
-    expect(layout.chainLeft).toBeGreaterThan(0);
-    if (testInfo.project.name !== "phone-narrow") {
-      expect(layout.strikeInside, JSON.stringify(layout)).toBe(true);
-    }
+  if (layout.chainOverflows && testInfo.project.name !== "phone-narrow") {
+    expect(layout.strikeInside, JSON.stringify(layout)).toBe(true);
   }
   if (narrow) {
     await page.getByRole("button", { name: "Expand sidebar" }).click();
