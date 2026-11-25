@@ -25,26 +25,32 @@ async function waitForBook(page: Page) {
   }
   await guide.getByRole("button", { name: "Close updates" }).click();
   await expect(guide).toBeHidden();
-  await expect(page.locator(".session-pill")).toHaveText(/Market Open|Market Closed|Pre-Open|Market Holiday/);
+  await expect(page.locator(".session-pill")).toHaveText(/Market Open|Market Closed|Pre-Open|Market Holiday|Closed/);
 }
 
 async function readInward(page: Page) {
   return page.evaluate(() => {
     const strike = document.querySelector(".inward-pane.mid .column-head .strike-cell");
-    const calls = document.querySelector(".inward-pane.calls");
-    const last = document.querySelector(".inward-pane.calls .column-head th:last-child");
-    if (!(strike instanceof HTMLElement) || !(calls instanceof HTMLElement) || !(last instanceof HTMLElement)) return null;
+    const calls = document.querySelector(".inward-panes .calls");
+    const last = document.querySelector(".inward-heads .calls .column-head th:last-child");
+    const sheets = [".inward-heads .calls table", ".inward-panes .calls table"]
+      .map((selector) => document.querySelector(selector))
+      .filter((el): el is HTMLElement => el instanceof HTMLElement);
+    if (!(strike instanceof HTMLElement) || !(calls instanceof HTMLElement) || !(last instanceof HTMLElement) || sheets.length < 2) return null;
     const before = strike.getBoundingClientRect().left;
     const gapBefore = Math.abs(before - last.getBoundingClientRect().right);
-    const parked = calls.scrollLeft;
-    calls.scrollLeft = 0;
+    const parked = sheets.map((sheet) => sheet.style.transform);
+    for (const sheet of sheets) sheet.style.transform = "translate3d(0px, 0px, 0px)";
     const after = strike.getBoundingClientRect().left;
     const gapAfter = Math.abs(strike.getBoundingClientRect().left - last.getBoundingClientRect().right);
-    calls.scrollLeft = parked;
+    sheets.forEach((sheet, index) => {
+      sheet.style.transform = parked[index] ?? "";
+    });
+    const table = calls.querySelector("table");
     return {
       moved: Math.abs(after - before),
       opened: gapAfter - gapBefore,
-      overflow: calls.scrollWidth > calls.clientWidth + 2,
+      overflow: table instanceof HTMLElement && table.offsetWidth > calls.clientWidth + 2,
     };
   });
 }
@@ -186,7 +192,7 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   await page.getByRole("button", { name: "Jump to spot" }).click();
   const atmGap = await page.evaluate(() => {
     const cell = document.querySelector("tr.is-atm .strike-cell");
-    const pane = document.querySelector(".inward-pane.mid") ?? document.querySelector(".chain-scroll");
+    const pane = document.querySelector(".inward-panes") ?? document.querySelector(".chain-scroll");
     if (!(cell instanceof HTMLElement) || !(pane instanceof HTMLElement)) return 999;
     const cellBox = cell.getBoundingClientRect();
     const paneBox = pane.getBoundingClientRect();
@@ -323,7 +329,7 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   const layout = await page.evaluate(() => {
     const doc = document.documentElement;
     const chain = document.querySelector(".chain-scroll") as HTMLElement;
-    const scroller = (document.querySelector(".inward-pane.mid") as HTMLElement) ?? chain;
+    const scroller = (document.querySelector(".inward-panes") as HTMLElement) ?? chain;
     const toolbar = document.querySelector(".toolbar") as HTMLElement;
     const stage = document.querySelector(".stage") as HTMLElement;
     scroller.scrollTop = 140;
