@@ -388,7 +388,7 @@ export function Terminal() {
         </div>
       </section>
       <QuoteSheet row={picked} onClose={() => setPicked(null)} />
-      <UpdatesDialog open={updatesOpen} onClose={() => setUpdatesOpen(false)} />
+      <UpdatesDialog open={updatesOpen} view={view} onClose={() => setUpdatesOpen(false)} />
       <CommandPalette
         open={paletteOpen}
         instruments={instruments}

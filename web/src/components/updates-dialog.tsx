@@ -3,6 +3,14 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 
+const CUSTOM = [
+  { swatch: "price", name: "Last price", detail: "Each cell is the last price, shown to one decimal." },
+  { swatch: "change", name: "Change", detail: "The figure under the price is today's change. Green is up, red is down." },
+  { swatch: "expiry", name: "Expiries", detail: "Calls sit on the left, far date to near. Puts sit on the right, near date to far. The nearest expiry is against the strike." },
+  { swatch: "atm", name: "At the money", detail: "The strike nearest the live price is outlined in gold. A spot line sits between the two surrounding strikes." },
+  { swatch: "quote", name: "Quote", detail: "Click a price to open Calls and Puts for that strike." },
+] as const;
+
 const SHADES = [
   { swatch: "high", name: "High volume", detail: "LTP in the top 20% of contracts traded on this chain." },
   { swatch: "low", name: "Low volume", detail: "LTP in the bottom 20% of contracts that actually traded." },
@@ -12,7 +20,17 @@ const SHADES = [
   { swatch: "itm", name: "ITM", detail: "In the money. Calls below spot, puts above spot." },
 ] as const;
 
-export function UpdatesDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function UpdatesDialog({
+  open,
+  view,
+  onClose,
+}: {
+  open: boolean;
+  view: "custom" | "chain";
+  onClose: () => void;
+}) {
+  const custom = view === "custom";
+  const items = custom ? CUSTOM : SHADES;
   return (
     <AnimatePresence>
       {open ? (
@@ -26,7 +44,7 @@ export function UpdatesDialog({ open, onClose }: { open: boolean; onClose: () =>
           <motion.section
             className="updates-card"
             role="dialog"
-            aria-label="Volume shades"
+            aria-label={custom ? "Custom board" : "Volume shades"}
             initial={{ opacity: 0, y: 16, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.98 }}
@@ -35,15 +53,15 @@ export function UpdatesDialog({ open, onClose }: { open: boolean; onClose: () =>
           >
             <header>
               <div>
-                <p>Updates</p>
-                <h2>Volume shades</h2>
+                <p>{custom ? "Custom" : "Option chain"}</p>
+                <h2>{custom ? "Reading the board" : "Volume shades"}</h2>
               </div>
               <button className="icon-btn" type="button" onClick={onClose} aria-label="Close updates">
                 <X className="h-4 w-4" />
               </button>
             </header>
             <ul>
-              {SHADES.map((item, index) => (
+              {items.map((item, index) => (
                 <motion.li
                   key={item.name}
                   initial={{ opacity: 0, x: 8 }}

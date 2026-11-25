@@ -8,7 +8,7 @@ The expiry menu groups Weekly and Monthly and shows the days left. Past expiries
 
 ## Header
 
-The header spans the width of the desk, above the sidebar. It opens on Custom. Option Chain is the single-expiry book. Updates opens the volume key. The feed chip says REST, Closed, Delayed, Waiting, Connecting, or Stale. It does not say Live while the market is closed.
+The header spans the width of the desk, above the sidebar. It opens on Custom. Option Chain is the single-expiry book. Updates on Custom explains the board. Updates on Option Chain opens the volume key. The feed chip says REST, Closed, Delayed, Waiting, Connecting, or Stale. It does not say Live while the market is closed.
 
 Custom uses the same Calls, Strike and Puts layout, the same price and change format, the spot line, and Jump to spot. Each column is one upcoming expiry. The count runs from one expiry through every live expiry. The nearest expiry sits against the strike.
 
@@ -24,4 +24,4 @@ Spot Focus keeps the 18 strikes below the at-the-money strike and the 18 above i
 
 ## Mobile
 
-Focus fits the width. On a phone the chain fills the screen under a header that wraps, so the contract, feed, session, and every menu are fully visible. The summary tiles stay off that screen. The strike stays in the row. When Custom has more expiries than fit, or Option Chain is on All Columns, the strike column stays fixed in the centre. Call columns scroll on the left and put columns on the right, starting with the nearest column against the strike. The contract list opens from the header and closes with Back.
+Focus fits the width. On a phone the chain fills the screen under a header that wraps, so the contract, feed, session, and every menu are fully visible. Jump to spot sits under the book, so it does not cover a price. The summary tiles stay off that screen. The strike stays in the row. When Custom has more expiries than fit, or Option Chain is on All Columns, the strike column stays fixed in the centre. Call columns scroll on the left and put columns on the right, starting with the nearest column against the strike. The contract list opens from the header and closes with Back.

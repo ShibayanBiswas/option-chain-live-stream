@@ -190,6 +190,8 @@ html.dark .bg-mesh::before {
   border-radius: 14px;
   border: 1px solid var(--ar-border);
   background: var(--ar-surface);
+  background-clip: padding-box;
+  overscroll-behavior: contain;
 }
 
 .chain-scroll[data-density="custom"] .chain-table {
@@ -394,10 +396,10 @@ html.dark .chain-scroll .chain-table thead tr.side-labels .pe-zone {
 @keyframes atm-glow {
   0%,
   100% {
-    box-shadow: inset 0 0 0 1px rgba(212, 178, 76, 0.4);
+    box-shadow: inset 0 0 0 1px rgba(212, 178, 76, 0.45);
   }
   50% {
-    box-shadow: inset 0 0 0 1px rgba(212, 178, 76, 1), 0 0 18px rgba(212, 178, 76, 0.28);
+    box-shadow: inset 0 0 0 2px rgba(212, 178, 76, 1);
   }
 }
 
@@ -870,10 +872,14 @@ html.dark .chain-row.is-zero td {
 }
 
 .updates-card {
+  position: relative;
+  z-index: 1;
   width: min(440px, 100%);
+  max-height: min(78dvh, 640px);
+  overflow: auto;
   border-radius: 20px;
   border: 1px solid var(--ar-border);
-  background: var(--ar-surface);
+  background-color: var(--ar-surface);
   box-shadow: var(--ar-shadow);
   padding: 18px;
 }
@@ -912,6 +918,10 @@ html.dark .chain-row.is-zero td {
   grid-template-columns: 28px 1fr;
   gap: 10px;
   align-items: center;
+  padding: 8px 10px;
+  border: 1px solid var(--ar-border);
+  border-radius: 12px;
+  background: var(--ar-panel);
 }
 
 .updates-card strong,
@@ -939,6 +949,11 @@ html.dark .chain-row.is-zero td {
 .shade-up { background: rgba(22, 163, 74, 0.45); }
 .shade-down { background: rgba(194, 65, 12, 0.4); }
 .shade-itm { background: rgba(212, 178, 76, 0.22); border: 1px solid rgba(212, 178, 76, 0.5); }
+.shade-price { background: var(--ar-ink); }
+.shade-change { background: linear-gradient(180deg, #166534 50%, #c2410c 50%); }
+.shade-expiry { background: var(--ar-surface); border: 1px solid var(--ar-border); }
+.shade-atm { background: rgba(212, 178, 76, 0.22); border: 1px solid rgba(212, 178, 76, 0.85); }
+.shade-quote { background: var(--ar-panel); border: 1px solid var(--ar-border); }
 
 .quote-ltp {
   margin: 0 0 10px;
@@ -1953,6 +1968,19 @@ html.dark .is-itm {
   }
 }
 
+@media (max-width: 700px) {
+  .board {
+    position: relative;
+    padding-bottom: 52px;
+  }
+
+  .chain-scroll {
+    height: auto;
+    padding-bottom: 0;
+    scroll-padding-bottom: 12px;
+  }
+}
+
 @media (max-width: 360px) {
   .toolbar {
     gap: 4px;
@@ -1989,6 +2017,11 @@ html.dark .is-itm {
   text-transform: uppercase;
 }
 
+.inward-captions .strike-gap {
+  align-self: stretch;
+  box-shadow: inset 1px 0 0 var(--ar-border), inset -1px 0 0 var(--ar-border);
+}
+
 .inward-captions .ce-zone {
   padding-left: 12px;
   color: #166534;
@@ -2021,10 +2054,18 @@ html.dark .inward-captions .pe-zone {
   min-width: 0;
   min-height: 0;
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: auto;
 }
 
 .inward-pane.mid {
   overflow-x: hidden;
+  box-shadow: inset 1px 0 0 var(--ar-border), inset -1px 0 0 var(--ar-border);
+}
+
+.inward .chain-table .strike-cell {
+  border-left: 0;
+  border-right: 0;
 }
 
 .inward-pane .chain-table {
@@ -2083,4 +2124,10 @@ html.dark .inward-captions .pe-zone {
   vertical-align: middle;
   padding-left: 0 !important;
   padding-right: 0 !important;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+.chain-table tbody tr:last-child td {
+  border-bottom: 0;
 }

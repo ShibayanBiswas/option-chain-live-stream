@@ -10,12 +10,21 @@ async function waitForBook(page: Page) {
   await expect(page.locator(".spot-inline")).not.toHaveText("—", { timeout: 70_000 });
   await expect(page.locator(".chain-row").first()).toBeVisible();
   await page.locator(".toolbar").getByRole("button", { name: "Updates" }).click();
-  const shades = page.getByRole("dialog", { name: "Volume shades" });
-  await expect(shades).toBeVisible();
-  await expect(shades).toContainText("High volume");
-  await expect(shades).toContainText("Zero volume");
-  await shades.getByRole("button", { name: "Close updates" }).click();
-  await expect(shades).toBeHidden();
+  const guide = page.getByRole("dialog", { name: "Custom board" });
+  await expect(guide).toBeVisible();
+  await expect(guide).toContainText("Last price");
+  await expect(guide).toContainText("nearest expiry");
+  await expect(guide).not.toContainText("High volume");
+  const width = page.viewportSize()?.width ?? 0;
+  if (width >= 1400 || width <= 400) {
+    fs.mkdirSync(shotDir, { recursive: true });
+    await page.screenshot({
+      path: path.join(shotDir, width >= 1400 ? "updates-custom-desktop.png" : "updates-custom-phone.png"),
+      fullPage: false,
+    });
+  }
+  await guide.getByRole("button", { name: "Close updates" }).click();
+  await expect(guide).toBeHidden();
   await expect(page.locator(".session-pill")).toHaveText(/Market Open|Market Closed|Pre-Open|Market Holiday/);
 }
 
@@ -85,7 +94,7 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
         kpiFits: kpis instanceof HTMLElement && kpis.scrollWidth <= kpis.clientWidth + 2,
       };
     });
-    expect(fitted.chainShare).toBeGreaterThanOrEqual(0.8);
+    expect(fitted.chainShare).toBeGreaterThanOrEqual(0.75);
     const labels = await page.evaluate(() => {
       const open = (selector: string) => {
         const el = document.querySelector(selector);
@@ -185,6 +194,21 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   });
   expect(atmGap).toBeLessThan(240);
   await page.getByLabel("View").selectOption("chain");
+  await page.locator(".toolbar").getByRole("button", { name: "Updates" }).click();
+  const shades = page.getByRole("dialog", { name: "Volume shades" });
+  await expect(shades).toBeVisible();
+  await expect(shades).toContainText("High volume");
+  await expect(shades).toContainText("Zero volume");
+  await expect(shades).not.toContainText("nearest expiry");
+  const chainWidth = testInfo.project.name === "desktop" || testInfo.project.name === "phone" ? page.viewportSize()?.width ?? 0 : 0;
+  if (chainWidth >= 1400 || (chainWidth > 0 && chainWidth <= 400)) {
+    await page.screenshot({
+      path: path.join(shotDir, chainWidth >= 1400 ? "updates-chain-desktop.png" : "updates-chain-phone.png"),
+      fullPage: false,
+    });
+  }
+  await shades.getByRole("button", { name: "Close updates" }).click();
+  await expect(shades).toBeHidden();
   await expect(page.getByLabel("Strikes")).toHaveValue("near");
   const density = page.getByTestId("density-select");
   await expect(density).toHaveValue("focus");
