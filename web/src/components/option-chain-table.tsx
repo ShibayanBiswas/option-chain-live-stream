@@ -42,8 +42,9 @@ function readField(q: OptionQuote, key: ColumnKey): number | null {
 
 function renderValue(key: ColumnKey, value: number | null) {
   if (isEmptyValue(value)) return "—";
-  if (key === "ltp" || key === "bid" || key === "ask" || key === "iv") return formatPrice(value);
-  if (key === "chng" || key === "oiChg") return formatSigned(value, key === "chng" ? 2 : 0);
+  if (key === "iv") return formatNumber(value, 2);
+  if (key === "ltp" || key === "bid" || key === "ask") return formatPrice(value);
+  if (key === "chng" || key === "oiChg") return formatSigned(value, key === "chng" ? 1 : 0);
   if (key === "oi" || key === "volume") return formatCompact(value);
   if (key === "delta" || key === "theta" || key === "pChg") return formatNumber(value, 2);
   return formatNumber(value, 0);
@@ -431,7 +432,7 @@ function SideCell({
       <span className="quote-num">{renderValue(field, value)}</span>
       {field === "ltp" ? (
         <span className={cn("ltp-chng", quote.change != null && quote.change < 0 ? "tone-down" : "tone-up")}>
-          {formatSigned(quote.change, 2)}
+          {formatSigned(quote.change, 1)}
         </span>
       ) : null}
     </FlashCell>

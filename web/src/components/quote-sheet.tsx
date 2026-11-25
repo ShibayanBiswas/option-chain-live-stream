@@ -64,8 +64,8 @@ function QuoteCard({
 }) {
   const items = [
     ["LTP", formatPrice(quote.lastPrice)],
-    ["Chng", formatSigned(quote.change, 2)],
-    ["IV", formatPrice(quote.iv)],
+    ["Chng", formatSigned(quote.change, 1)],
+    ["IV", formatNumber(quote.iv, 2)],
     ["OI", formatCompact(quote.oi)],
     ["Chng in OI", formatSigned(quote.oiChg, 0)],
     ["Volume", formatCompact(quote.volume)],

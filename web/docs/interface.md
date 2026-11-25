@@ -20,7 +20,7 @@ The NSE columns are OI, Chng in OI, Volume, IV, LTP, Chng, and % Chng. Bid Qty, 
 
 Gold is high volume, blue is low volume, grey is zero volume. A green flash is a higher print and a red flash is a lower print. There is no gold line under a round strike. Clicking a strike opens a card with Calls on one side and Puts on the other.
 
-Spot Focus keeps the 18 strikes below the at-the-money strike and the 18 above it. All Strikes shows the whole book. Jump to spot scrolls Custom and the option chain. The page itself does not scroll.
+Spot Focus keeps the 18 strikes below the at-the-money strike and the 18 above it. All Strikes shows the whole book. Strike numbers sit in the centre of the column. Prices and price changes show one decimal. Implied volatility stays at two decimals. Jump to spot scrolls Custom and the option chain. The page itself does not scroll.
 
 ## Mobile
 

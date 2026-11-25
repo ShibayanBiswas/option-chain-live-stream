@@ -2076,3 +2076,11 @@ html.dark .inward-captions .pe-zone {
   margin: 0;
   background: transparent;
 }
+
+.chain-table th.strike-cell,
+.chain-table td.strike-cell {
+  text-align: center !important;
+  vertical-align: middle;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}

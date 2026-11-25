@@ -272,7 +272,7 @@ function PriceCell({
     >
       <span className="quote-num">{formatPrice(value)}</span>
       <span className={cn("ltp-chng", change != null && change < 0 ? "tone-down" : "tone-up")}>
-        {formatSigned(change, 2)}
+        {formatSigned(change, 1)}
       </span>
     </td>
   );

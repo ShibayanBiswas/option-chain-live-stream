@@ -158,6 +158,16 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
     await expect(page.locator(".rail")).toHaveClass(/is-collapsed/);
   }
 
+  const priceShape = await page.evaluate(() => {
+    const price = document.querySelector(".chain-scroll .quote-num");
+    const strike = document.querySelector("td.strike-cell");
+    return {
+      price: price?.textContent?.trim() ?? "",
+      align: strike instanceof HTMLElement ? getComputedStyle(strike).textAlign : "",
+    };
+  });
+  expect(priceShape.align).toBe("center");
+  expect(priceShape.price === "—" || /^\d[\d,]*\.\d$/.test(priceShape.price)).toBe(true);
   await expect(page.getByLabel("View")).toHaveValue("custom");
   await expect(page.locator(".side-labels")).toContainText("Calls");
   await expect(page.locator(".side-labels")).toContainText("Puts");

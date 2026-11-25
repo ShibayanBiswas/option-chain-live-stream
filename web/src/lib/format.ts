@@ -33,7 +33,7 @@ export function formatPrice(value: number | null | undefined): string {
   if (value === null || value === undefined || !Number.isFinite(value) || value === 0) {
     return "—";
   }
-  return formatNumber(value, 2);
+  return formatNumber(value, 1);
 }
 
 export function formatCompact(value: number | null | undefined): string {

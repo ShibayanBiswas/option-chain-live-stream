@@ -153,7 +153,7 @@ function Row({
     <div className={cn("symbol-item", active && "is-active")}>
       <button type="button" className="symbol-main" onClick={() => onSelect(item)}>
         <span>{displayName(item.symbol, item.label)}</span>
-        <em className={change != null && change < 0 ? "tone-down" : "tone-up"}>{formatSigned(change, 2)}</em>
+        <em className={change != null && change < 0 ? "tone-down" : "tone-up"}>{formatSigned(change, 1)}</em>
         <strong>{formatPrice(last)}</strong>
       </button>
       <button
