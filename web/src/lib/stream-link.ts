@@ -42,7 +42,8 @@ export function noteDrop(link: Link): { link: Link; startPoll: boolean; retryMs:
   else if (startPoll && link.polling) {
     pollMs = link.pollMs < 3_000 ? POLL_STEPS_MS[1] : POLL_STEPS_MS[2];
   }
-  const retryMs = startPoll ? SSE_RETRY_WHILE_POLLING_MS : Math.min(30_000, 1_000 * 2 ** (failures - 1));
+  const ladder = [1_000, 2_000, 5_000, 10_000];
+  const retryMs = ladder[Math.min(failures, ladder.length) - 1] ?? 10_000;
   return {
     startPoll,
     retryMs,

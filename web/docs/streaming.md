@@ -17,8 +17,10 @@ NSE prices use `wss://streamer.nseindia.com/streams/fo/mbp`. On 25 Nov 2026, dur
 
 ## Client
 
-`use-option-stream.ts` retries SSE at 1, 2 and 4 seconds. After the third failure it polls at 1.5s, then 3s, then 6s, and it keeps trying SSE every 15 seconds. A chain, patch, or heartbeat resets the failure count and stops the poll. Ten seconds without a stream event sets the status to error and the desk shows "Connection lost · retrying". A hidden tab pauses the stream; showing it again refetches the chain and reconnects. Twenty seconds without a heartbeat marks the chip Stale. A heartbeat does not change the data-age clock.
+`use-option-stream.ts` retries SSE at 1, 2 and 5 seconds, then every 10 seconds. After the third failure it polls at 1.5s, then 3s, then 6s. A chain, patch, or heartbeat resets the failure count and stops the poll. Ten seconds without a stream event sets the status to error and the desk shows "Connection lost · retrying". A hidden tab pauses the stream; showing it again refetches the chain and reconnects. Twenty seconds without a heartbeat marks the chip Stale. A heartbeat does not change the data-age clock.
 
 ## Latency
+
+Spot Focus on an index keeps strikes 100 apart. An equity book, including Anand Rathi Wealth, keeps the strikes the exchange listed. A tick recomputes percent change from the last price and the change. The book timestamp never moves backwards, and a chain or patch older than the one on screen is dropped. Max pain is blank until at least three strikes have open interest. Greeks use the time left until 15:30 IST, with a one-minute floor, and they hide after that close. Yahoo spots in the rail are labelled Delayed 15 min. The selected name uses the chain spot, the same number as the header.
 
 `latencyMs` is the exchange request time. It stays in the chip tooltip and in `/api/health`. The chip itself shows the exchange time and how long ago that snapshot was. It says REST, Closed, Delayed, Waiting, Connecting, or Stale. It never says Live, and a cached BSE book shows Delayed. `/api/health` also returns `commit`, the Vercel git sha when the deployment has one.

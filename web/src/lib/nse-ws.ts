@@ -1,5 +1,6 @@
 import WebSocket from "ws";
 
+import { findAtmStrike, percentChange } from "./analytics";
 import type { CellTuple } from "./diff";
 import type { OptionChainSnapshot, OptionQuote } from "./types";
 
@@ -71,8 +72,14 @@ function paint(
   for (const key of PRICE_FIELDS) {
     const value = partial[key];
     if (value == null || next[key] === value) continue;
+    if (key === "volume" && next.volume != null && value < next.volume) continue;
     next[key] = value;
     cells.push([strike, side, FIELD_KEY[key], value]);
+  }
+  const pChange = percentChange(next.lastPrice, next.change);
+  if (pChange != null && next.pChange !== pChange) {
+    next.pChange = pChange;
+    cells.push([strike, side, "pChg", pChange]);
   }
   return next;
 }
@@ -82,6 +89,7 @@ export function applyOptionTick(
   snapshot: OptionChainSnapshot,
   tick: OptionTick,
 ): { snapshot: OptionChainSnapshot; cells: CellTuple[] } | null {
+  if (tick.timestamp && tick.timestamp < snapshot.timestamp) return null;
   const index = snapshot.rows.findIndex((row) => row.strike === tick.strike);
   const row = snapshot.rows[index];
   if (!row) return null;
@@ -97,7 +105,8 @@ export function applyOptionTick(
       ...snapshot,
       rows,
       feed: "websocket",
-      timestamp: tick.timestamp ?? snapshot.timestamp,
+      timestamp:
+        tick.timestamp && tick.timestamp > snapshot.timestamp ? tick.timestamp : snapshot.timestamp,
     },
   };
 }
@@ -105,11 +114,12 @@ export function applyOptionTick(
 /** Copy open interest and IV from a chain refresh onto the book the socket is updating. */
 export function overlayContractFields(current: OptionChainSnapshot, fresh: OptionChainSnapshot): OptionChainSnapshot {
   const incoming = new Map(fresh.rows.map((row) => [row.strike, row]));
+  const spot = fresh.timestamp >= current.timestamp ? (fresh.spot ?? current.spot) : current.spot;
   return {
     ...current,
     marketOpen: fresh.marketOpen,
-    totals: fresh.totals,
-    spot: fresh.spot ?? current.spot,
+    totals: { ...fresh.totals, atm: findAtmStrike(spot, current.rows.map((row) => row.strike)) },
+    spot,
     rows: current.rows.map((row) => {
       const next = incoming.get(row.strike);
       if (!next) return row;

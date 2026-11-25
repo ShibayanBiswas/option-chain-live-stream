@@ -42,8 +42,11 @@ describe("calculations", () => {
     const rows = [
       row(100, { oi: 10 }, { oi: 0 }),
       row(110, { oi: 0 }, { oi: 10 }),
+      row(120, { oi: 1 }, { oi: 1 }),
     ];
-    expect(computeMaxPain(rows)).toBe(100);
+    expect(computeMaxPain(rows)).toBe(110);
+    expect(computeMaxPain([row(100, { oi: 0 }, { oi: 0 })])).toBeNull();
+    expect(computeMaxPain([row(100, { oi: 5 }, { oi: 4 })])).toBeNull();
   });
 
   it("builds totals and at-the-money IV", () => {

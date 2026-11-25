@@ -45,7 +45,12 @@ export async function getSupplementSpots(): Promise<
   Array<{ symbol: string; exchange: "NSE" | "BSE"; last: number | null; change: number | null }>
 > {
   const rows = await Promise.all(
-    BOOK_SPOTS.map(async (item) => ({ symbol: item.symbol, exchange: item.exchange, ...(await readYahoo(item.yahoo)) })),
+    BOOK_SPOTS.map(async (item) => ({
+      symbol: item.symbol,
+      exchange: item.exchange,
+      delayed: true,
+      ...(await readYahoo(item.yahoo)),
+    })),
   );
   return rows.filter((row) => row.last != null);
 }

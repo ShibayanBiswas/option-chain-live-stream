@@ -57,6 +57,7 @@ export function Terminal() {
   const [picked, setPicked] = useState<ChainRow | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const statusRef = useRef<"idle" | "connecting" | "live" | "polling" | "error">("idle");
+  const restoredRef = useRef(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [pins, setPins] = useState<string[]>([]);
   const [tape, setTape] = useState<TapeQuote[]>([]);
@@ -113,7 +114,7 @@ export function Terminal() {
   useEffect(() => {
     if (!snapshot?.expiries?.length) return;
     setSelection((current) => {
-      if (!current.item) return current;
+      if (!current.item || !current.expiry) return current;
       if (snapshot.symbol !== current.item.symbol || snapshot.exchange !== current.item.exchange) return current;
       const next = upcomingExpiry(snapshot.expiries, current.expiry);
       return next === current.expiry ? current : { ...current, expiry: next };
@@ -181,8 +182,12 @@ export function Terminal() {
   }, [updatesOpen]);
 
   useEffect(() => {
-    if (statusRef.current !== "error" && status === "error") pushToast("Connection lost · retrying", "link");
-    if (statusRef.current === "error" && (status === "live" || status === "polling")) {
+    if (statusRef.current !== "error" && status === "error") {
+      restoredRef.current = false;
+      pushToast("Connection lost · retrying", "link");
+    }
+    if (statusRef.current === "error" && (status === "live" || status === "polling") && !restoredRef.current) {
+      restoredRef.current = true;
       pushToast("Connection restored", "link");
     }
     statusRef.current = status;
@@ -276,9 +281,11 @@ export function Terminal() {
             data-state={waiting ? "waiting" : quiet ? "waiting" : status}
             aria-live="polite"
             title={
-              snapshot?.feed === "websocket"
-                ? `Exchange websocket · prices as frames arrive. Fetch ${snapshot.latencyMs} ms`
-                : `Exchange snapshot · refreshes about every 30 s. Fetch ${snapshot?.latencyMs ?? "—"} ms`
+              snapshot?.source === "bse"
+                ? `BSE updates about every minute. Fetch ${snapshot.latencyMs} ms`
+                : snapshot?.feed === "websocket"
+                  ? `Exchange websocket · prices as frames arrive. Fetch ${snapshot.latencyMs} ms`
+                  : `Exchange snapshot · refreshes about every 30 s. Fetch ${snapshot?.latencyMs ?? "—"} ms`
             }
           >
             <span className={cn("live-dot", status === "error" && "is-off", (waiting || quiet) && "is-stale")} />
@@ -309,7 +316,7 @@ export function Terminal() {
           {view === "chain" ? (
             <ExpirySelect
               expiries={snapshot?.expiries ?? []}
-              value={expiry}
+              value={expiry || snapshot?.expiry || ""}
               onChange={(next) => {
                 setSelection((current) => ({ ...current, expiry: next }));
               }}
@@ -372,6 +379,11 @@ export function Terminal() {
             onQuery={setQuery}
             pins={pins}
             tape={tape}
+            chainSpot={
+              selected && snapshot && snapshot.symbol === selected.symbol && snapshot.exchange === selected.exchange
+                ? snapshot.spot
+                : null
+            }
             onSelect={choose}
             onTogglePin={togglePin}
           />
@@ -386,7 +398,12 @@ export function Terminal() {
         ) : null}
         <div className="kpi-row">
           <Kpi index={0} label="PCR" value={snapshot?.totals.pcr != null ? snapshot.totals.pcr.toFixed(2) : "—"} />
-          <Kpi index={1} label="Max Pain" value={formatNumber(snapshot?.totals.maxPain ?? null, 0)} />
+          <Kpi
+            index={1}
+            label="Max Pain"
+            value={formatNumber(snapshot?.totals.maxPain ?? null, 0)}
+            title={snapshot?.totals.maxPain == null ? "Not enough open interest" : undefined}
+          />
           <Kpi index={2} label="Call OI" value={formatCompact(snapshot?.totals.ceOi ?? null)} />
           <Kpi index={3} label="Put OI" value={formatCompact(snapshot?.totals.peOi ?? null)} />
           <Kpi index={4} label="ATM IV" value={snapshot ? formatNumber(atmIv(snapshot.rows, snapshot.totals.atm), 2) : "—"} />
@@ -457,10 +474,11 @@ function LiveSpot({ value }: { value: number | null }) {
   return <strong className={cn("spot-inline", flash && `is-${flash}`)}>{formatPrice(value)}</strong>;
 }
 
-function Kpi({ label, value, index }: { label: string; value: string; index: number }) {
+function Kpi({ label, value, index, title }: { label: string; value: string; index: number; title?: string }) {
   return (
     <motion.article
       className="kpi"
+      title={title}
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.06 * index, type: "spring", stiffness: 420, damping: 28 }}

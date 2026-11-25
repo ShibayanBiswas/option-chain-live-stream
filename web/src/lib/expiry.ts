@@ -66,6 +66,17 @@ export function isListedExpiryLive(value: string, now = new Date()): boolean {
   return true;
 }
 
+/** Years from now until 15:30 IST on expiry, with a one-minute floor. Zero after the close. */
+export function yearFractionToExpiry(value: string, now = new Date()): number {
+  const iso = expiryIso(value);
+  if (!iso) return 0;
+  const close = Date.parse(`${iso}T15:30:00+05:30`);
+  if (!Number.isFinite(close)) return 0;
+  const remain = close - now.getTime();
+  if (remain <= 0) return 0;
+  return Math.max(remain, 60_000) / (365 * 86_400_000);
+}
+
 export function daysToExpiry(value: string, now = new Date()): number | null {
   const expiry = parseExpiryDate(value);
   if (!expiry) return null;

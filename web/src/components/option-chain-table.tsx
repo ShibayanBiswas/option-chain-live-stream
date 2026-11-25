@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { columnHint, columnLabel, putColumns, visibleColumns } from "@/lib/columns";
 import { focusStrikes } from "@/lib/display";
-import { daysToExpiry } from "@/lib/expiry";
+import { yearFractionToExpiry } from "@/lib/expiry";
 import { blackScholes } from "@/lib/greeks";
 import { centerBook, chainOverflows, InwardChain, useChainWidth } from "@/components/inward-chain";
 import { cn } from "@/lib/cn";
@@ -67,11 +67,13 @@ function FlashCell({
   children,
   className,
   resetKey,
+  title,
 }: {
   value: number | null;
   children: ReactNode;
   className?: string;
   resetKey: string;
+  title?: string;
 }) {
   const ref = useRef<HTMLTableCellElement>(null);
   const prev = useRef<number | null>(null);
@@ -91,7 +93,7 @@ function FlashCell({
   }, [resetKey, value]);
 
   return (
-    <td ref={ref} className={className}>
+    <td ref={ref} className={className} title={title}>
       {children}
     </td>
   );
@@ -124,10 +126,11 @@ export function OptionChainTable({
         snapshot.spot,
         depth,
         snapshot.totals.atm,
+        snapshot.segment,
       ),
     );
     return snapshot.rows.filter((row) => allowed.has(row.strike));
-  }, [depth, snapshot.rows, snapshot.spot, snapshot.totals.atm]);
+  }, [depth, snapshot.rows, snapshot.segment, snapshot.spot, snapshot.totals.atm]);
 
   const scales = useMemo(() => {
     const oi = Math.max(1, ...rows.flatMap((row) => [row.ce.oi ?? 0, row.pe.oi ?? 0]));
@@ -390,18 +393,20 @@ function SideCell({
   expiry: string;
   resetKey: string;
 }) {
-  const days = daysToExpiry(expiry);
+  const timeYears = yearFractionToExpiry(expiry);
   const kind = side === "ce" ? "call" : "put";
   const value =
     field === "delta" || field === "gamma" || field === "theta" || field === "vega"
-      ? blackScholes({
-          spot: spot ?? 0,
-          strike,
-          rate: 0.065,
-          sigma: (quote.iv ?? 0) / 100,
-          timeYears: Math.max(days ?? 0, 0) / 365,
-          type: kind,
-        })?.[field] ?? null
+      ? timeYears > 0
+        ? blackScholes({
+            spot: spot ?? 0,
+            strike,
+            rate: 0.065,
+            sigma: (quote.iv ?? 0) / 100,
+            timeYears,
+            type: kind,
+          })?.[field] ?? null
+        : null
       : readField(quote, field);
   const tone =
     field === "chng" || field === "oiChg"
@@ -419,6 +424,7 @@ function SideCell({
     <FlashCell
       value={value}
       resetKey={resetKey}
+      title={field === "iv" && quote.ivSuspect ? "Implied volatility looked wrong and was hidden" : undefined}
       className={cn(
         side === "ce" ? "ce-zone" : "pe-zone",
         `col-${field}`,

@@ -53,7 +53,16 @@ describe("NSE option socket", () => {
     expect(applied?.cells).toEqual([
       [25700, "ce", "ltp", 10.55],
       [25700, "ce", "chng", 0.55],
+      [25700, "ce", "pChg", 5.5],
     ]);
+    expect(applied?.snapshot.timestamp).toBe("2026-11-25T14:24:01+05:30");
+    expect(
+      applyOptionTick(applied!.snapshot, {
+        strike: 25700,
+        timestamp: "2026-11-25T14:10:00+05:30",
+        ce: { lastPrice: 1 },
+      }),
+    ).toBeNull();
     expect(applied?.snapshot.feed).toBe("websocket");
     expect(applied?.snapshot.rows[0]?.ce.iv).toBe(18.2);
     expect(applied?.snapshot.rows[0]?.ce.oi).toBe(100);

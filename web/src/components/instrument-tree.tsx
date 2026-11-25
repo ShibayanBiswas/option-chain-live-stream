@@ -17,6 +17,7 @@ export function InstrumentTree({
   onQuery,
   pins,
   tape,
+  chainSpot,
   onSelect,
   onTogglePin,
 }: {
@@ -27,6 +28,7 @@ export function InstrumentTree({
   onQuery: (value: string) => void;
   pins: string[];
   tape: TapeQuote[];
+  chainSpot?: number | null;
   onSelect: (item: Instrument) => void;
   onTogglePin: (item: Instrument) => void;
 }) {
@@ -83,6 +85,7 @@ export function InstrumentTree({
               item={item}
               selected={selected}
               tape={tape}
+              chainSpot={chainSpot}
               pinned
               onSelect={onSelect}
               onTogglePin={onTogglePin}
@@ -122,6 +125,7 @@ export function InstrumentTree({
                       item={item}
                       selected={selected}
                       tape={tape}
+                      chainSpot={chainSpot}
                       pinned={pins.includes(`${item.exchange}:${item.symbol}`)}
                       onSelect={onSelect}
                       onTogglePin={onTogglePin}
@@ -147,6 +151,7 @@ function Row({
   item,
   selected,
   tape,
+  chainSpot,
   pinned,
   onSelect,
   onTogglePin,
@@ -154,20 +159,21 @@ function Row({
   item: Instrument;
   selected: Instrument | null;
   tape: TapeQuote[];
+  chainSpot?: number | null;
   pinned: boolean;
   onSelect: (item: Instrument) => void;
   onTogglePin: (item: Instrument) => void;
 }) {
   const quote = matchTape(item.symbol, tape, item.exchange);
-  const last = quote?.last ?? item.last ?? null;
-  const change = quote?.change ?? item.change ?? null;
   const active = selected?.symbol === item.symbol && selected.exchange === item.exchange;
+  const last = active && chainSpot != null ? chainSpot : (quote?.last ?? item.last ?? null);
+  const change = quote?.change ?? item.change ?? null;
   return (
     <div className={cn("symbol-item", active && "is-active")}>
       <button type="button" className="symbol-main" onClick={() => onSelect(item)}>
         <span>{displayName(item.symbol, item.label)}</span>
         <em className={change != null && change < 0 ? "tone-down" : "tone-up"}>{formatSigned(change, 1)}</em>
-        <strong>{formatPrice(last)}</strong>
+        <strong title={!active && quote?.delayed ? "Delayed 15 min" : undefined}>{formatPrice(last)}</strong>
       </button>
       <button
         className={cn("pin-btn", pinned && "is-on")}

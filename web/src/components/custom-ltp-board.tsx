@@ -83,6 +83,7 @@ export function CustomLtpBoard({
     spot,
     depth,
     atm,
+    segment,
   );
   const span = columns.length * 2 + 1;
 

@@ -6,6 +6,7 @@ export type OptionQuote = {
   change: number | null;
   pChange: number | null;
   iv: number | null;
+  ivSuspect?: boolean;
   oi: number | null;
   oiChg: number | null;
   volume: number | null;
@@ -71,6 +72,7 @@ export type TapeQuote = {
   last: number | null;
   change: number | null;
   exchange?: Exchange;
+  delayed?: boolean;
 };
 
 export type MetaResponse = {

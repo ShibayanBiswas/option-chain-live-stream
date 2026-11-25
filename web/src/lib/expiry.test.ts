@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { focusStrikes, groupExpiries, upcomingExpiries } from "./display";
 import { blackScholes } from "./greeks";
 import { joinSetCookies } from "./http";
-import { daysToExpiry, isListedExpiryLive, toIstIso } from "./expiry";
+import { daysToExpiry, isListedExpiryLive, toIstIso, yearFractionToExpiry } from "./expiry";
 import { classifySession, derivativesSessionOpen, gateSession } from "./session";
 import { assertBookShape } from "./schema";
 
@@ -26,6 +26,11 @@ describe("expiry and session", () => {
     expect(focusStrikes([25500, 25600, 25800], 25800, "near", 25800)).toEqual([25500, 25600, 25800]);
   });
 
+  it("keeps the listed equity strikes in spot focus", () => {
+    const strikes = [2400, 2450, 2500, 2550, 2600, 2650];
+    expect(focusStrikes(strikes, 2520, "near", 2500, "EQUITY")).toEqual(strikes);
+  });
+
   it("keeps the next upcoming expiries in date order", () => {
     const now = new Date("2026-11-25T10:00:00+05:30");
     expect(
@@ -38,6 +43,8 @@ describe("expiry and session", () => {
     expect(isListedExpiryLive("24-Nov-2026", afterClose)).toBe(false);
     expect(isListedExpiryLive("23-Nov-2026", beforeClose)).toBe(false);
     expect(daysToExpiry("26-Nov-2026", new Date("2026-11-24T10:00:00+05:30"))).toBe(2);
+    expect(yearFractionToExpiry("25-Nov-2026", new Date("2026-11-25T15:00:00+05:30"))).toBeGreaterThan(0);
+    expect(yearFractionToExpiry("25-Nov-2026", new Date("2026-11-25T15:31:00+05:30"))).toBe(0);
   });
 
   it("normalises exchange timestamps to IST", () => {

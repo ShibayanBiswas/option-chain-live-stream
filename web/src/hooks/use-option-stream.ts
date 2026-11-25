@@ -28,13 +28,31 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const applySnapshot = useCallback((next: OptionChainSnapshot) => {
-    setSnapshot(next);
+    setSnapshot((current) => {
+      if (
+        current &&
+        current.symbol === next.symbol &&
+        current.expiry === next.expiry &&
+        next.timestamp < current.timestamp
+      ) {
+        console.warn("dropped older chain", next.symbol, next.timestamp, current.timestamp);
+        return current;
+      }
+      return next;
+    });
     setUpdatedAt(Date.now());
     setError(null);
   }, []);
 
   const applyIncomingPatch = useCallback((patch: ChainPatch) => {
-    setSnapshot((current) => (current ? applyPatch(current, patch) : current));
+    setSnapshot((current) => {
+      if (!current) return current;
+      if (patch.timestamp && patch.timestamp < current.timestamp) {
+        console.warn("dropped older patch", patch.symbol, patch.timestamp, current.timestamp);
+        return current;
+      }
+      return applyPatch(current, patch);
+    });
     setUpdatedAt(Date.now());
     setError(null);
   }, []);

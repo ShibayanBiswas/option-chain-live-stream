@@ -25,9 +25,18 @@ export function computePCR(rows: ChainRow[]): number | null {
   return pe / ce;
 }
 
+/** change / (last − change). Null when the previous price is not positive. */
+export function percentChange(last: number | null, change: number | null): number | null {
+  if (last == null || change == null) return null;
+  const previous = last - change;
+  if (!(previous > 0)) return null;
+  return Math.round((change / previous) * 1_000_000) / 10_000;
+}
+
 /** Approximate max-pain: strike where combined writer loss is minimized. */
 export function computeMaxPain(rows: ChainRow[]): number | null {
-  if (rows.length === 0) return null;
+  const withOi = rows.filter((row) => (row.ce.oi ?? 0) + (row.pe.oi ?? 0) > 0);
+  if (withOi.length < 3) return null;
   let bestStrike = rows[0]!.strike;
   let bestPain = Number.POSITIVE_INFINITY;
 

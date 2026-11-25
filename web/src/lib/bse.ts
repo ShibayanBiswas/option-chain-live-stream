@@ -1,4 +1,4 @@
-import { buildTotals } from "./analytics";
+import { buildTotals, percentChange } from "./analytics";
 import { upcomingExpiry } from "./display";
 import { expiryIso, toIstIso } from "./expiry";
 import { assertBookShape } from "./schema";
@@ -62,12 +62,21 @@ async function bseGet<T>(url: string): Promise<T> {
 type ExpiryRow = { eXPIRY?: string; End_TimeStamp?: string };
 type ChainApiRow = Record<string, string | number | null | undefined>;
 
+function listedIv(raw: string | number | null | undefined): Pick<OptionQuote, "iv" | "ivSuspect"> {
+  const iv = parseLooseNumber(raw);
+  if (iv == null) return { iv: null };
+  if (iv <= 0 || iv > 300) return { iv: null, ivSuspect: true };
+  return { iv };
+}
+
 function mapCe(row: ChainApiRow): OptionQuote {
+  const lastPrice = parseLooseNumber(row.C_Last_Trd_Price);
+  const change = parseLooseNumber(row.C_NetChange);
   return {
-    lastPrice: parseLooseNumber(row.C_Last_Trd_Price),
-    change: parseLooseNumber(row.C_NetChange),
-    pChange: null,
-    iv: parseLooseNumber(row.C_IV),
+    lastPrice,
+    change,
+    pChange: percentChange(lastPrice, change),
+    ...listedIv(row.C_IV),
     oi: parseLooseNumber(row.C_Open_Interest),
     oiChg: parseLooseNumber(row.C_Absolute_Change_OI),
     volume: parseLooseNumber(row.C_Vol_Traded),
@@ -79,11 +88,13 @@ function mapCe(row: ChainApiRow): OptionQuote {
 }
 
 function mapPe(row: ChainApiRow): OptionQuote {
+  const lastPrice = parseLooseNumber(row.Last_Trd_Price);
+  const change = parseLooseNumber(row.NetChange);
   return {
-    lastPrice: parseLooseNumber(row.Last_Trd_Price),
-    change: parseLooseNumber(row.NetChange),
-    pChange: null,
-    iv: parseLooseNumber(row.IV),
+    lastPrice,
+    change,
+    pChange: percentChange(lastPrice, change),
+    ...listedIv(row.IV),
     oi: parseLooseNumber(row.Open_Interest),
     oiChg: parseLooseNumber(row.Absolute_Change_OI),
     volume: parseLooseNumber(row.Vol_Traded),

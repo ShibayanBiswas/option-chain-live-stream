@@ -15,16 +15,22 @@ describe("reconnect", () => {
     expect(delivered.link.polling).toBe(false);
   });
 
-  it("backs the poll off from 1.5s to 6s and retries SSE every 15s", () => {
-    const first = noteDrop(noteDrop(noteDrop(freshLink()).link).link);
+  it("backs the poll off from 1.5s to 6s and retries SSE at 1s, 2s, 5s, then 10s", () => {
+    const once = noteDrop(freshLink());
+    expect(once.retryMs).toBe(1_000);
+    const twice = noteDrop(once.link);
+    expect(twice.retryMs).toBe(2_000);
+    const first = noteDrop(twice.link);
     expect(first.startPoll).toBe(true);
     expect(first.link.pollMs).toBe(1_500);
-    expect(first.retryMs).toBe(SSE_RETRY_WHILE_POLLING_MS);
+    expect(first.retryMs).toBe(5_000);
     const second = noteDrop(first.link);
     expect(second.link.pollMs).toBe(3_000);
+    expect(second.retryMs).toBe(10_000);
     const third = noteDrop(second.link);
     expect(third.link.pollMs).toBe(6_000);
-    expect(third.retryMs).toBe(15_000);
+    expect(third.retryMs).toBe(10_000);
+    expect(SSE_RETRY_WHILE_POLLING_MS).toBe(15_000);
   });
 
   it("marks the link lost after 10s and ignores an older event id", () => {
