@@ -2,16 +2,15 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
+import { centerBook, chainOverflows, InwardChain, useChainWidth } from "@/components/inward-chain";
 import { describeExpiry, focusStrikes, upcomingExpiries } from "@/lib/display";
-import { formatNumber, formatPrice } from "@/lib/format";
+import { formatNumber, formatPrice, formatSigned } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import type { ChainRow, Exchange, OptionChainSnapshot, Segment } from "@/lib/types";
 
-const COUNTS = [2, 3, 4, 5, 6, 8];
-
 export function expiryChoices(available: number): number[] {
-  const choices = COUNTS.filter((count) => count <= available);
-  return choices.length > 0 ? choices : [Math.max(1, available)];
+  const count = Math.max(1, Math.floor(available) || 1);
+  return Array.from({ length: count }, (_, index) => index + 1);
 }
 
 export function CustomLtpBoard({
@@ -77,28 +76,84 @@ export function CustomLtpBoard({
     [...new Set(loaded.flatMap((book) => book.rows.map((row) => row.strike)))].sort((a, b) => a - b),
     spot,
     depth,
+    atm,
   );
   const span = columns.length * 2 + 1;
 
+  const { ref: hostRef, width } = useChainWidth();
+  const pin = chainOverflows(width, columns.length * 2, "custom");
+
   useEffect(() => {
-    const row = document.getElementById(`strike-${atm ?? ""}`);
-    const scroller = row?.closest(".chain-scroll");
-    if (!row || !(scroller instanceof HTMLElement)) return;
-    const top = row.offsetTop - scroller.clientHeight / 2 + row.clientHeight / 2;
-    const cell = row.querySelector(".strike-cell");
-    const delta =
-      cell instanceof HTMLElement ? cell.getBoundingClientRect().left - scroller.getBoundingClientRect().left : 0;
-    const left =
-      cell instanceof HTMLElement
-        ? scroller.scrollLeft + delta - scroller.clientWidth / 2 + cell.clientWidth / 2
-        : scroller.scrollLeft;
-    scroller.scrollTo({ top: Math.max(0, top), left: Math.max(0, left), behavior: "auto" });
-  }, [atm, chosen, symbol]);
+    centerBook(atm);
+  }, [atm, chosen, symbol, pin]);
 
   if (loaded.length === 0) return <div className="board-wait">Opening the expiries</div>;
 
+  const customRows = strikes.map((strike, index) => {
+    const previous = strikes[index - 1];
+    const showSpot = spot != null && previous != null && previous < spot && strike > spot;
+    const nearest = columns.find((column) => column.book?.rows.some((row) => row.strike === strike))?.book?.rows.find((row) => row.strike === strike) ?? null;
+    return { strike, showSpot, nearest };
+  });
+
+  if (pin) {
+    return (
+      <InwardChain
+        hostRef={hostRef}
+        density="custom"
+        callSpan={callCols.length}
+        putSpan={columns.length}
+        layoutKey={`${symbol}:${chosen.join(",")}:${strikes.length}`}
+        callHead={callCols.map((column) => (
+          <th key={`ce-${column.expiry}`} scope="col" className="ce-zone">{shortExpiry(column.expiry)}</th>
+        ))}
+        putHead={columns.map((column) => (
+          <th key={`pe-${column.expiry}`} scope="col" className="pe-zone">{shortExpiry(column.expiry)}</th>
+        ))}
+        rows={customRows.map(({ strike, showSpot, nearest }) => ({
+          key: String(strike),
+          id: `strike-${strike}`,
+          className: cn("chain-row", strike === atm && "is-atm"),
+          onClick: () => {
+            if (nearest) onSelect(nearest);
+          },
+          spot: showSpot ? `Spot ${formatPrice(spot)}` : null,
+          strike: formatNumber(strike, 0),
+          call: callCols.map((column) => (
+            <PriceCell
+              key={`ce-${strike}-${column.expiry}`}
+              side="ce"
+              resetKey={`${symbol}:${column.expiry}`}
+              value={column.book?.rows.find((row) => row.strike === strike)?.ce.lastPrice ?? null}
+              change={column.book?.rows.find((row) => row.strike === strike)?.ce.change ?? null}
+              itm={spot != null && strike < spot}
+              onClick={() => {
+                const row = column.book?.rows.find((item) => item.strike === strike);
+                if (row) onSelect(row);
+              }}
+            />
+          )),
+          put: columns.map((column) => (
+            <PriceCell
+              key={`pe-${strike}-${column.expiry}`}
+              side="pe"
+              resetKey={`${symbol}:${column.expiry}`}
+              value={column.book?.rows.find((row) => row.strike === strike)?.pe.lastPrice ?? null}
+              change={column.book?.rows.find((row) => row.strike === strike)?.pe.change ?? null}
+              itm={spot != null && strike > spot}
+              onClick={() => {
+                const row = column.book?.rows.find((item) => item.strike === strike);
+                if (row) onSelect(row);
+              }}
+            />
+          )),
+        }))}
+      />
+    );
+  }
+
   return (
-    <div className="chain-scroll" data-density="custom">
+    <div ref={hostRef} className="chain-scroll" data-density="custom">
       <table className="chain-table">
         <thead>
           <tr className="side-labels">
@@ -143,6 +198,7 @@ export function CustomLtpBoard({
                       side="ce"
                       resetKey={`${symbol}:${column.expiry}`}
                       value={column.book?.rows.find((row) => row.strike === strike)?.ce.lastPrice ?? null}
+              change={column.book?.rows.find((row) => row.strike === strike)?.ce.change ?? null}
                       itm={spot != null && strike < spot}
                       onClick={() => {
                         const row = column.book?.rows.find((item) => item.strike === strike);
@@ -157,6 +213,7 @@ export function CustomLtpBoard({
                       side="pe"
                       resetKey={`${symbol}:${column.expiry}`}
                       value={column.book?.rows.find((row) => row.strike === strike)?.pe.lastPrice ?? null}
+              change={column.book?.rows.find((row) => row.strike === strike)?.pe.change ?? null}
                       itm={spot != null && strike > spot}
                       onClick={() => {
                         const row = column.book?.rows.find((item) => item.strike === strike);
@@ -177,12 +234,14 @@ export function CustomLtpBoard({
 function PriceCell({
   side,
   value,
+  change,
   resetKey,
   itm,
   onClick,
 }: {
   side: "ce" | "pe";
   value: number | null;
+  change: number | null;
   resetKey: string;
   itm: boolean;
   onClick: () => void;
@@ -211,7 +270,10 @@ function PriceCell({
         onClick();
       }}
     >
-      {formatPrice(value)}
+      <span className="quote-num">{formatPrice(value)}</span>
+      <span className={cn("ltp-chng", change != null && change < 0 ? "tone-down" : "tone-up")}>
+        {formatSigned(change, 2)}
+      </span>
     </td>
   );
 }

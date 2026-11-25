@@ -34,4 +34,4 @@ npm run test:e2e
 
 Projects: desktop 1440, laptop 1280, tablet 768, phone 390, phone-narrow 360.
 
-The chain test checks the Calls and Puts labels, one Strike heading, no gap between the call last price and the strike, the spot line, the header Updates button, and no strike badges. Clicking a strike must show Calls and Puts.
+The chain test checks the Calls and Puts labels, one Strike heading, no gap between the call last price and the strike, the spot line, the header Updates button, and no strike badges. Clicking a strike must show Calls and Puts. Custom must list every live expiry, and Jump to spot must bring the at-the-money strike into view. On a phone the header controls stay inside the screen, and a wide Custom or All Columns book keeps the strike fixed while the sides scroll.

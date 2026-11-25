@@ -68,6 +68,7 @@ export async function GET(req: Request) {
         return next;
       };
 
+      beat();
       const heartbeat = setInterval(beat, 10_000);
 
       try {

@@ -1640,12 +1640,14 @@ html.dark .is-itm {
 @media (max-width: 700px) {
   .toolbar {
     flex-direction: row;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     align-items: center;
-    overflow-x: auto;
-    gap: 2px;
-    height: 42px;
-    padding: 4px 6px;
+    align-content: flex-start;
+    overflow: visible;
+    gap: 4px 6px;
+    height: auto;
+    min-height: 42px;
+    padding: 6px 8px;
   }
 
   .toolbar-main,
@@ -1663,40 +1665,43 @@ html.dark .is-itm {
 
   .identity {
     order: 1;
-    flex: 0 0 auto;
+    flex: 1 1 auto;
+    min-width: min(100%, max-content);
     flex-direction: column;
     align-items: flex-start;
     gap: 0;
-    position: sticky;
-    left: 36px;
-    z-index: 4;
-    background: var(--ar-surface);
+    position: static;
+    background: transparent;
   }
 
   .feed-chip {
     order: 2;
-    max-width: 92px;
+    max-width: none;
   }
 
   .toolbar-select[aria-label="Expiry"],
   .toolbar-select[aria-label="Expiries"] {
     order: 3;
-    width: 108px;
+    width: auto;
+    min-width: 7.5rem;
   }
 
   .toolbar-select[aria-label="Strikes"] {
     order: 4;
-    width: 86px;
+    width: auto;
+    min-width: 6.8rem;
   }
 
   .toolbar-select[aria-label="Columns"] {
     order: 5;
-    width: 74px;
+    width: auto;
+    min-width: 6.5rem;
   }
 
   .toolbar-select[aria-label="View"] {
     order: 6;
-    width: 88px;
+    width: auto;
+    min-width: 7.2rem;
   }
 
   .session-pill {
@@ -1735,33 +1740,36 @@ html.dark .is-itm {
   }
 
   .toolbar .feed-chip > span:not(.live-dot) {
-    display: none;
+    display: inline;
+  }
+
+  .toolbar .feed-chip,
+  .toolbar .session-pill,
+  .toolbar .updates-btn,
+  .toolbar .toolbar-select {
+    width: auto;
+    max-width: none;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: nowrap;
   }
 
   .toolbar .feed-chip {
-    width: auto;
-    max-width: 72px;
-    overflow: hidden;
-    padding-left: 6px;
-    padding-right: 6px;
+    padding-left: 8px;
+    padding-right: 8px;
   }
 
   .toolbar .toolbar-select {
-    padding-left: 6px;
-    padding-right: 2px;
+    max-width: none;
+    padding-left: 8px;
+    padding-right: 22px;
   }
 
-  .toolbar .toolbar-select[aria-label="Expiry"],
-  .toolbar .toolbar-select[aria-label="Expiries"] {
-    width: 78px;
-  }
-
-  .toolbar .toolbar-select[aria-label="Strikes"] {
-    width: 72px;
-  }
-
-  .toolbar .toolbar-select[aria-label="Columns"] {
-    width: 62px;
+  .book-tools .icon-btn {
+    width: auto;
+    min-width: 0;
+    padding: 0 12px;
+    white-space: nowrap;
   }
 
   .identity h1,
@@ -1772,8 +1780,9 @@ html.dark .is-itm {
   }
 
   .identity h1 {
-    overflow: hidden;
-    text-overflow: ellipsis;
+    overflow: visible;
+    text-overflow: unset;
+    max-width: none;
   }
 
   .toolbar-select,
@@ -1945,20 +1954,125 @@ html.dark .is-itm {
 }
 
 @media (max-width: 360px) {
-  .toolbar .feed-chip {
-    max-width: 58px;
+  .toolbar {
+    gap: 4px;
+    padding: 4px 6px;
   }
 
-  .toolbar .toolbar-select[aria-label="Expiry"],
-  .toolbar .toolbar-select[aria-label="Expiries"] {
-    width: 70px;
+  .toolbar .toolbar-select,
+  .toolbar .session-pill,
+  .toolbar .feed-chip,
+  .toolbar .updates-btn {
+    font-size: 11px;
   }
+}
 
-  .toolbar .toolbar-select[aria-label="Strikes"] {
-    width: 62px;
-  }
+.chain-scroll.inward {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
 
-  .toolbar .toolbar-select[aria-label="Columns"] {
-    width: 54px;
-  }
+.inward-captions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 88px minmax(0, 1fr);
+  flex: none;
+  height: 24px;
+  align-items: center;
+  background: linear-gradient(180deg, var(--ar-table-head-from), var(--ar-table-head-to));
+  border-bottom: 1px solid var(--ar-border);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.inward-captions .ce-zone {
+  padding-left: 12px;
+  color: #166534;
+}
+
+.inward-captions .pe-zone {
+  padding-right: 12px;
+  text-align: right;
+  color: #c2410c;
+}
+
+html.dark .inward-captions .ce-zone {
+  color: #86efac;
+}
+
+html.dark .inward-captions .pe-zone {
+  color: #fdba74;
+}
+
+.inward-panes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 88px minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.inward-pane {
+  overflow: auto;
+  min-width: 0;
+  min-height: 0;
+  overscroll-behavior: contain;
+}
+
+.inward-pane.mid {
+  overflow-x: hidden;
+}
+
+.inward-pane .chain-table {
+  width: max-content;
+  min-width: 100%;
+  table-layout: auto;
+}
+
+.inward-pane.calls .chain-table {
+  margin-left: auto;
+}
+
+.inward-pane.puts .chain-table {
+  margin-right: auto;
+}
+
+.inward-pane.mid .chain-table,
+.inward-pane.mid .strike-cell {
+  width: 88px;
+  min-width: 88px;
+}
+
+.inward .chain-table thead tr.column-head th,
+.inward .chain-table thead .strike-cell {
+  top: 0;
+  height: 40px;
+  white-space: nowrap;
+}
+
+.inward .chain-table tbody td {
+  height: 46px;
+}
+
+.chain-scroll[data-density="custom"] .ltp-chng {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--font-data);
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.1;
+}
+
+.inward .spot-marker td {
+  height: 22px;
+  background: rgba(212, 178, 76, 0.16) !important;
+}
+
+.inward .spot-marker span {
+  margin: 0;
+  background: transparent;
 }

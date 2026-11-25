@@ -7,6 +7,7 @@ import { ArrowLeft, Moon, PanelLeft, Search, Sun } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
 import { CommandPalette } from "@/components/command-palette";
 import { CustomLtpBoard, expiryChoices } from "@/components/custom-ltp-board";
+import { centerBook } from "@/components/inward-chain";
 import { ExpirySelect } from "@/components/expiry-select";
 import { InstrumentTree } from "@/components/instrument-tree";
 import { OptionChainTable } from "@/components/option-chain-table";
@@ -203,7 +204,8 @@ export function Terminal() {
   const delayed = Boolean(snapshot?.stale);
   const feed = delayed ? "Delayed" : !snapshot ? (waiting ? "Connecting" : "REST") : !marketOpen ? "Closed" : waiting ? "Waiting" : "REST";
   const feedTime = delayed && snapshot?.asOf ? snapshot.asOf : snapshot ? `${snapshot.latencyMs} ms` : "…";
-  const expiryMenu = expiryChoices(Math.max(1, upcomingExpiries(snapshot?.expiries ?? [], 8).length));
+  const liveExpiryCount = upcomingExpiries(snapshot?.expiries ?? [], 99).length;
+  const expiryMenu = expiryChoices(Math.max(1, liveExpiryCount));
   const shownExpiries = expiryMenu.includes(expiryCount) ? expiryCount : (expiryMenu[expiryMenu.length - 1] ?? 4);
   const strikeRange = snapshot?.rows.length
     ? `${formatNumber(snapshot.rows[0]?.strike ?? null, 0)} – ${formatNumber(snapshot.rows[snapshot.rows.length - 1]?.strike ?? null, 0)} · ${snapshot.rows.length} strikes`
@@ -287,7 +289,11 @@ export function Terminal() {
             >
               {expiryMenu.map((count) => (
                 <option key={count} value={count}>
-                  {count === 1 ? "1 expiry" : `${count} expiries`}
+                  {count === liveExpiryCount && liveExpiryCount > 1
+                    ? `${count} expiries, all`
+                    : count === 1
+                      ? "1 expiry"
+                      : `${count} expiries`}
                 </option>
               ))}
             </select>
@@ -353,20 +359,7 @@ export function Terminal() {
 
         <div className="book-tools">
           <span className="range-label" aria-label="Strike range">{strikeRange}</span>
-          <button className="icon-btn" type="button" onClick={() => {
-            const row = document.getElementById(`strike-${snapshot?.totals.atm ?? ""}`);
-            const scroller = row?.closest(".chain-scroll");
-            if (!(row instanceof HTMLElement) || !(scroller instanceof HTMLElement)) return;
-            const cell = row.querySelector(".strike-cell");
-            const delta =
-              cell instanceof HTMLElement
-                ? cell.getBoundingClientRect().left - scroller.getBoundingClientRect().left
-                : 0;
-            scroller.scrollTop = Math.max(0, row.offsetTop - scroller.clientHeight / 2);
-            if (cell instanceof HTMLElement) {
-              scroller.scrollLeft = Math.max(0, scroller.scrollLeft + delta - scroller.clientWidth / 2 + cell.clientWidth / 2);
-            }
-          }}>
+          <button className="icon-btn" type="button" onClick={() => centerBook(snapshot?.totals.atm ?? null)}>
             Jump to spot
           </button>
         </div>

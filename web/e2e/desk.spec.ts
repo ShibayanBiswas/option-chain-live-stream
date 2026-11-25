@@ -19,6 +19,27 @@ async function waitForBook(page: Page) {
   await expect(page.locator(".session-pill")).toHaveText(/Market Open|Market Closed|Pre-Open|Market Holiday/);
 }
 
+async function readInward(page: Page) {
+  return page.evaluate(() => {
+    const strike = document.querySelector(".inward-pane.mid .column-head .strike-cell");
+    const calls = document.querySelector(".inward-pane.calls");
+    const last = document.querySelector(".inward-pane.calls .column-head th:last-child");
+    if (!(strike instanceof HTMLElement) || !(calls instanceof HTMLElement) || !(last instanceof HTMLElement)) return null;
+    const before = strike.getBoundingClientRect().left;
+    const gapBefore = Math.abs(before - last.getBoundingClientRect().right);
+    const parked = calls.scrollLeft;
+    calls.scrollLeft = 0;
+    const after = strike.getBoundingClientRect().left;
+    const gapAfter = Math.abs(strike.getBoundingClientRect().left - last.getBoundingClientRect().right);
+    calls.scrollLeft = parked;
+    return {
+      moved: Math.abs(after - before),
+      opened: gapAfter - gapBefore,
+      overflow: calls.scrollWidth > calls.clientWidth + 2,
+    };
+  });
+}
+
 test("desk, density, volume shade, stream, and motion", async ({ page }, testInfo) => {
   await waitForBook(page);
   fs.mkdirSync(shotDir, { recursive: true });
@@ -64,7 +85,31 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
         kpiFits: kpis instanceof HTMLElement && kpis.scrollWidth <= kpis.clientWidth + 2,
       };
     });
-    expect(fitted.chainShare).toBeGreaterThanOrEqual(0.9);
+    expect(fitted.chainShare).toBeGreaterThanOrEqual(0.8);
+    const labels = await page.evaluate(() => {
+      const open = (selector: string) => {
+        const el = document.querySelector(selector);
+        if (!(el instanceof HTMLElement)) return false;
+        const box = el.getBoundingClientRect();
+        return box.width > 8 && box.left >= -1 && box.right <= window.innerWidth + 1 && box.top >= -1 && box.bottom <= window.innerHeight;
+      };
+      return {
+        view: open("[aria-label='View']"),
+        expiries: open("[aria-label='Expiries']"),
+        strikes: open("[aria-label='Strikes']"),
+        session: open(".session-pill"),
+        feed: open(".feed-chip"),
+        jump: open(".book-tools .icon-btn"),
+      };
+    });
+    expect(labels).toEqual({
+      view: true,
+      expiries: true,
+      strikes: true,
+      session: true,
+      feed: true,
+      jump: true,
+    });
     expect(fitted).toMatchObject({
       name: true,
       feed: true,
@@ -72,6 +117,13 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
       strikes: true,
       kpiFits: true,
     });
+    if (testInfo.project.name === "phone" || testInfo.project.name === "phone-narrow") {
+      await expect(page.locator(".chain-scroll")).toHaveAttribute("data-inward", "true");
+      const customScroll = await readInward(page);
+      expect(customScroll?.overflow).toBe(true);
+      expect(customScroll?.moved).toBeLessThanOrEqual(1);
+      expect(customScroll?.opened).toBeGreaterThan(8);
+    }
     expect(viewport?.width).toBeGreaterThan(0);
     await page.screenshot({ path: path.join(shotDir, `desk-${testInfo.project.name}.png`), fullPage: false });
     await page.getByRole("button", { name: "Toggle theme" }).click();
@@ -88,7 +140,9 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   await searchDialog.getByRole("button", { name: "Back" }).click();
   await expect(searchDialog).toBeHidden();
 
-  const chainText = await page.locator(".chain-table").innerText();
+  const chainText = await page.locator(".chain-table").evaluateAll((tables) =>
+    tables.map((table) => table.textContent ?? "").join(" "),
+  );
   expect(chainText).not.toMatch(/\+\d/);
   expect(chainText).not.toMatch(/ATM|±/);
 
@@ -107,6 +161,19 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   await expect(page.getByLabel("View")).toHaveValue("custom");
   await expect(page.locator(".side-labels")).toContainText("Calls");
   await expect(page.locator(".side-labels")).toContainText("Puts");
+  const expiryOptions = await page.getByLabel("Expiries").locator("option").allTextContents();
+  expect(expiryOptions.length).toBeGreaterThan(1);
+  expect(expiryOptions.some((label) => /all/i.test(label))).toBe(true);
+  await page.getByRole("button", { name: "Jump to spot" }).click();
+  const atmGap = await page.evaluate(() => {
+    const cell = document.querySelector("tr.is-atm .strike-cell");
+    const pane = document.querySelector(".inward-pane.mid") ?? document.querySelector(".chain-scroll");
+    if (!(cell instanceof HTMLElement) || !(pane instanceof HTMLElement)) return 999;
+    const cellBox = cell.getBoundingClientRect();
+    const paneBox = pane.getBoundingClientRect();
+    return Math.abs(cellBox.top + cellBox.height / 2 - (paneBox.top + paneBox.height / 2));
+  });
+  expect(atmGap).toBeLessThan(240);
   await page.getByLabel("View").selectOption("chain");
   await expect(page.getByLabel("Strikes")).toHaveValue("near");
   const density = page.getByTestId("density-select");
@@ -133,7 +200,8 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   await page.getByRole("button", { name: "Jump to spot" }).click();
   await expect(page.locator(".side-labels")).toContainText("Calls");
   await expect(page.locator(".side-labels")).toContainText("Puts");
-  await expect(page.locator(".chain-table thead tr")).toHaveCount(2);
+  const headRows = await page.locator(".chain-table thead tr").count();
+  expect(headRows === 2 || headRows === 3).toBe(true);
   await expect(page.getByTestId("spot-marker")).toBeVisible();
   await expect(page.locator(".wall-badge")).toHaveCount(0);
   const strikeGap = await page.evaluate(() => {
@@ -145,6 +213,15 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
     return Math.abs(cell.left - call.right);
   });
   expect(strikeGap).toBeLessThanOrEqual(1);
+  if (
+    (testInfo.project.name === "phone" || testInfo.project.name === "phone-narrow") &&
+    (await page.locator(".chain-scroll").getAttribute("data-inward")) === "true"
+  ) {
+    const fullScroll = await readInward(page);
+    expect(fullScroll?.overflow).toBe(true);
+    expect(fullScroll?.moved).toBeLessThanOrEqual(1);
+    expect(fullScroll?.opened).toBeGreaterThan(8);
+  }
 
   const headerOrder = await page.evaluate(() => {
     const heads = [...document.querySelectorAll(".chain-table thead tr.column-head th")].map((th) =>
@@ -212,10 +289,11 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   const layout = await page.evaluate(() => {
     const doc = document.documentElement;
     const chain = document.querySelector(".chain-scroll") as HTMLElement;
+    const scroller = (document.querySelector(".inward-pane.mid") as HTMLElement) ?? chain;
     const toolbar = document.querySelector(".toolbar") as HTMLElement;
     const stage = document.querySelector(".stage") as HTMLElement;
-    chain.scrollTop = 140;
-    const strike = chain.querySelector("tbody .strike-cell") as HTMLElement;
+    scroller.scrollTop = 140;
+    const strike = scroller.querySelector("tbody .strike-cell") as HTMLElement;
     if (chain.scrollWidth > chain.clientWidth + 8 && strike) {
       const delta = strike.getBoundingClientRect().left - chain.getBoundingClientRect().left;
       chain.scrollLeft = Math.max(0, chain.scrollLeft + delta - chain.clientWidth / 2 + strike.clientWidth / 2);
@@ -225,7 +303,7 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
     return {
       pageOverflow: doc.scrollWidth - doc.clientWidth,
       docScroll: doc.scrollTop,
-      chainTop: chain.scrollTop,
+      chainTop: scroller.scrollTop,
       chainLeft: chain.scrollLeft,
       chainOverflows: chain.scrollWidth > chain.clientWidth + 8,
       strikeInside: sRect.left >= cRect.left - 4 && sRect.right <= cRect.right + 4,

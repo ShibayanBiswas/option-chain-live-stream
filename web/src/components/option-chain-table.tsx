@@ -5,6 +5,7 @@ import { columnHint, columnLabel, putColumns, visibleColumns } from "@/lib/colum
 import { focusStrikes } from "@/lib/display";
 import { daysToExpiry } from "@/lib/expiry";
 import { blackScholes, deltaFromIv } from "@/lib/greeks";
+import { centerBook, chainOverflows, InwardChain, useChainWidth } from "@/components/inward-chain";
 import { cn } from "@/lib/cn";
 import { formatCompact, formatNumber, formatPrice, formatSigned, isEmptyValue } from "@/lib/format";
 import type { ChainRow, ColumnKey, OptionChainSnapshot, OptionQuote } from "@/lib/types";
@@ -111,9 +112,16 @@ export function OptionChainTable({
   const spotStrike = snapshot.totals.atm;
 
   const rows = useMemo(() => {
-    const allowed = new Set(focusStrikes(snapshot.rows.map((row) => row.strike), snapshot.spot, depth));
+    const allowed = new Set(
+      focusStrikes(
+        snapshot.rows.map((row) => row.strike),
+        snapshot.spot,
+        depth,
+        snapshot.totals.atm,
+      ),
+    );
     return snapshot.rows.filter((row) => allowed.has(row.strike));
-  }, [depth, snapshot.rows, snapshot.spot]);
+  }, [depth, snapshot.rows, snapshot.spot, snapshot.totals.atm]);
 
   const scales = useMemo(() => {
     const oi = Math.max(1, ...rows.flatMap((row) => [row.ce.oi ?? 0, row.pe.oi ?? 0]));
@@ -133,29 +141,104 @@ export function OptionChainTable({
     };
   }, [rows]);
 
+  const { ref: hostRef, width } = useChainWidth();
+  const pin = chainOverflows(width, callCols.length + peCols.length, density);
+
   useEffect(() => {
-    const row = document.getElementById(`strike-${spotStrike}`);
-    const scroller = row?.closest(".chain-scroll");
-    if (!row || !(scroller instanceof HTMLElement)) return;
-    const top = row.offsetTop - scroller.clientHeight / 2 + row.clientHeight / 2;
-    const cell = row.querySelector(".strike-cell");
-    const delta =
-      cell instanceof HTMLElement
-        ? cell.getBoundingClientRect().left - scroller.getBoundingClientRect().left
-        : 0;
-    const left =
-      cell instanceof HTMLElement
-        ? scroller.scrollLeft + delta - scroller.clientWidth / 2 + cell.clientWidth / 2
-        : scroller.scrollLeft;
-    scroller.scrollTo({
-      top: Math.max(0, top),
-      left: Math.max(0, left),
-      behavior: "auto",
-    });
-  }, [density, snapshot.expiry, snapshot.symbol, spotStrike]);
+    centerBook(spotStrike);
+  }, [density, snapshot.expiry, snapshot.symbol, spotStrike, pin]);
+
+  const lineProps = (row: ChainRow, index: number) => {
+    const previous = rows[index - 1];
+    const spot = snapshot.spot;
+    const showSpot = spot != null && previous != null && previous.strike < spot && row.strike > spot;
+    const atSpot = row.strike === spotStrike;
+    const callQuiet = !row.ce.volume;
+    const putQuiet = !row.pe.volume;
+    const itmCall = spot != null && row.strike < spot;
+    const itmPut = spot != null && row.strike > spot;
+    return { previous, spot, showSpot, atSpot, callQuiet, putQuiet, itmCall, itmPut };
+  };
+
+  if (pin) {
+    return (
+      <InwardChain
+        hostRef={hostRef}
+        density={density}
+        callSpan={callCols.length}
+        putSpan={peCols.length}
+        layoutKey={`${snapshot.symbol}:${snapshot.expiry}:${callCols.length}:${rows.length}`}
+        callHead={callCols.map((key) => (
+          <th key={`ce-${key}`} scope="col" className={cn("ce-zone", `col-${key}`)} title={columnHint(key)}>
+            {columnLabel(key)}
+          </th>
+        ))}
+        putHead={peCols.map((key) => (
+          <th key={`pe-${key}`} scope="col" className={cn("pe-zone", `col-${key}`)} title={columnHint(key)}>
+            {columnLabel(key)}
+          </th>
+        ))}
+        rows={rows.map((row, index) => {
+          const { spot, showSpot, atSpot, callQuiet, putQuiet, itmCall, itmPut } = lineProps(row, index);
+          return {
+            key: String(row.strike),
+            id: `strike-${row.strike}`,
+            className: cn(
+              "chain-row",
+              atSpot && "is-atm",
+              callQuiet && putQuiet && "is-zero",
+              itmCall && "is-itm-call",
+              itmPut && "is-itm-put",
+            ),
+            tabIndex: 0,
+            volume: callQuiet && putQuiet ? "zero" : "traded",
+            onClick: () => onSelect(row),
+            onKeyDown: (event) => {
+              if (event.key === "Enter") onSelect(row);
+            },
+            spot: showSpot ? `Spot ${formatPrice(spot)}` : null,
+            strike: formatNumber(row.strike, 0),
+            call: callCols.map((key) => (
+              <SideCell
+                key={`ce-${row.strike}-${key}`}
+                resetKey={`${snapshot.symbol}:${snapshot.expiry}`}
+                side="ce"
+                field={key}
+                quote={row.ce}
+                strike={row.strike}
+                spot={spot}
+                expiry={snapshot.expiry}
+                high={bands.high}
+                low={bands.low}
+                scale={key === "oi" || key === "volume" ? (key === "oi" ? scales.oi : scales.volume) : 0}
+                itm={itmCall}
+              />
+            )),
+            put: peCols.map((key) => (
+              <SideCell
+                key={`pe-${row.strike}-${key}`}
+                resetKey={`${snapshot.symbol}:${snapshot.expiry}`}
+                side="pe"
+                field={key}
+                quote={row.pe}
+                strike={row.strike}
+                spot={spot}
+                expiry={snapshot.expiry}
+                high={bands.high}
+                low={bands.low}
+                scale={key === "oi" || key === "volume" ? (key === "oi" ? scales.oi : scales.volume) : 0}
+                itm={itmPut}
+              />
+            )),
+          };
+        })}
+      />
+    );
+  }
 
   return (
     <div
+      ref={hostRef}
       className="chain-scroll"
       data-density={density}
       data-compact={narrow && density === "focus" ? "true" : undefined}

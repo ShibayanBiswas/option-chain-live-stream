@@ -4,9 +4,9 @@
 
 `/api/stream` is server-sent events.
 
-1. The first event is `chain`.
-2. A changed strike is a `patch`. An unchanged book sends nothing.
-3. `heartbeat` every 10 seconds carries the session and latency.
+1. A `heartbeat` is sent as soon as the stream opens, then again every 10 seconds. It carries the session and latency.
+2. The first book is `chain`.
+3. A changed strike is a `patch`. An unchanged book sends nothing.
 4. `rotate` fires before the 60 second function limit, and the client reconnects.
 5. Event ids increase. The browser is told `retry: 3000`.
 

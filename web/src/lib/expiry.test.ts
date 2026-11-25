@@ -10,11 +10,15 @@ describe("expiry and session", () => {
   const beforeClose = new Date("2026-11-24T15:00:00+05:30");
   const afterClose = new Date("2026-11-24T15:31:00+05:30");
 
-  it("keeps spot focus inside 200 points and leaves the rest for all strikes", () => {
-    expect(focusStrikes([25500, 25600, 25800, 26000, 26100], 25800, "near")).toEqual([25600, 25800, 26000]);
-    expect(focusStrikes([25500, 25600, 25800, 26000, 26100], 25800, "full")).toEqual([
-      25500, 25600, 25800, 26000, 26100,
-    ]);
+  it("keeps spot focus on the 18 strikes either side of at the money", () => {
+    const strikes = Array.from({ length: 50 }, (_, index) => 24000 + index * 50);
+    const near = focusStrikes(strikes, 25210, "near", 25200);
+    expect(near).toHaveLength(37);
+    expect(near[0]).toBe(24300);
+    expect(near.at(-1)).toBe(26100);
+    expect(near).toContain(25200);
+    expect(focusStrikes(strikes, 25210, "full", 25200)).toEqual(strikes);
+    expect(focusStrikes([25500, 25600, 25800], 25800, "near", 25800)).toEqual([25500, 25600, 25800]);
   });
 
   it("keeps the next upcoming expiries in date order", () => {

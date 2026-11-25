@@ -120,10 +120,24 @@ export function upcomingExpiry(expiries: string[], current: string, now = new Da
   return pool[0] ?? "";
 }
 
-export function focusStrikes(strikes: number[], spot: number | null, depth: "near" | "full"): number[] {
-  if (depth === "full" || spot == null) return strikes;
-  const near = strikes.filter((strike) => Math.abs(strike - spot) <= 200);
-  return near.length > 0 ? near : strikes;
+/** Spot Focus is the 18 strikes below the at-the-money strike and the 18 above it. */
+export function focusStrikes(
+  strikes: number[],
+  spot: number | null,
+  depth: "near" | "full",
+  atm?: number | null,
+): number[] {
+  if (depth === "full" || strikes.length === 0) return strikes;
+  const anchor = atm ?? spot;
+  if (anchor == null) return strikes;
+  let idx = strikes.indexOf(anchor);
+  if (idx < 0) {
+    idx = strikes.reduce(
+      (best, strike, index) => (Math.abs(strike - anchor) < Math.abs(strikes[best]! - anchor) ? index : best),
+      0,
+    );
+  }
+  return strikes.slice(Math.max(0, idx - 18), Math.min(strikes.length, idx + 19));
 }
 
 export function upcomingExpiries(expiries: string[], count: number, now = new Date()): string[] {
