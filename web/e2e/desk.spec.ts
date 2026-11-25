@@ -413,10 +413,15 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   await expect(page.locator("h1")).toHaveText("Anand Rathi Wealth");
   await expect(page.locator(".spot-inline")).not.toHaveText("—", { timeout: 60_000 });
   const expiry = page.getByLabel("Expiry");
-  if ((await expiry.locator("option").count()) > 1) {
-    await expiry.selectOption({ index: 1 });
-    await expect(page.getByRole("status").filter({ hasText: "Expiry updated" })).toBeVisible();
-  }
+  const expiryValues = await expiry.locator("option").evaluateAll((nodes) =>
+    nodes.map((node) => (node as HTMLOptionElement).value).filter(Boolean),
+  );
+  expect(expiryValues.length).toBeGreaterThan(1);
+  const currentExpiry = await expiry.inputValue();
+  const nextExpiry = expiryValues.find((value) => value !== currentExpiry) ?? expiryValues[0];
+  await expiry.selectOption(nextExpiry);
+  await expect(expiry).toHaveValue(nextExpiry);
+  await expect(page.locator(".chain-row").first()).toBeVisible();
 
   await page.getByRole("button", { name: "Toggle theme" }).click();
   await expect(page.locator("html")).toHaveClass(/dark/);
