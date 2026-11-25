@@ -2103,6 +2103,9 @@ html.dark .inward-captions .pe-zone {
 }
 
 .inward-pane.mid {
+  position: relative;
+  z-index: 3;
+  overflow: visible;
   box-shadow: inset 1px 0 0 var(--ar-border), inset -1px 0 0 var(--ar-border);
 }
 
@@ -2190,21 +2193,20 @@ html.dark .inward-captions .pe-zone {
   position: relative;
 }
 
-.spot-float {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  z-index: 6;
-  display: flex;
-  justify-content: center;
-  pointer-events: none;
-  height: 22px;
+.inward .inward-pane.mid .spot-marker td {
+  position: relative;
+  overflow: visible;
 }
 
-.spot-float span {
+.inward .inward-pane.mid .spot-marker span {
+  position: absolute;
+  left: 50%;
+  top: 1px;
+  z-index: 5;
+  transform: translateX(-50%);
   display: inline-flex;
   align-items: center;
+  width: max-content;
   height: 20px;
   padding: 0 10px;
   border-radius: 999px;
@@ -2213,16 +2215,8 @@ html.dark .inward-captions .pe-zone {
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
   white-space: nowrap;
-}
-
-.inward .inward-pane.mid .spot-marker span {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
+  pointer-events: none;
 }
 
 @media (max-width: 700px) {

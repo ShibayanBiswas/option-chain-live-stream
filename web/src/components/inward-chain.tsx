@@ -94,8 +94,6 @@ export function InwardChain({
     hostRef(node);
   }, [hostRef]);
 
-  const spotText = rows.find((line) => line.spot)?.spot ?? rows.find((line) => line.spotAfter)?.spotAfter ?? "";
-
   useLayoutEffect(() => {
     const root = rootRef.current;
     const scroll = root?.querySelector<HTMLElement>(".inward-panes");
@@ -107,14 +105,11 @@ export function InwardChain({
     const putsBody = table(".inward-panes .puts table");
     const callsPane = root.querySelector<HTMLElement>(".inward-panes .calls");
     const putsPane = root.querySelector<HTMLElement>(".inward-panes .puts");
-    const label = root.querySelector<HTMLElement>(".spot-float");
     if (!callsHead || !callsBody || !putsHead || !putsBody || !callsPane || !putsPane) return;
 
     const span = (el: HTMLElement) => Math.max(0, el.offsetWidth - (el.parentElement?.clientWidth ?? 0));
     let callsShift = 0;
     let dragged = false;
-    let contentY = 0;
-    let paneY = 0;
 
     const lockColumns = (head: HTMLElement, body: HTMLElement) => {
       const bodyRow = body.querySelector<HTMLElement>("tbody tr:not(.spot-marker)");
@@ -163,23 +158,6 @@ export function InwardChain({
       lockColumns(putsHead, putsBody);
       if (!dragged) callsShift = -span(callsBody);
       applyX();
-    };
-
-    const measureSpot = () => {
-      const row = scroll.querySelector<HTMLElement>(".mid .spot-marker");
-      if (!row || !label) {
-        if (label) label.style.visibility = "hidden";
-        return;
-      }
-      contentY = row.getBoundingClientRect().top - scroll.getBoundingClientRect().top + scroll.scrollTop;
-      paneY = scroll.getBoundingClientRect().top - root.getBoundingClientRect().top;
-      label.style.visibility = "visible";
-      label.style.transform = `translate3d(0, ${paneY + contentY - scroll.scrollTop}px, 0)`;
-    };
-
-    const onScroll = () => {
-      if (!label) return;
-      label.style.transform = `translate3d(0, ${paneY + contentY - scroll.scrollTop}px, 0)`;
     };
 
     let active = false;
@@ -237,8 +215,6 @@ export function InwardChain({
     };
 
     park();
-    measureSpot();
-    scroll.addEventListener("scroll", onScroll, { passive: true });
     root.addEventListener("pointerdown", start);
     root.addEventListener("wheel", onWheel, { passive: false });
     let framing = false;
@@ -246,7 +222,6 @@ export function InwardChain({
       if (framing) return;
       framing = true;
       park();
-      measureSpot();
       requestAnimationFrame(() => {
         framing = false;
       });
@@ -256,11 +231,10 @@ export function InwardChain({
     return () => {
       watch.disconnect();
       end();
-      scroll.removeEventListener("scroll", onScroll);
       root.removeEventListener("pointerdown", start);
       root.removeEventListener("wheel", onWheel);
     };
-  }, [layoutKey, spotText]);
+  }, [layoutKey]);
 
   const spotRow = (text: string | null | undefined, span: number, label: boolean) =>
     text ? (
@@ -277,11 +251,6 @@ export function InwardChain({
       data-inward="true"
       data-compact={compact ? "true" : undefined}
     >
-      {spotText ? (
-        <div className="spot-float" aria-hidden="true">
-          <span>{spotText}</span>
-        </div>
-      ) : null}
       <div className="inward-captions side-labels">
         <span className="ce-zone">Calls</span>
         <span className="strike-gap" />
