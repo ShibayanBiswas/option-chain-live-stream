@@ -10,12 +10,11 @@ async function waitForBook(page: Page) {
   await expect(page.locator(".spot-inline")).not.toHaveText("—", { timeout: 70_000 });
   await expect(page.locator(".chain-row").first()).toBeVisible();
   await page.locator(".toolbar").getByRole("button", { name: "Updates" }).click();
-  const guide = page.getByRole("dialog", { name: "Custom board" });
+  const guide = page.getByRole("dialog", { name: "Updates" });
   await expect(guide).toBeVisible();
-  await expect(guide).toContainText("Last price");
-  await expect(guide).toContainText("nearest expiry");
   await expect(guide).toContainText("High volume");
   await expect(guide).toContainText("Zero volume");
+  await expect(guide).not.toContainText("nearest expiry");
   const width = page.viewportSize()?.width ?? 0;
   if (width >= 1400 || width <= 400) {
     fs.mkdirSync(shotDir, { recursive: true });
@@ -202,7 +201,7 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   expect(atmGap).toBeLessThan(240);
   await page.getByLabel("View").selectOption("chain");
   await page.locator(".toolbar").getByRole("button", { name: "Updates" }).click();
-  const shades = page.getByRole("dialog", { name: "Volume shades" });
+  const shades = page.getByRole("dialog", { name: "Updates" });
   await expect(shades).toBeVisible();
   await expect(shades).toContainText("High volume");
   await expect(shades).toContainText("Zero volume");

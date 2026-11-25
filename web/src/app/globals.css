@@ -921,14 +921,12 @@ html.dark .chain-row.is-zero td {
 .updates-card {
   position: relative;
   z-index: 1;
-  width: min(440px, 100%);
-  max-height: min(78dvh, 640px);
-  overflow: auto;
-  border-radius: 20px;
+  width: min(220px, 100%);
+  border-radius: 16px;
   border: 1px solid var(--ar-border);
   background-color: var(--ar-surface);
   box-shadow: var(--ar-shadow);
-  padding: 18px;
+  padding: 14px 14px 10px;
 }
 
 .updates-card header {
@@ -938,55 +936,35 @@ html.dark .chain-row.is-zero td {
   gap: 12px;
 }
 
-.updates-card header p {
-  margin: 0;
-  font-family: var(--font-sans);
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--ar-muted);
-}
-
 .updates-card h2 {
-  margin: 2px 0 0;
-  font-size: 22px;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
 }
 
 .updates-card ul {
   list-style: none;
-  margin: 14px 0 0;
+  margin: 8px 0 0;
   padding: 0;
   display: grid;
-  gap: 10px;
 }
 
 .updates-card li {
   display: grid;
-  grid-template-columns: 28px 1fr;
+  grid-template-columns: 14px 1fr;
   gap: 10px;
   align-items: center;
-  padding: 8px 10px;
-  border: 1px solid var(--ar-border);
-  border-radius: 12px;
-  background: var(--ar-panel);
-}
-
-.updates-card strong,
-.updates-card em {
-  display: block;
-  font-style: normal;
-}
-
-.updates-card em {
-  color: var(--ar-muted);
-  font-family: var(--font-sans);
-  font-size: 12px;
+  padding: 7px 2px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: 13px;
 }
 
 .shade {
-  width: 22px;
-  height: 22px;
-  border-radius: 7px;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
   display: block;
 }
 

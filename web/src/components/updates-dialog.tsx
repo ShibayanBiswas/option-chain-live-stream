@@ -3,38 +3,22 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 
-const CUSTOM = [
-  { swatch: "price", name: "Last price", detail: "Each cell is the last price, shown to two decimals." },
-  { swatch: "expiry", name: "Expiries", detail: "Calls sit on the left, far date to near. Puts sit on the right, near date to far. The nearest expiry is against the strike." },
-  { swatch: "atm", name: "At the money", detail: "The strike nearest the live price is outlined in gold. The spot tag sits on that strike when the price lands on it, and between the surrounding strikes otherwise." },
-  { swatch: "high", name: "High volume", detail: "Last price in the top 20% of contracts traded on the loaded expiries." },
-  { swatch: "low", name: "Low volume", detail: "Last price in the bottom 20% of contracts that actually traded." },
-  { swatch: "zero", name: "Zero volume", detail: "No contracts traded in that expiry. The price is grey." },
-  { swatch: "up", name: "Tick up", detail: "The last price just increased. The cell flashes green." },
-  { swatch: "down", name: "Tick down", detail: "The last price just decreased. The cell flashes red." },
-  { swatch: "quote", name: "Quote", detail: "Click a price to open Calls and Puts for that strike." },
-] as const;
-
-const SHADES = [
-  { swatch: "high", name: "High volume", detail: "LTP in the top 20% of contracts traded on this chain." },
-  { swatch: "low", name: "Low volume", detail: "LTP in the bottom 20% of contracts that actually traded." },
-  { swatch: "zero", name: "Zero volume", detail: "No contracts traded. The whole strike is grey." },
-  { swatch: "up", name: "Tick up", detail: "LTP or OI just increased. The cell flashes green." },
-  { swatch: "down", name: "Tick down", detail: "LTP or OI just decreased. The cell flashes red." },
-  { swatch: "itm", name: "ITM", detail: "In the money. Calls below spot, puts above spot." },
+const ROWS = [
+  { swatch: "high", name: "High volume" },
+  { swatch: "low", name: "Low volume" },
+  { swatch: "zero", name: "Zero volume" },
+  { swatch: "up", name: "Tick up" },
+  { swatch: "down", name: "Tick down" },
 ] as const;
 
 export function UpdatesDialog({
   open,
-  view,
   onClose,
 }: {
   open: boolean;
   view: "custom" | "chain";
   onClose: () => void;
 }) {
-  const custom = view === "custom";
-  const items = custom ? CUSTOM : SHADES;
   return (
     <AnimatePresence>
       {open ? (
@@ -45,42 +29,27 @@ export function UpdatesDialog({
           exit={{ opacity: 0 }}
           onClick={onClose}
         >
-          <motion.section
+          <section
             className="updates-card"
             role="dialog"
-            aria-label={custom ? "Custom board" : "Volume shades"}
-            initial={{ opacity: 0, y: 16, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.98 }}
-            transition={{ type: "spring", stiffness: 380, damping: 30 }}
+            aria-label="Updates"
             onClick={(event) => event.stopPropagation()}
           >
             <header>
-              <div>
-                <p>{custom ? "Custom" : "Option chain"}</p>
-                <h2>{custom ? "Prices and volume" : "Volume shades"}</h2>
-              </div>
+              <h2>Updates</h2>
               <button className="icon-btn" type="button" onClick={onClose} aria-label="Close updates">
                 <X className="h-4 w-4" />
               </button>
             </header>
             <ul>
-              {items.map((item, index) => (
-                <motion.li
-                  key={item.name}
-                  initial={{ opacity: 0, x: 8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.04 * index }}
-                >
+              {ROWS.map((item) => (
+                <li key={item.name}>
                   <i className={`shade shade-${item.swatch}`} />
-                  <span>
-                    <strong>{item.name}</strong>
-                    <em>{item.detail}</em>
-                  </span>
-                </motion.li>
+                  <span>{item.name}</span>
+                </li>
               ))}
             </ul>
-          </motion.section>
+          </section>
         </motion.div>
       ) : null}
     </AnimatePresence>
