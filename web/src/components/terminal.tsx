@@ -78,7 +78,8 @@ export function Terminal() {
           if (!first) return;
           const saved = window.localStorage.getItem("ocls-last");
           const all = [...data.indexes, ...data.equities];
-          const remembered = all.find((item) => `${item.exchange}:${item.symbol}` === saved);
+          const visible = (item: Instrument) => item.segment !== "INDEX" || item.symbol === "NIFTY" || item.symbol === "SENSEX";
+          const remembered = all.find((item) => `${item.exchange}:${item.symbol}` === saved && visible(item));
           const nifty = all.find((item) => item.symbol === "NIFTY" && item.exchange === "NSE");
           setSelection((current) =>
             current.item
@@ -217,7 +218,10 @@ export function Terminal() {
   }
 
   const instruments = useMemo(
-    () => [...(book?.indexes ?? []), ...(book?.equities ?? [])],
+    () => [
+      ...(book?.indexes ?? []).filter((item) => item.symbol === "NIFTY" || item.symbol === "SENSEX"),
+      ...(book?.equities ?? []),
+    ],
     [book],
   );
   const marketOpen = snapshot ? snapshot.marketOpen : book?.market?.open === true;

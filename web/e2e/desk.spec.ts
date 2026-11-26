@@ -447,19 +447,9 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
     .locator("section.tree-section", { hasText: "Indices" })
     .locator(".symbol-main span")
     .allTextContents();
-  expect(indexLabels[0]).toBe("NIFTY 50");
-  expect(indexLabels).toContain("SENSEX");
-  const moreNse = page.getByRole("button", { name: "More NSE indices" });
-  if (await moreNse.count()) {
-    await expect(moreNse).toHaveAttribute("aria-expanded", "false");
-    await moreNse.click();
-    await expect(moreNse).toHaveAttribute("aria-expanded", "true");
-    const opened = await page
-      .locator("section.tree-section", { hasText: "Indices" })
-      .locator(".symbol-main span")
-      .allTextContents();
-    expect(opened.length).toBeGreaterThan(indexLabels.length);
-  }
+  expect(indexLabels).toEqual(["NIFTY 50", "SENSEX"]);
+  await expect(page.getByRole("button", { name: "More NSE indices" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "More BSE indices" })).toHaveCount(0);
   const equityNames = page.locator("section.tree-section", { hasText: "Equity" }).locator(".symbol-main");
   const equityLabels = await equityNames.allTextContents();
   expect(equityLabels.length).toBeGreaterThan(0);
