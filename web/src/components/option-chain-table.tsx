@@ -55,10 +55,10 @@ function renderValue(key: ColumnKey, value: number | null) {
   return formatNumber(value, 0);
 }
 
-function volumeBand(value: number | null, high: number, low: number): "high" | "low" | "mid" | null {
-  if (!value) return null;
+function volumeBand(value: number | null, high: number, low: number): "high" | "low" | "mid" | "zero" {
+  if (!value) return "zero";
   if (value >= high) return "high";
-  if (value <= low) return "low";
+  if (low > 0 && value <= low) return "low";
   return "mid";
 }
 
@@ -422,8 +422,7 @@ function SideCell({
           ? "tone-down"
           : ""
       : "";
-  const quiet = !quote.volume;
-  const heat = !quiet && field === "ltp" ? volumeBand(quote.volume, high, low) : null;
+  const heat = field === "ltp" ? volumeBand(quote.volume, high, low) : null;
   const depth = scale > 0 && value ? Math.max(6, Math.min(100, (value / scale) * 100)) : 0;
 
   return (
@@ -437,8 +436,7 @@ function SideCell({
         "depth-cell",
         tone,
         itm && "is-itm",
-        quiet && "vol-zero",
-        heat && `vol-${heat}`,
+        heat && heat !== "mid" && `vol-${heat}`,
       )}
     >
       {depth > 0 ? (
