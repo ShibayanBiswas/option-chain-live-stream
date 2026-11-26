@@ -110,6 +110,7 @@ export async function GET(req: Request) {
               stamp = applied.snapshot.timestamp;
             },
             (state) => {
+              send("socket", { state });
               if (state === "error" || state === "closed") usingSocket = false;
             },
           );

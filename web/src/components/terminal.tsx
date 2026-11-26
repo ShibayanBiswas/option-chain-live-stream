@@ -19,6 +19,7 @@ import { atmIv } from "@/lib/analytics";
 import { cn } from "@/lib/cn";
 import { displayName, upcomingExpiry, upcomingExpiries } from "@/lib/display";
 import { formatCompact, formatDataAge, formatNumber, formatPrice } from "@/lib/format";
+import { feedChipLabel } from "@/lib/stream-link";
 import { useTheme } from "@/lib/theme";
 import type { ChainRow, Instrument, TapeQuote } from "@/lib/types";
 
@@ -98,7 +99,7 @@ export function Terminal() {
     };
   }, []);
 
-  const { snapshot, status, error, quiet } = useOptionStream({
+  const { snapshot, status, error, quiet, socketState } = useOptionStream({
     symbol: selected?.symbol ?? "",
     expiry,
     exchange: selected?.exchange ?? "NSE",
@@ -233,7 +234,16 @@ export function Terminal() {
         : (book?.market?.message ?? "Market Closed");
   const waiting = status === "connecting" || status === "polling";
   const delayed = Boolean(snapshot?.stale);
+  const sameBook = Boolean(snapshot && selected && snapshot.symbol === selected.symbol && snapshot.exchange === selected.exchange);
   const feed = delayed ? "Delayed" : !snapshot ? (waiting ? "Connecting" : "REST") : !marketOpen ? "Closed" : waiting ? "Waiting" : "REST";
+  const feedWord = feedChipLabel({
+    quiet,
+    sameBook,
+    feed: sameBook ? snapshot?.feed ?? null : null,
+    source: sameBook ? snapshot?.source ?? null : null,
+    socket: socketState,
+    fallback: feed,
+  });
   const age = formatDataAge(snapshot?.timestamp, clock);
   const ageTone = marketOpen && age ? (age.seconds >= 120 ? "is-late" : age.seconds >= 45 ? "is-aged" : "") : "";
   const liveExpiryCount = upcomingExpiries(snapshot?.expiries ?? [], 99).length;
@@ -281,15 +291,17 @@ export function Terminal() {
             data-state={waiting ? "waiting" : quiet ? "waiting" : status}
             aria-live="polite"
             title={
-              snapshot?.source === "bse"
-                ? `BSE updates about every minute. Fetch ${snapshot.latencyMs} ms`
-                : snapshot?.feed === "websocket"
-                  ? `Exchange websocket · prices as frames arrive. Fetch ${snapshot.latencyMs} ms`
-                  : `Exchange snapshot · refreshes about every 30 s. Fetch ${snapshot?.latencyMs ?? "—"} ms`
+              !sameBook
+                ? "Opening this book"
+                : snapshot?.source === "bse"
+                  ? `BSE updates about every minute. Fetch ${snapshot.latencyMs} ms`
+                  : feedWord === "WebSocket"
+                    ? `Exchange websocket · prices as frames arrive. Fetch ${snapshot?.latencyMs ?? "—"} ms`
+                    : `Exchange snapshot · refreshes about every 30 s. Fetch ${snapshot?.latencyMs ?? "—"} ms`
             }
           >
             <span className={cn("live-dot", status === "error" && "is-off", (waiting || quiet) && "is-stale")} />
-            <span>{quiet ? "Stale" : snapshot?.feed === "websocket" ? "WebSocket" : feed}</span>
+            <span>{feedWord}</span>
             <em>{age?.label ?? "…"}</em>
           </div>
           <span

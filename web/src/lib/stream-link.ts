@@ -54,3 +54,18 @@ export function noteDrop(link: Link): { link: Link; startPoll: boolean; retryMs:
 export function noteLost(link: Link): Link {
   return link.lost ? link : { ...link, lost: true };
 }
+
+/** The chip follows an NSE frame, or the open NSE socket before the first trade. A BSE book stays on its snapshot. */
+export function feedChipLabel(input: {
+  quiet: boolean;
+  sameBook: boolean;
+  feed: "rest" | "polling" | "websocket" | null;
+  source: "nse" | "bse" | null;
+  socket: "idle" | "open" | "closed" | "error";
+  fallback: string;
+}): string {
+  if (!input.sameBook) return "Connecting";
+  if (input.quiet) return "Stale";
+  if (input.feed === "websocket" || (input.source === "nse" && input.socket === "open")) return "WebSocket";
+  return input.fallback;
+}

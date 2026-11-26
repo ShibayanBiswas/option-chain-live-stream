@@ -31,6 +31,7 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
     setSnapshot((current) => {
       if (
         current &&
+        current.exchange === next.exchange &&
         current.symbol === next.symbol &&
         current.expiry === next.expiry &&
         next.timestamp < current.timestamp
@@ -80,6 +81,7 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
     setStatus("connecting");
     setSocketState("idle");
     setError(null);
+    setSnapshot((current) => (current && (current.symbol !== symbol || current.exchange !== exchange) ? null : current));
 
     let link: Link = freshLink();
     let dropTimer: number | null = null;

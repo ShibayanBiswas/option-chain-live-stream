@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { applyLtpPatch, diffLtpSlice, toLtpSlice } from "./ltp-slice";
-import { freshLink, LOST_AFTER_MS, noteDelivery, noteDrop, noteLost, SSE_RETRY_WHILE_POLLING_MS } from "./stream-link";
+import { feedChipLabel, freshLink, LOST_AFTER_MS, noteDelivery, noteDrop, noteLost, SSE_RETRY_WHILE_POLLING_MS } from "./stream-link";
 import type { OptionChainSnapshot } from "./types";
 
 describe("reconnect", () => {
@@ -41,6 +41,16 @@ describe("reconnect", () => {
     const stale = noteDelivery(current, 7);
     expect(stale.apply).toBe(false);
     expect(stale.link.lastId).toBe(8);
+  });
+});
+
+describe("feed chip", () => {
+  it("says WebSocket once the NSE socket is open, and leaves a BSE book on the snapshot", () => {
+    expect(feedChipLabel({ quiet: false, sameBook: true, feed: "polling", source: "nse", socket: "open", fallback: "REST" })).toBe("WebSocket");
+    expect(feedChipLabel({ quiet: false, sameBook: true, feed: "websocket", source: "nse", socket: "idle", fallback: "REST" })).toBe("WebSocket");
+    expect(feedChipLabel({ quiet: false, sameBook: true, feed: "polling", source: "bse", socket: "open", fallback: "REST" })).toBe("REST");
+    expect(feedChipLabel({ quiet: true, sameBook: true, feed: "websocket", source: "nse", socket: "open", fallback: "REST" })).toBe("Stale");
+    expect(feedChipLabel({ quiet: false, sameBook: false, feed: "websocket", source: "nse", socket: "open", fallback: "REST" })).toBe("Connecting");
   });
 });
 
