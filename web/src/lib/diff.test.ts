@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { mergeChain } from "./diff";
+import { coalescePatches, mergeChain, type ChainPatch, type CellTuple } from "./diff";
 import type { OptionChainSnapshot, OptionQuote } from "./types";
 
 function quote(lastPrice: number, volume: number): OptionQuote {
@@ -53,5 +53,40 @@ describe("mergeChain", () => {
     const second = { ...book("polling", 10.5, 12), timestamp: "2026-11-26T10:00:02+05:30" };
     expect(mergeChain(first, second).rows[0]?.ce.volume).toBe(30);
     expect(mergeChain(first, second).rows[0]?.ce.lastPrice).toBe(10.5);
+  });
+});
+
+describe("coalescePatches", () => {
+  function tick(cells: CellTuple[], spot = 100): ChainPatch {
+    return {
+      symbol: "NIFTY",
+      expiry: "01-Dec-2026",
+      spot,
+      timestamp: "2026-11-26T10:00:01+05:30",
+      latencyMs: 1,
+      feed: "websocket",
+      totals: book("websocket", 1, 1).totals,
+      cells,
+    };
+  }
+
+  it("keeps the latest price and the higher volume", () => {
+    const first = tick([
+      [100, "ce", "ltp", 10],
+      [100, "ce", "volume", 20],
+    ]);
+    const second = tick(
+      [
+        [100, "ce", "ltp", 10.5],
+        [100, "ce", "volume", 4],
+      ],
+      101,
+    );
+    const merged = coalescePatches(first, second);
+    expect(merged.spot).toBe(101);
+    expect(merged.cells).toEqual([
+      [100, "ce", "ltp", 10.5],
+      [100, "ce", "volume", 20],
+    ]);
   });
 });

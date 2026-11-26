@@ -44,19 +44,6 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
     setError(null);
   }, []);
 
-  const applyIncomingPatch = useCallback((patch: ChainPatch) => {
-    setSnapshot((current) => {
-      if (!current) return current;
-      if (patch.timestamp && patch.timestamp < current.timestamp) {
-        console.warn("dropped older patch", patch.symbol, patch.timestamp, current.timestamp);
-        return current;
-      }
-      return applyPatch(current, patch);
-    });
-    setUpdatedAt(Date.now());
-    setError(null);
-  }, []);
-
   const fetchOnce = useCallback(async () => {
     const qs = new URLSearchParams({
       symbol,
@@ -182,15 +169,17 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
             buf += decoder.decode(value, { stream: true });
             const parsed = takeSseEvents(buf);
             buf = parsed.rest;
+            const frames: Array<{ kind: "chain"; snapshot: OptionChainSnapshot } | { kind: "patch"; patch: ChainPatch }> = [];
+            let rotated = false;
             for (const evt of parsed.events) {
               if (!current()) return;
               const message = { lastEventId: evt.id } as MessageEvent;
               if (evt.event === "chain") {
                 if (!accept(message)) continue;
-                applySnapshot(JSON.parse(evt.data));
+                frames.push({ kind: "chain", snapshot: JSON.parse(evt.data) as OptionChainSnapshot });
               } else if (evt.event === "patch") {
                 if (!accept(message)) continue;
-                applyIncomingPatch(JSON.parse(evt.data) as ChainPatch);
+                frames.push({ kind: "patch", patch: JSON.parse(evt.data) as ChainPatch });
               } else if (evt.event === "heartbeat") {
                 if (!accept(message)) continue;
                 lastBeat.current = Date.now();
@@ -201,9 +190,38 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
                 const payload = JSON.parse(evt.data) as { message?: string };
                 setError(payload.message || "Stream interrupted");
               } else if (evt.event === "rotate") {
-                connectSse();
-                return;
+                rotated = true;
+                break;
               }
+            }
+            if (frames.length > 0) {
+              setSnapshot((current) => {
+                let next = current;
+                for (const frame of frames) {
+                  if (frame.kind === "chain") {
+                    const incoming = frame.snapshot;
+                    if (
+                      next &&
+                      next.symbol === incoming.symbol &&
+                      next.expiry === incoming.expiry &&
+                      incoming.timestamp < next.timestamp
+                    ) {
+                      continue;
+                    }
+                    next = next ? mergeChain(next, incoming) : incoming;
+                  } else if (next) {
+                    if (frame.patch.timestamp && frame.patch.timestamp < next.timestamp) continue;
+                    next = applyPatch(next, frame.patch);
+                  }
+                }
+                return next;
+              });
+              setUpdatedAt(Date.now());
+              setError(null);
+            }
+            if (rotated) {
+              connectSse();
+              return;
             }
           }
           if (current()) fail();
@@ -255,7 +273,7 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
       esRef.current = null;
       stopPoll();
     };
-  }, [applyIncomingPatch, applySnapshot, enabled, exchange, expiry, fetchOnce, segment, symbol]);
+  }, [applySnapshot, enabled, exchange, expiry, fetchOnce, segment, symbol]);
 
   return { snapshot, status, error, updatedAt, socketState, quiet, refresh: fetchOnce };
 }

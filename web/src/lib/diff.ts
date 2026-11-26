@@ -153,6 +153,24 @@ export function mergeChain(current: OptionChainSnapshot, incoming: OptionChainSn
   };
 }
 
+function cellKey(cell: CellTuple): string {
+  return `${cell[0]}:${cell[1]}:${cell[2]}`;
+}
+
+/** Fold several ticks into one patch. The latest price wins. Volume never moves backwards. */
+export function coalescePatches(current: ChainPatch | null, incoming: ChainPatch): ChainPatch {
+  if (!current) return { ...incoming, cells: incoming.cells.slice() };
+  const merged = new Map<string, CellTuple>();
+  for (const cell of current.cells) merged.set(cellKey(cell), cell);
+  for (const cell of incoming.cells) {
+    const key = cellKey(cell);
+    const prev = merged.get(key);
+    if (cell[2] === "volume" && prev && prev[3] != null && cell[3] != null && cell[3] < prev[3]) continue;
+    merged.set(key, cell);
+  }
+  return { ...incoming, spot: incoming.spot ?? current.spot, cells: [...merged.values()] };
+}
+
 export function applyPatch(snapshot: OptionChainSnapshot, patch: ChainPatch): OptionChainSnapshot {
   const byStrike = new Map(snapshot.rows.map((row) => [row.strike, { ...row, ce: { ...row.ce }, pe: { ...row.pe } }]));
   const keepPrices = snapshot.feed === "websocket" && patch.feed !== "websocket";
