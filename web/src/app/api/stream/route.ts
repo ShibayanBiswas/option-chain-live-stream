@@ -1,6 +1,6 @@
 import { loadOptionChain, publicChainError } from "@/lib/chain-service";
 import { nextStreamEvent } from "@/lib/diff";
-import { applyOptionTick, openNseOptionSocket, overlayContractFields } from "@/lib/nse-ws";
+import { applyOptionTick, openNseOptionSocket, overlayContractFields, socketShouldStay } from "@/lib/nse-ws";
 import type { OptionChainSnapshot } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -60,9 +60,12 @@ export async function GET(req: Request) {
       };
 
       const pull = async (full: boolean) => {
-        const next = await loadOptionChain({ symbol, expiry, exchange, segment });
-        next.feed = "polling";
-        marketOpen = next.marketOpen;
+        const loaded = await loadOptionChain({ symbol, expiry, exchange, segment });
+        const current = snapshot;
+        const live = current?.feed === "websocket";
+        const next = current?.feed === "websocket" ? overlayContractFields(current, loaded) : loaded;
+        next.feed = live ? "websocket" : "polling";
+        marketOpen = loaded.marketOpen;
         const event = nextStreamEvent(snapshot, next, full);
         snapshot = next;
         stamp = next.timestamp;
@@ -111,7 +114,7 @@ export async function GET(req: Request) {
             },
           );
           await new Promise((resolve) => setTimeout(resolve, 2_500));
-          if (!usingSocket) {
+          if (socket && !socketShouldStay(socket.readyState, usingSocket)) {
             socket.close();
             socket = null;
           }

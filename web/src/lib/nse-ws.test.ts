@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { applyOptionTick, istTickTime, overlayContractFields } from "./nse-ws";
+import { applyOptionTick, istTickTime, overlayContractFields, socketShouldStay } from "./nse-ws";
 import type { OptionChainSnapshot, OptionQuote } from "./types";
 
 function quote(partial: Partial<OptionQuote> = {}): OptionQuote {
@@ -81,5 +81,12 @@ describe("NSE option socket", () => {
     expect(merged.rows[0]?.ce.lastPrice).toBe(10.55);
     expect(merged.rows[0]?.ce.oi).toBe(140);
     expect(merged.rows[0]?.ce.iv).toBe(19);
+  });
+
+  it("keeps a connected socket that has not ticked yet", () => {
+    expect(socketShouldStay(0, false)).toBe(true);
+    expect(socketShouldStay(1, false)).toBe(true);
+    expect(socketShouldStay(3, false)).toBe(false);
+    expect(socketShouldStay(3, true)).toBe(true);
   });
 });

@@ -111,6 +111,11 @@ export function applyOptionTick(
   };
 }
 
+/** A quiet equity book still has a live socket. Drop it only after the handshake fails. */
+export function socketShouldStay(readyState: number, ticked: boolean): boolean {
+  return ticked || readyState === 0 || readyState === 1;
+}
+
 /** Copy open interest and IV from a chain refresh onto the book the socket is updating. */
 export function overlayContractFields(current: OptionChainSnapshot, fresh: OptionChainSnapshot): OptionChainSnapshot {
   const incoming = new Map(fresh.rows.map((row) => [row.strike, row]));
