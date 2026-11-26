@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
 import { centerBook, chainOverflows, InwardChain, useChainWidth } from "@/components/inward-chain";
 import { describeExpiry, focusStrikes, spotSlot, upcomingExpiries } from "@/lib/display";
@@ -91,7 +91,7 @@ export function CustomLtpBoard({
   const pin = chainOverflows(width, columns.length * 2, "custom");
 
   const parked = useRef("");
-  useLayoutEffect(() => {
+  useEffect(() => {
     const key = `${symbol}:${chosen.join(",")}:${pin}:${strikes.length}`;
     if (parked.current === key || atm == null) return;
     parked.current = key;

@@ -4,7 +4,7 @@ Two groups: **Indices** and **Equity**.
 
 ## Indices
 
-The desk lists NIFTY 50 under NSE and SENSEX under BSE. Other index books stay off the sidebar.
+`DESK_SCOPE` in `src/lib/config.ts` is the only switch. `all` (the default) lists every NSE index option book and every BSE index option book. NIFTY 50 is first under NSE and SENSEX is first under BSE. The rest sit under More NSE indices and More BSE indices. `core` keeps only NIFTY and SENSEX.
 
 If BSE discovery fails, the last cached index list is served and the universe is marked stale. There is no hard-coded SENSEX contract code.
 

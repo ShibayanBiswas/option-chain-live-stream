@@ -229,7 +229,7 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   expect(expiryOptions.some((label) => /all/i.test(label))).toBe(true);
   await page.getByRole("button", { name: "Jump to spot" }).click();
   const atmGap = await page.evaluate(() => {
-    const cell = document.querySelector("[data-testid=spot-marker]") ?? document.querySelector("tr.is-atm");
+    const cell = document.querySelector("tr.is-atm .strike-cell");
     const pane = document.querySelector(".inward-panes") ?? document.querySelector(".chain-scroll");
     if (!(cell instanceof HTMLElement) || !(pane instanceof HTMLElement)) return 999;
     const cellBox = cell.getBoundingClientRect();
@@ -447,9 +447,8 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
     .locator("section.tree-section", { hasText: "Indices" })
     .locator(".symbol-main span")
     .allTextContents();
-  expect(indexLabels).toEqual(["NIFTY 50", "SENSEX"]);
-  await expect(page.getByRole("button", { name: "More NSE indices" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "More BSE indices" })).toHaveCount(0);
+  expect(indexLabels[0]).toBe("NIFTY 50");
+  expect(indexLabels).toContain("SENSEX");
   const equityNames = page.locator("section.tree-section", { hasText: "Equity" }).locator(".symbol-main");
   const equityLabels = await equityNames.allTextContents();
   expect(equityLabels.length).toBeGreaterThan(0);

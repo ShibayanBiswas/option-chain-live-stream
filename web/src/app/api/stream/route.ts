@@ -1,5 +1,5 @@
 import { loadOptionChain, publicChainError } from "@/lib/chain-service";
-import { coalescePatches, mergeChain, nextStreamEvent, type ChainPatch } from "@/lib/diff";
+import { nextStreamEvent } from "@/lib/diff";
 import { applyOptionTick, openNseOptionSocket, overlayContractFields } from "@/lib/nse-ws";
 import type { OptionChainSnapshot } from "@/lib/types";
 
@@ -50,28 +50,6 @@ export async function GET(req: Request) {
       let marketOpen = false;
       const started = Date.now();
       let lastSessionCheck = 0;
-      let pending: ChainPatch | null = null;
-      let flushTimer: ReturnType<typeof setTimeout> | undefined;
-
-      const emitPending = () => {
-        if (flushTimer) {
-          clearTimeout(flushTimer);
-          flushTimer = undefined;
-        }
-        if (!pending) return;
-        const patch = pending;
-        pending = null;
-        send("patch", patch);
-      };
-
-      const queuePatch = (patch: ChainPatch) => {
-        pending = coalescePatches(pending, patch);
-        if (flushTimer) return;
-        flushTimer = setTimeout(() => {
-          flushTimer = undefined;
-          emitPending();
-        }, 200);
-      };
 
       const beat = () => {
         send("heartbeat", {
@@ -82,10 +60,9 @@ export async function GET(req: Request) {
       };
 
       const pull = async (full: boolean) => {
-        const loaded = await loadOptionChain({ symbol, expiry, exchange, segment });
-        loaded.feed = "polling";
-        const next = snapshot ? mergeChain(snapshot, loaded) : loaded;
-        marketOpen = loaded.marketOpen;
+        const next = await loadOptionChain({ symbol, expiry, exchange, segment });
+        next.feed = "polling";
+        marketOpen = next.marketOpen;
         const event = nextStreamEvent(snapshot, next, full);
         snapshot = next;
         stamp = next.timestamp;
@@ -116,13 +93,13 @@ export async function GET(req: Request) {
               const applied = applyOptionTick(snapshot, tick);
               if (!applied) return;
               usingSocket = true;
-              queuePatch({
+              send("patch", {
                 symbol: applied.snapshot.symbol,
                 expiry: applied.snapshot.expiry,
                 spot: applied.snapshot.spot,
                 timestamp: applied.snapshot.timestamp,
                 latencyMs: applied.snapshot.latencyMs,
-                feed: "websocket",
+                feed: "websocket" as const,
                 totals: applied.snapshot.totals,
                 cells: applied.cells,
               });
@@ -151,7 +128,7 @@ export async function GET(req: Request) {
                 const event = nextStreamEvent(snapshot, merged, false);
                 snapshot = merged;
                 marketOpen = fresh.marketOpen;
-                if (event.type === "patch") queuePatch(event.patch);
+                if (event.type === "patch") send("patch", event.patch);
               }
               lastContractPull = Date.now();
             }
@@ -171,12 +148,10 @@ export async function GET(req: Request) {
           const unchanged = previousStamp !== "" && stamp === previousStamp;
           await new Promise((resolve) => setTimeout(resolve, marketOpen ? (unchanged ? 3_000 : 500) : 10_000));
         }
-        emitPending();
         send("rotate", { reason: "maxDuration", afterMs: Date.now() - started });
       } catch (err) {
         send("notice", { message: publicMessage(err) });
       } finally {
-        emitPending();
         socket?.close();
         if (heartbeat) clearInterval(heartbeat);
         if (!closed) {

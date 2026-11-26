@@ -11,7 +11,7 @@ Next.js 15 App Router desk in `web/`, deployed on Vercel as **option-chain-live-
 | `src/components/inward-chain.tsx` | Fixed strike, with the two sides scrolling toward it |
 | `src/components/option-chain-table.tsx` | One expiry: calls, strike, puts |
 | `src/hooks/use-option-stream.ts` | SSE client. Backs off, then polls, and pauses while the tab is hidden |
-| `src/lib/universe.ts` | Sidebar shows NIFTY and SENSEX. Equity is Anand Rathi Wealth only |
+| `src/lib/universe.ts` | Keeps NIFTY and SENSEX. Equity is Anand Rathi Wealth only |
 | `src/lib/chain-service.ts` | NSE or BSE snapshot, with a short in-memory cache |
 | `src/lib/http.ts` | Pooled fetch, then curl if the exchange resets Node |
 | `src/app/api/stream/route.ts` | One chain, then patches and heartbeats |

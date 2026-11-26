@@ -1,4 +1,4 @@
-import { loadOptionChain, publicChainError } from "@/lib/chain-service";
+import { loadOptionChain } from "@/lib/chain-service";
 import { diffLtpSlice, toLtpSlice, type LtpSlice } from "@/lib/ltp-slice";
 
 export const runtime = "nodejs";
@@ -68,12 +68,12 @@ export async function GET(req: Request) {
           const expiry = expiries[cursor % expiries.length]!;
           cursor += 1;
           await pull(expiry).catch((err) => {
-            send("notice", { message: publicChainError(err) });
+            send("notice", { message: err instanceof Error ? err.message : "Slice unavailable" });
           });
         }
         send("rotate", { reason: "maxDuration" });
       } catch (err) {
-        send("notice", { message: publicChainError(err) });
+        send("notice", { message: err instanceof Error ? err.message : "Slice unavailable" });
       } finally {
         if (heartbeat) clearInterval(heartbeat);
         if (!closed) {

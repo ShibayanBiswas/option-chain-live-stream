@@ -14,7 +14,6 @@ const ROWS = [
 
 export function UpdatesDialog({
   open,
-  view,
   onClose,
 }: {
   open: boolean;
@@ -68,7 +67,7 @@ export function UpdatesDialog({
             onClick={(event) => event.stopPropagation()}
           >
             <header>
-              <h2>{view === "custom" ? "Custom updates" : "Chain updates"}</h2>
+              <h2>Updates</h2>
               <button className="icon-btn" type="button" onClick={onClose} aria-label="Close updates">
                 <X className="h-4 w-4" />
               </button>

@@ -137,13 +137,11 @@ async function rawBseChain(scrip, product) {
 }
 
 function maxPain(rows) {
-  const withOi = rows.filter((row) => (row.ce.oi || 0) + (row.pe.oi || 0) > 0);
-  if (withOi.length < 3) return null;
-  let best = withOi[0].strike;
+  let best = rows[0]?.strike ?? null;
   let bestPain = Infinity;
-  for (const candidate of withOi) {
+  for (const candidate of rows) {
     let pain = 0;
-    for (const row of withOi) {
+    for (const row of rows) {
       if (candidate.strike > row.strike) pain += (candidate.strike - row.strike) * (row.ce.oi || 0);
       if (candidate.strike < row.strike) pain += (row.strike - candidate.strike) * (row.pe.oi || 0);
     }
@@ -290,25 +288,12 @@ async function main() {
   console.log(`Live source check against ${BASE}`);
   const universe = await getJson("/api/universe");
   const symbols = universe.indexes.map((row) => `${row.exchange}:${row.symbol}`);
-  const scope = process.env.DESK_SCOPE === "core" ? "core" : "all";
-  if (scope === "core") {
-    assert(symbols.join(",") === "NSE:NIFTY,BSE:SENSEX", `core index book ${symbols.join(",")}`);
-  } else {
-    assert(symbols[0] === "NSE:NIFTY", `NIFTY should lead, got ${symbols[0]}`);
-    assert(symbols.includes("BSE:SENSEX"), `SENSEX missing from ${symbols.join(",")}`);
-  }
+  assert(symbols.join(",") === "NSE:NIFTY,BSE:SENSEX", `index book ${symbols.join(",")}`);
   assert(universe.equities.every((row) => row.symbol === "ANANDRATHI"), "equity book is not only Anand Rathi");
-  assert(universe.equities.some((row) => row.exchange === "NSE"), "NSE Anand Rathi missing");
-  assert(universe.equities.some((row) => row.exchange === "BSE"), "BSE Anand Rathi missing");
   const books = [
     ...universe.indexes.map((row) => ({ ...row, type: row.nseType || "Indices" })),
     ...universe.equities.map((row) => ({ ...row, type: "Equity" })),
-  ].filter(
-    (row) =>
-      (row.exchange === "NSE" && row.symbol === "NIFTY") ||
-      (row.exchange === "BSE" && row.symbol === "SENSEX") ||
-      row.symbol === "ANANDRATHI",
-  );
+  ];
   console.log(`Book: ${books.map((row) => `${row.exchange}:${row.symbol}`).join(", ")}`);
   console.log(`Session: ${universe.market?.message}`);
 

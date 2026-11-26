@@ -22,12 +22,12 @@ export async function GET() {
         bse: hostBreaker("api.bseindia.com"),
       },
     });
-  } catch {
+  } catch (err) {
     return NextResponse.json(
       {
         ok: false,
         latencyMs: Date.now() - started,
-        error: "Health unavailable",
+        error: err instanceof Error ? err.message : "health failed",
       },
       { status: 503 },
     );
