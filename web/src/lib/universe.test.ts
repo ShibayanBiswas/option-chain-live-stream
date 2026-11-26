@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { selectDesk, WEALTH_EQUITY } from "./universe";
+import { selectDesk, splitPinned, WEALTH_EQUITY } from "./universe";
 
 describe("desk universe", () => {
   const input = {
@@ -28,6 +28,14 @@ describe("desk universe", () => {
       "BSE:ANANDRATHI",
     ]);
     expect(book.equities.find((item) => item.exchange === "BSE")?.bseScrip).toBe(9);
+  });
+
+  it("puts every index except the pin under More", () => {
+    const nse = selectDesk(input, "all").indexes.filter((item) => item.exchange === "NSE");
+    expect(splitPinned(nse, "NIFTY")).toEqual({
+      lead: [nse[0]],
+      more: [nse[1], nse[2]],
+    });
   });
 
   it("keeps only NIFTY and SENSEX when scope is core", () => {

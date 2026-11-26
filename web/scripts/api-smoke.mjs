@@ -51,7 +51,14 @@ await check("universe indices + wealth equity only", async () => {
     json.equities.every((row) => row.symbol === "ANANDRATHI"),
     `equity leak: ${json.equities.map((r) => r.symbol).join(",")}`,
   );
-  assert(json.equities.length === 1 && json.equities[0].exchange === "NSE", "equity should be NSE Anand Rathi only");
+  assert(
+    json.equities.some((row) => row.exchange === "NSE" && row.symbol === "ANANDRATHI"),
+    "NSE Anand Rathi missing",
+  );
+  assert(
+    json.equities.every((row) => row.exchange === "NSE" || row.exchange === "BSE"),
+    "equity exchange leak",
+  );
   assert(json.market && typeof json.market.message === "string", "market message");
   assert(
     /Market Open|Market Closed|Pre-Open|Market Holiday|Session/i.test(json.market.message),

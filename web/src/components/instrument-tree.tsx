@@ -7,6 +7,7 @@ import { Pin, Search } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { displayName, matchTape } from "@/lib/display";
 import { formatPrice, formatSigned } from "@/lib/format";
+import { splitPinned } from "@/lib/universe";
 import type { Instrument, TapeQuote } from "@/lib/types";
 
 export function InstrumentTree({
@@ -34,6 +35,7 @@ export function InstrumentTree({
 }) {
   const reduce = useReducedMotion();
   const [open, setOpen] = useState({ indices: true, equity: true });
+  const [moreOpen, setMoreOpen] = useState({ NSE: false, BSE: false });
   const q = query.trim().toUpperCase();
   const groups = useMemo(() => {
     const matches = (item: Instrument) => {
@@ -60,10 +62,7 @@ export function InstrumentTree({
       },
     ];
   }, [equities, indexes, q]);
-  const pinned = [...indexes, ...equities].filter((item) => {
-    if (item.segment === "INDEX" && item.symbol !== "NIFTY" && item.symbol !== "SENSEX") return false;
-    return pins.includes(`${item.exchange}:${item.symbol}`);
-  });
+  const pinned = [...indexes, ...equities].filter((item) => pins.includes(`${item.exchange}:${item.symbol}`));
 
   return (
     <div className="tree">
@@ -118,7 +117,8 @@ export function InstrumentTree({
                     : group.id === "indices" && block.title === "BSE"
                       ? "SENSEX"
                       : "";
-                  const lead = pin ? block.rows.filter((item) => item.symbol === pin) : block.rows;
+                  const split = pin ? splitPinned(block.rows, pin) : { lead: block.rows, more: [] as Instrument[] };
+                  const showMore = split.more.length > 0 && (q.length > 0 || moreOpen[block.title as "NSE" | "BSE"]);
                   const row = (item: Instrument) => (
                     <Row
                       key={`${item.exchange}-${item.symbol}`}
@@ -134,7 +134,23 @@ export function InstrumentTree({
                   return (
                     <div key={block.title} className="tree-block">
                       <p className="tree-kicker">{block.title}</p>
-                      {lead.map(row)}
+                      {split.lead.map(row)}
+                      {split.more.length > 0 ? (
+                        <button
+                          className="tree-section-btn"
+                          type="button"
+                          aria-expanded={showMore}
+                          onClick={() =>
+                            setMoreOpen((state) => ({
+                              ...state,
+                              [block.title]: !state[block.title as "NSE" | "BSE"],
+                            }))
+                          }
+                        >
+                          {block.title === "NSE" ? "More NSE indices" : "More BSE indices"}
+                        </button>
+                      ) : null}
+                      {showMore ? split.more.map(row) : null}
                     </div>
                   );
                 })}
