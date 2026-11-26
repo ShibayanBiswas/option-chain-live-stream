@@ -154,7 +154,7 @@ export function OptionChainTable({
   const pin = chainOverflows(width, callCols.length + peCols.length, density);
 
   const parked = useRef("");
-  useEffect(() => {
+  useLayoutEffect(() => {
     const key = `${snapshot.symbol}:${snapshot.expiry}:${density}:${pin}:${rows.length}`;
     if (parked.current === key || spotStrike == null) return;
     parked.current = key;

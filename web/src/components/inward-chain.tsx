@@ -39,30 +39,48 @@ export function chainOverflows(width: number, columns: number, density: string) 
   return columns * 72 + 88 > width;
 }
 
+function nearestStrike(strike: number | null): HTMLElement | null {
+  if (strike == null) return null;
+  const exact = document.getElementById(`strike-${strike}`);
+  if (exact instanceof HTMLElement) return exact;
+  let best: HTMLElement | null = null;
+  let bestDist = Number.POSITIVE_INFINITY;
+  document.querySelectorAll<HTMLElement>("[id^='strike-']").forEach((row) => {
+    const value = Number(row.id.slice("strike-".length));
+    if (!Number.isFinite(value)) return;
+    const dist = Math.abs(value - strike);
+    if (dist < bestDist) {
+      best = row;
+      bestDist = dist;
+    }
+  });
+  return best;
+}
+
+/** Scroll the live spot into the middle of the book. Indexes hide the raw at-the-money strike when it is not a 100-point row, so the spot bar is the target. */
 export function centerBook(strike: number | null) {
-  if (strike == null) return;
-  const row = document.getElementById(`strike-${strike}`);
+  const marker = document.querySelector("[data-testid=spot-marker]");
+  const row = (marker instanceof HTMLElement ? marker : null) ?? nearestStrike(strike);
   if (!(row instanceof HTMLElement)) return;
-  const inward = row.closest(".inward");
-  if (inward instanceof HTMLElement) {
-    const pane = inward.querySelector(".inward-panes");
-    if (!(pane instanceof HTMLElement)) return;
-    const top = Math.max(
+  const pane = row.closest(".inward-panes");
+  if (pane instanceof HTMLElement) {
+    pane.scrollTop = Math.max(
       0,
       row.getBoundingClientRect().top - pane.getBoundingClientRect().top + pane.scrollTop - pane.clientHeight / 2 + row.clientHeight / 2,
     );
-    pane.scrollTop = top;
     return;
   }
   const scroller = row.closest(".chain-scroll");
   if (!(scroller instanceof HTMLElement)) return;
-  const top = row.offsetTop - scroller.clientHeight / 2 + row.clientHeight / 2;
-  const cell = row.querySelector(".strike-cell");
-  const delta =
-    cell instanceof HTMLElement ? cell.getBoundingClientRect().left - scroller.getBoundingClientRect().left : 0;
+  const top =
+    row.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop - scroller.clientHeight / 2 + row.clientHeight / 2;
+  const cell = row.querySelector(".strike-cell") ?? scroller.querySelector(".strike-cell");
   const left =
     cell instanceof HTMLElement
-      ? scroller.scrollLeft + delta - scroller.clientWidth / 2 + cell.clientWidth / 2
+      ? scroller.scrollLeft +
+        (cell.getBoundingClientRect().left - scroller.getBoundingClientRect().left) -
+        scroller.clientWidth / 2 +
+        cell.clientWidth / 2
       : scroller.scrollLeft;
   scroller.scrollTo({ top: Math.max(0, top), left: Math.max(0, left), behavior: "auto" });
 }
