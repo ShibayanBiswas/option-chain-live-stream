@@ -7,7 +7,7 @@ import { Pin, Search } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { displayName, matchTape } from "@/lib/display";
 import { formatPrice, formatSigned } from "@/lib/format";
-import { splitPinned } from "@/lib/universe";
+import { splitPinned } from "@/lib/split-pinned";
 import type { Instrument, TapeQuote } from "@/lib/types";
 
 export function InstrumentTree({

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { selectDesk, splitPinned, WEALTH_EQUITY } from "./universe";
+import { splitPinned } from "./split-pinned";
+import { selectDesk, WEALTH_EQUITY } from "./universe";
 
 describe("desk universe", () => {
   const input = {
