@@ -229,7 +229,7 @@ test("desk, density, volume shade, stream, and motion", async ({ page }, testInf
   expect(expiryOptions.some((label) => /all/i.test(label))).toBe(true);
   await page.getByRole("button", { name: "Jump to spot" }).click();
   const atmGap = await page.evaluate(() => {
-    const cell = document.querySelector("tr.is-atm .strike-cell");
+    const cell = document.querySelector("[data-testid=spot-marker]") ?? document.querySelector("tr.is-atm");
     const pane = document.querySelector(".inward-panes") ?? document.querySelector(".chain-scroll");
     if (!(cell instanceof HTMLElement) || !(pane instanceof HTMLElement)) return 999;
     const cellBox = cell.getBoundingClientRect();
