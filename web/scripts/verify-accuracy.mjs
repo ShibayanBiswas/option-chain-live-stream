@@ -296,10 +296,17 @@ async function main() {
     assert(symbols.includes("BSE:SENSEX"), `SENSEX missing from ${symbols.join(",")}`);
   }
   assert(universe.equities.every((row) => row.symbol === "ANANDRATHI"), "equity book is not only Anand Rathi");
+  assert(universe.equities.some((row) => row.exchange === "NSE"), "NSE Anand Rathi missing");
+  assert(universe.equities.some((row) => row.exchange === "BSE"), "BSE Anand Rathi missing");
   const books = [
     ...universe.indexes.map((row) => ({ ...row, type: row.nseType || "Indices" })),
     ...universe.equities.map((row) => ({ ...row, type: "Equity" })),
-  ];
+  ].filter(
+    (row) =>
+      (row.exchange === "NSE" && row.symbol === "NIFTY") ||
+      (row.exchange === "BSE" && row.symbol === "SENSEX") ||
+      row.symbol === "ANANDRATHI",
+  );
   console.log(`Book: ${books.map((row) => `${row.exchange}:${row.symbol}`).join(", ")}`);
   console.log(`Session: ${universe.market?.message}`);
 

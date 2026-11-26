@@ -1,5 +1,9 @@
 # Streaming
 
+## Desk
+
+The sidebar, pins, and search show NIFTY 50, SENSEX, and Anand Rathi Wealth on NSE and BSE. Discovery may still learn other index books. Those books stay off the desk. There is no More indices group.
+
 ## Transport
 
 `/api/stream` is server-sent events.
@@ -9,7 +13,7 @@
 3. A changed cell is a `patch` of `[strike, side, field, value]` tuples. An unchanged book sends nothing.
 4. Custom view uses `/api/stream/multi` for the extra expiries. Each frame is last price and change only, then a cell patch. It does not poll `/api/chain`.
 5. `rotate` fires before the 60 second function limit, and the client reconnects.
-6. Event ids increase. The browser is told `retry: 3000`. A client ignores an id older than the last one it applied.
+6. Event ids increase. The browser is told `retry: 3000`. A reconnect sends `Last-Event-ID` and does not reset that cursor to 0. A client ignores an id older than the last one it applied. A REST refresh does not overwrite websocket prices, and volume does not move backwards.
 
 While the market is open the stream asks the exchange again every 500ms when the exchange timestamp moved, and waits 3 seconds when it did not. A chain younger than 400ms is reused. While the market is closed the server keeps the chain it already sent and checks the session about once a minute. BSE uses the same 09:15–15:30 IST derivatives session when its payload has no market-status field.
 

@@ -544,6 +544,15 @@ html.dark .chain-scroll .chain-table thead tr.side-labels .pe-zone {
   grid-column: 1 / -1;
 }
 
+@media (min-width: 1366px) {
+  .toolbar {
+    flex-wrap: nowrap;
+    height: 64px;
+    min-height: 64px;
+    max-height: 64px;
+  }
+}
+
 .terminal:has(.rail.is-collapsed),
 .terminal.rail-hidden {
   grid-template-columns: 56px minmax(0, 1fr);
@@ -2250,12 +2259,12 @@ html.dark .inward-captions .pe-zone {
   }
 
   .toolbar-tools .toolbar-select {
-    flex: 1 1 0;
-    width: 0;
-    min-width: 0;
+    flex: 0 0 auto;
+    width: auto;
+    min-width: max-content;
     max-width: none;
-    padding-left: 6px;
-    padding-right: 16px;
+    padding-left: 8px;
+    padding-right: 18px;
   }
 
   .identity {
@@ -2290,9 +2299,9 @@ html.dark .inward-captions .pe-zone {
   }
 
   .toolbar-tools .toolbar-select {
-    flex: 1 1 0;
-    width: 0;
-    min-width: 0;
+    flex: 0 0 auto;
+    width: auto;
+    min-width: max-content;
   }
 
   .rail.is-sheet:not(.is-collapsed) {
