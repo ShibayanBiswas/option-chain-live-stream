@@ -1,5 +1,5 @@
 import { loadOptionChain, publicChainError } from "@/lib/chain-service";
-import { nextStreamEvent } from "@/lib/diff";
+import { mergeChain, nextStreamEvent } from "@/lib/diff";
 import { applyOptionTick, openNseOptionSocket, overlayContractFields } from "@/lib/nse-ws";
 import type { OptionChainSnapshot } from "@/lib/types";
 
@@ -60,9 +60,10 @@ export async function GET(req: Request) {
       };
 
       const pull = async (full: boolean) => {
-        const next = await loadOptionChain({ symbol, expiry, exchange, segment });
-        next.feed = "polling";
-        marketOpen = next.marketOpen;
+        const loaded = await loadOptionChain({ symbol, expiry, exchange, segment });
+        loaded.feed = "polling";
+        const next = snapshot ? mergeChain(snapshot, loaded) : loaded;
+        marketOpen = loaded.marketOpen;
         const event = nextStreamEvent(snapshot, next, full);
         snapshot = next;
         stamp = next.timestamp;

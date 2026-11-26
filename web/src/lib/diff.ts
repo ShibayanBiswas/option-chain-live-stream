@@ -106,20 +106,74 @@ export function nextStreamEvent(
   return { type: "patch", patch };
 }
 
+const PRICE_FIELDS = new Set<CellField>(["ltp", "chng", "pChg", "bid", "bidQty", "ask", "askQty"]);
+
+function higherVolume(current: number | null, incoming: number | null): number | null {
+  const values = [current, incoming].filter((value): value is number => value != null);
+  if (values.length === 0) return null;
+  return Math.max(...values);
+}
+
+function mergeQuote(current: OptionQuote, incoming: OptionQuote, keepPrices: boolean): OptionQuote {
+  const next = keepPrices
+    ? {
+        ...incoming,
+        lastPrice: current.lastPrice ?? incoming.lastPrice,
+        change: current.change ?? incoming.change,
+        pChange: current.pChange ?? incoming.pChange,
+        bid: current.bid ?? incoming.bid,
+        bidQty: current.bidQty ?? incoming.bidQty,
+        ask: current.ask ?? incoming.ask,
+        askQty: current.askQty ?? incoming.askQty,
+      }
+    : { ...incoming };
+  return { ...next, volume: higherVolume(current.volume, incoming.volume) };
+}
+
+/** A later chain may refresh open interest. It must not roll a live price or volume backwards. */
+export function mergeChain(current: OptionChainSnapshot, incoming: OptionChainSnapshot): OptionChainSnapshot {
+  if (incoming.symbol !== current.symbol || incoming.expiry !== current.expiry) return incoming;
+  if (incoming.timestamp < current.timestamp) return current;
+  const keepPrices = current.feed === "websocket" && incoming.feed !== "websocket";
+  const prior = new Map(current.rows.map((row) => [row.strike, row]));
+  const rows = incoming.rows.map((row) => {
+    const prev = prior.get(row.strike);
+    if (!prev) return row;
+    return {
+      strike: row.strike,
+      ce: mergeQuote(prev.ce, row.ce, keepPrices),
+      pe: mergeQuote(prev.pe, row.pe, keepPrices),
+    };
+  });
+  return {
+    ...incoming,
+    feed: keepPrices ? "websocket" : incoming.feed,
+    spot: keepPrices ? (current.spot ?? incoming.spot) : incoming.spot,
+    rows,
+  };
+}
+
 export function applyPatch(snapshot: OptionChainSnapshot, patch: ChainPatch): OptionChainSnapshot {
   const byStrike = new Map(snapshot.rows.map((row) => [row.strike, { ...row, ce: { ...row.ce }, pe: { ...row.pe } }]));
+  const keepPrices = snapshot.feed === "websocket" && patch.feed !== "websocket";
   for (const [strike, side, field, value] of patch.cells) {
+    if (keepPrices && (PRICE_FIELDS.has(field) || field === "volume")) continue;
     const row = byStrike.get(strike) ?? { strike, ce: blankQuote(), pe: blankQuote() };
-    row[side] = { ...row[side], [CELL_FIELDS[field]]: value };
+    if (field === "volume") {
+      const kept = higherVolume(row[side].volume, value);
+      row[side] = { ...row[side], volume: kept };
+    } else {
+      row[side] = { ...row[side], [CELL_FIELDS[field]]: value };
+    }
     byStrike.set(strike, row);
   }
   const rows = [...byStrike.values()].sort((a, b) => a.strike - b.strike);
   return {
     ...snapshot,
-    spot: patch.spot,
-    timestamp: patch.timestamp,
+    spot: keepPrices ? snapshot.spot : patch.spot,
+    timestamp: keepPrices ? snapshot.timestamp : patch.timestamp,
     latencyMs: patch.latencyMs,
-    feed: patch.feed,
+    feed: keepPrices ? "websocket" : patch.feed,
     totals: patch.totals,
     rows,
   };

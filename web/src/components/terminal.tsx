@@ -16,6 +16,7 @@ import { Toasts } from "@/components/toasts";
 import { UpdatesDialog } from "@/components/updates-dialog";
 import { useOptionStream } from "@/hooks/use-option-stream";
 import { atmIv } from "@/lib/analytics";
+import { shownOnDesk } from "@/lib/desk-visible";
 import { cn } from "@/lib/cn";
 import { displayName, upcomingExpiry, upcomingExpiries } from "@/lib/display";
 import { formatCompact, formatDataAge, formatNumber, formatPrice } from "@/lib/format";
@@ -77,9 +78,8 @@ export function Terminal() {
           setBook((current) => (first || !current ? data : { ...current, market: data.market }));
           if (!first) return;
           const saved = window.localStorage.getItem("ocls-last");
-          const all = [...data.indexes, ...data.equities];
-          const visible = (item: Instrument) => item.segment !== "INDEX" || item.symbol === "NIFTY" || item.symbol === "SENSEX";
-          const remembered = all.find((item) => `${item.exchange}:${item.symbol}` === saved && visible(item));
+          const all = shownOnDesk([...data.indexes, ...data.equities]);
+          const remembered = all.find((item) => `${item.exchange}:${item.symbol}` === saved);
           const nifty = all.find((item) => item.symbol === "NIFTY" && item.exchange === "NSE");
           setSelection((current) =>
             current.item
@@ -183,13 +183,13 @@ export function Terminal() {
   }, [updatesOpen]);
 
   useEffect(() => {
-    if (statusRef.current !== "error" && status === "error") {
-      restoredRef.current = false;
-      pushToast("Connection lost · retrying", "link");
-    }
-    if (statusRef.current === "error" && (status === "live" || status === "polling") && !restoredRef.current) {
+    if (statusRef.current !== "error" && status === "error" && !restoredRef.current) {
       restoredRef.current = true;
-      pushToast("Connection restored", "link");
+      pushToast("Connection lost · retrying", "link-lost");
+    }
+    if (restoredRef.current && (status === "live" || status === "polling")) {
+      restoredRef.current = false;
+      pushToast("Connection restored", "link-restored");
     }
     statusRef.current = status;
   }, [status]);
@@ -218,10 +218,7 @@ export function Terminal() {
   }
 
   const instruments = useMemo(
-    () => [
-      ...(book?.indexes ?? []).filter((item) => item.symbol === "NIFTY" || item.symbol === "SENSEX"),
-      ...(book?.equities ?? []),
-    ],
+    () => shownOnDesk([...(book?.indexes ?? []), ...(book?.equities ?? [])]),
     [book],
   );
   const marketOpen = snapshot ? snapshot.marketOpen : book?.market?.open === true;

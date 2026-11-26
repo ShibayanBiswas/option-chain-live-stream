@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { applyPatch, type ChainPatch } from "@/lib/diff";
-import { freshLink, LOST_AFTER_MS, noteDelivery, noteDrop, noteLost, type Link } from "@/lib/stream-link";
+import { applyPatch, mergeChain, type ChainPatch } from "@/lib/diff";
+import { freshLink, LOST_AFTER_MS, noteDelivery, noteDrop, noteLost, takeSseEvents, type Link } from "@/lib/stream-link";
 import type { OptionChainSnapshot } from "@/lib/types";
 
 type Status = "idle" | "connecting" | "live" | "polling" | "error";
@@ -24,7 +24,7 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
   const [socketState, setSocketState] = useState<"idle" | "open" | "closed" | "error">("idle");
   const [quiet, setQuiet] = useState(false);
   const lastBeat = useRef(0);
-  const esRef = useRef<EventSource | null>(null);
+  const esRef = useRef<AbortController | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const applySnapshot = useCallback((next: OptionChainSnapshot) => {
@@ -38,7 +38,7 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
         console.warn("dropped older chain", next.symbol, next.timestamp, current.timestamp);
         return current;
       }
-      return next;
+      return current ? mergeChain(current, next) : next;
     });
     setUpdatedAt(Date.now());
     setError(null);
@@ -143,74 +143,22 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
       generation += 1;
       const mine = generation;
       awaitingStream = true;
-      link = { ...link, lastId: 0 };
-      const previous = esRef.current;
-      if (previous) {
-        previous.onerror = null;
-        previous.close();
-      }
+      esRef.current?.abort();
+      const controller = new AbortController();
+      esRef.current = controller;
+      const current = () => !cancelled && mine === generation;
       const qs = new URLSearchParams({
         symbol,
         exchange,
         segment,
         ...(expiry ? { expiry } : {}),
       });
-      const es = new EventSource(`/api/stream?${qs}`);
-      esRef.current = es;
-      const current = () => !cancelled && mine === generation;
+      const headers: Record<string, string> = { Accept: "text/event-stream" };
+      if (link.lastId > 0) headers["Last-Event-ID"] = String(link.lastId);
 
-      es.addEventListener("chain", (evt) => {
-        if (!current() || !accept(evt)) return;
-        try {
-          applySnapshot(JSON.parse((evt as MessageEvent).data));
-        } catch {
-          /* ignore parse */
-        }
-      });
-
-      es.addEventListener("patch", (evt) => {
-        if (!current() || !accept(evt)) return;
-        try {
-          applyIncomingPatch(JSON.parse((evt as MessageEvent).data) as ChainPatch);
-        } catch {
-          /* ignore parse */
-        }
-      });
-
-      es.addEventListener("socket", (evt) => {
-        if (!current()) return;
-        try {
-          const payload = JSON.parse((evt as MessageEvent).data) as { state?: "open" | "closed" | "error" };
-          if (payload.state) setSocketState(payload.state);
-        } catch {
-          /* ignore */
-        }
-      });
-
-      es.addEventListener("notice", (evt) => {
-        if (!current()) return;
-        try {
-          const payload = JSON.parse((evt as MessageEvent).data);
-          setError(payload.message || "Stream interrupted");
-        } catch {
-          /* ignore */
-        }
-      });
-
-      es.addEventListener("heartbeat", (evt) => {
-        if (!current() || !accept(evt)) return;
-        lastBeat.current = Date.now();
-      });
-
-      es.addEventListener("rotate", () => {
-        if (!current()) return;
-        connectSse();
-      });
-
-      es.onerror = () => {
+      const fail = () => {
         if (!current()) return;
         awaitingStream = false;
-        es.close();
         const dropped = noteDrop(link);
         link = dropped.link;
         armLost();
@@ -220,15 +168,55 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
           if (!cancelled) connectSse();
         }, dropped.retryMs);
       };
+
+      void (async () => {
+        try {
+          const res = await fetch(`/api/stream?${qs}`, { headers, signal: controller.signal, cache: "no-store" });
+          if (!res.ok || !res.body) throw new Error("stream");
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let buf = "";
+          while (current()) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buf += decoder.decode(value, { stream: true });
+            const parsed = takeSseEvents(buf);
+            buf = parsed.rest;
+            for (const evt of parsed.events) {
+              if (!current()) return;
+              const message = { lastEventId: evt.id } as MessageEvent;
+              if (evt.event === "chain") {
+                if (!accept(message)) continue;
+                applySnapshot(JSON.parse(evt.data));
+              } else if (evt.event === "patch") {
+                if (!accept(message)) continue;
+                applyIncomingPatch(JSON.parse(evt.data) as ChainPatch);
+              } else if (evt.event === "heartbeat") {
+                if (!accept(message)) continue;
+                lastBeat.current = Date.now();
+              } else if (evt.event === "socket") {
+                const payload = JSON.parse(evt.data) as { state?: "open" | "closed" | "error" };
+                if (payload.state) setSocketState(payload.state);
+              } else if (evt.event === "notice") {
+                const payload = JSON.parse(evt.data) as { message?: string };
+                setError(payload.message || "Stream interrupted");
+              } else if (evt.event === "rotate") {
+                connectSse();
+                return;
+              }
+            }
+          }
+          if (current()) fail();
+        } catch {
+          if (controller.signal.aborted || !current()) return;
+          fail();
+        }
+      })();
     };
 
     const onHide = () => {
       if (document.hidden) {
-        const previous = esRef.current;
-        if (previous) {
-          previous.onerror = null;
-          previous.close();
-        }
+        esRef.current?.abort();
         awaitingStream = false;
         stopPoll();
         return;
@@ -263,7 +251,7 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
       window.clearInterval(staleTimer);
       if (retryTimer != null) window.clearTimeout(retryTimer);
       clearDrop();
-      esRef.current?.close();
+      esRef.current?.abort();
       esRef.current = null;
       stopPoll();
     };

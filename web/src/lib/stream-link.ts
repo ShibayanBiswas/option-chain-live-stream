@@ -54,3 +54,27 @@ export function noteDrop(link: Link): { link: Link; startPoll: boolean; retryMs:
 export function noteLost(link: Link): Link {
   return link.lost ? link : { ...link, lost: true };
 }
+
+export type SseEvent = { id: string; event: string; data: string };
+
+/** Split a text/event-stream buffer into complete events. The remainder stays for the next chunk. */
+export function takeSseEvents(buffer: string): { events: SseEvent[]; rest: string } {
+  const events: SseEvent[] = [];
+  let rest = buffer.replace(/\r\n/g, "\n");
+  let split = rest.indexOf("\n\n");
+  while (split >= 0) {
+    const block = rest.slice(0, split);
+    rest = rest.slice(split + 2);
+    let id = "";
+    let event = "message";
+    const data: string[] = [];
+    for (const line of block.split("\n")) {
+      if (line.startsWith("id:")) id = line.slice(3).trim();
+      else if (line.startsWith("event:")) event = line.slice(6).trim();
+      else if (line.startsWith("data:")) data.push(line.slice(5).trim());
+    }
+    if (data.length > 0 || event !== "message") events.push({ id, event, data: data.join("\n") });
+    split = rest.indexOf("\n\n");
+  }
+  return { events, rest };
+}

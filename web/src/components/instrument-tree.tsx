@@ -75,6 +75,11 @@ export function InstrumentTree({
           placeholder="Find a contract"
           aria-label="Find a contract"
         />
+        {query ? (
+          <button type="button" className="icon-btn" aria-label="Clear search" onClick={() => onQuery("")}>
+            Clear
+          </button>
+        ) : null}
       </label>
       {pinned.length > 0 ? (
         <div className="tree-block">

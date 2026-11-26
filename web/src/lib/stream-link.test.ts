@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { applyLtpPatch, diffLtpSlice, toLtpSlice } from "./ltp-slice";
-import { freshLink, LOST_AFTER_MS, noteDelivery, noteDrop, noteLost, SSE_RETRY_WHILE_POLLING_MS } from "./stream-link";
+import { freshLink, LOST_AFTER_MS, noteDelivery, noteDrop, noteLost, SSE_RETRY_WHILE_POLLING_MS, takeSseEvents } from "./stream-link";
 import type { OptionChainSnapshot } from "./types";
 
 describe("reconnect", () => {
@@ -41,6 +41,14 @@ describe("reconnect", () => {
     const stale = noteDelivery(current, 7);
     expect(stale.apply).toBe(false);
     expect(stale.link.lastId).toBe(8);
+  });
+
+  it("keeps a partial server-sent event until the blank line arrives", () => {
+    const first = takeSseEvents("id: 4\nevent: patch\ndata: {\"ok\":true}\n\nid: 5\nevent: heart");
+    expect(first.events).toEqual([{ id: "4", event: "patch", data: "{\"ok\":true}" }]);
+    const second = takeSseEvents(`${first.rest}beat\ndata: {}\n\n`);
+    expect(second.events[0]).toEqual({ id: "5", event: "heartbeat", data: "{}" });
+    expect(second.rest).toBe("");
   });
 });
 
