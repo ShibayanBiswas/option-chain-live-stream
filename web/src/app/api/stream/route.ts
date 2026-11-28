@@ -62,8 +62,8 @@ export async function GET(req: Request) {
       const pull = async (full: boolean) => {
         const loaded = await loadOptionChain({ symbol, expiry, exchange, segment });
         const current = snapshot;
-        const live = current?.feed === "websocket";
-        const next = current?.feed === "websocket" ? overlayContractFields(current, loaded) : loaded;
+        const live = usingSocket && current?.feed === "websocket";
+        const next = live && current ? overlayContractFields(current, loaded) : loaded;
         next.feed = live ? "websocket" : "polling";
         marketOpen = loaded.marketOpen;
         const event = nextStreamEvent(snapshot, next, full);

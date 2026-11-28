@@ -129,17 +129,32 @@ export function InwardChain({
     let callsShift = 0;
     let dragged = false;
 
-    const lockColumns = (head: HTMLElement, body: HTMLElement) => {
+    const lockColumns = (head: HTMLElement, body: HTMLElement, fresh: boolean) => {
       const bodyRow = body.querySelector<HTMLElement>("tbody tr:not(.spot-marker)");
       const headRow = head.querySelector<HTMLElement>("thead tr");
       if (!bodyRow || !headRow) return;
       const bodyCells = [...bodyRow.children] as HTMLElement[];
       const headCells = [...headRow.children] as HTMLElement[];
       if (bodyCells.length === 0 || bodyCells.length !== headCells.length) return;
-      const widths = bodyCells.map((cell) => cell.getBoundingClientRect().width);
+      const settled = bodyCells.every((cell, index) => {
+        const locked = parseFloat(headCells[index].style.width);
+        return locked >= 2 && Math.abs(cell.getBoundingClientRect().width - locked) < 0.5;
+      });
+      if (!fresh && settled) return;
+      // An old lock squeezes added columns to zero and clips prices that arrived later, so measure a clean table.
+      for (const sheet of [head, body]) {
+        sheet.style.tableLayout = "";
+        sheet.style.width = "";
+        sheet.style.minWidth = "";
+        sheet.querySelectorAll<HTMLElement>("th, td").forEach((cell) => {
+          cell.style.width = "";
+          cell.style.minWidth = "";
+        });
+      }
+      const widths = bodyCells.map((cell, index) =>
+        Math.max(cell.getBoundingClientRect().width, headCells[index].getBoundingClientRect().width),
+      );
       if (widths.some((width) => width < 2)) return;
-      const settled = headCells.every((cell, index) => Math.abs(parseFloat(cell.style.width) - widths[index]) < 0.5);
-      if (settled) return;
       const total = widths.reduce((sum, width) => sum + width, 0);
       for (const sheet of [head, body]) {
         sheet.style.tableLayout = "fixed";
@@ -169,11 +184,11 @@ export function InwardChain({
       putsBody.style.transform = puts;
     };
 
-    const park = () => {
+    const park = (fresh: boolean) => {
       const heads = root.querySelector<HTMLElement>(".inward-heads");
       if (heads) heads.style.paddingRight = `${Math.max(0, scroll.offsetWidth - scroll.clientWidth)}px`;
-      lockColumns(callsHead, callsBody);
-      lockColumns(putsHead, putsBody);
+      lockColumns(callsHead, callsBody, fresh);
+      lockColumns(putsHead, putsBody, fresh);
       if (!dragged) callsShift = -span(callsBody);
       applyX();
     };
@@ -232,14 +247,14 @@ export function InwardChain({
       window.addEventListener("pointercancel", end);
     };
 
-    park();
+    park(true);
     root.addEventListener("pointerdown", start);
     root.addEventListener("wheel", onWheel, { passive: false });
     let framing = false;
     const watch = new ResizeObserver(() => {
       if (framing) return;
       framing = true;
-      park();
+      park(false);
       requestAnimationFrame(() => {
         framing = false;
       });

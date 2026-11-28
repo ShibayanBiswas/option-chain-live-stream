@@ -76,9 +76,10 @@ export function Terminal() {
         .then((data) => {
           if (cancelled) return;
           setBook((current) => (first || !current ? data : { ...current, market: data.market }));
-          if (!first) return;
+          setLoadError(null);
+          // A first load that failed is recovered by this poll, so pick a contract whenever none is open.
           const saved = window.localStorage.getItem("ocls-last");
-          const all = [...data.indexes, ...data.equities];
+          const all = [...data.indexes, ...data.equities].filter(onDesk);
           const remembered = all.find((item) => `${item.exchange}:${item.symbol}` === saved);
           const nifty = all.find((item) => item.symbol === "NIFTY" && item.exchange === "NSE");
           setSelection((current) =>
@@ -218,7 +219,7 @@ export function Terminal() {
   }
 
   const instruments = useMemo(
-    () => [...(book?.indexes ?? []), ...(book?.equities ?? [])],
+    () => [...(book?.indexes ?? []), ...(book?.equities ?? [])].filter(onDesk),
     [book],
   );
   const marketOpen = snapshot ? snapshot.marketOpen : book?.market?.open === true;
@@ -329,6 +330,7 @@ export function Terminal() {
             <ExpirySelect
               expiries={snapshot?.expiries ?? []}
               value={expiry || snapshot?.expiry || ""}
+              compact={phone}
               onChange={(next) => {
                 setSelection((current) => ({ ...current, expiry: next }));
               }}
@@ -343,10 +345,14 @@ export function Terminal() {
               {expiryMenu.map((count) => (
                 <option key={count} value={count}>
                   {count === liveExpiryCount && liveExpiryCount > 1
-                    ? `${count} expiries, all`
-                    : count === 1
-                      ? "1 expiry"
-                      : `${count} expiries`}
+                    ? phone
+                      ? `${count} · all`
+                      : `${count} expiries, all`
+                    : phone
+                      ? `${count} exp`
+                      : count === 1
+                        ? "1 expiry"
+                        : `${count} expiries`}
                 </option>
               ))}
             </select>
@@ -464,6 +470,11 @@ export function Terminal() {
     </div>
     </MotionConfig>
   );
+}
+
+/** The sidebar shows NIFTY, SENSEX, and the equity books, so search and the saved pick match it. */
+function onDesk(item: Instrument) {
+  return item.segment !== "INDEX" || item.symbol === "NIFTY" || item.symbol === "SENSEX";
 }
 
 function LiveSpot({ value }: { value: number | null }) {

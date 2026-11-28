@@ -288,12 +288,19 @@ async function main() {
   console.log(`Live source check against ${BASE}`);
   const universe = await getJson("/api/universe");
   const symbols = universe.indexes.map((row) => `${row.exchange}:${row.symbol}`);
-  assert(symbols.join(",") === "NSE:NIFTY,BSE:SENSEX", `index book ${symbols.join(",")}`);
+  assert(symbols[0] === "NSE:NIFTY", `NIFTY should lead, got ${symbols[0]}`);
+  assert(symbols.includes("BSE:SENSEX"), `SENSEX missing from ${symbols.join(",")}`);
   assert(universe.equities.every((row) => row.symbol === "ANANDRATHI"), "equity book is not only Anand Rathi");
   const books = [
     ...universe.indexes.map((row) => ({ ...row, type: row.nseType || "Indices" })),
     ...universe.equities.map((row) => ({ ...row, type: "Equity" })),
-  ];
+  ].filter(
+    // The desk shows only these books, so they are the ones whose accuracy matters.
+    (row) =>
+      (row.exchange === "NSE" && row.symbol === "NIFTY") ||
+      (row.exchange === "BSE" && row.symbol === "SENSEX") ||
+      row.symbol === "ANANDRATHI",
+  );
   console.log(`Book: ${books.map((row) => `${row.exchange}:${row.symbol}`).join(", ")}`);
   console.log(`Session: ${universe.market?.message}`);
 

@@ -26,6 +26,7 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
   const lastBeat = useRef(0);
   const esRef = useRef<EventSource | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const bookRef = useRef("");
 
   const applySnapshot = useCallback((next: OptionChainSnapshot) => {
     setSnapshot((current) => {
@@ -68,6 +69,7 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
     const res = await fetch(`/api/chain?${qs}`, { cache: "no-store" });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Failed to fetch chain");
+    if (bookRef.current !== `${exchange}|${symbol}|${expiry}`) return data as OptionChainSnapshot;
     lastBeat.current = Date.now();
     setQuiet(false);
     applySnapshot(data as OptionChainSnapshot);
@@ -78,6 +80,7 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
     if (!enabled || !symbol) return;
 
     let cancelled = false;
+    bookRef.current = `${exchange}|${symbol}|${expiry}`;
     setStatus("connecting");
     setSocketState("idle");
     setError(null);
@@ -100,12 +103,16 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
       stopPoll();
       setStatus((current) => (current === "error" ? current : "polling"));
       pollRef.current = setInterval(() => {
-        fetchOnce().catch((err) => {
-          if (!cancelled) {
-            setStatus("error");
-            setError(err instanceof Error ? err.message : "Poll failed");
-          }
-        });
+        fetchOnce()
+          .then(() => {
+            if (!cancelled && pollRef.current) setStatus("polling");
+          })
+          .catch((err) => {
+            if (!cancelled) {
+              setStatus("error");
+              setError(err instanceof Error ? err.message : "Poll failed");
+            }
+          });
       }, link.pollMs);
     };
 
@@ -128,12 +135,11 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
 
     const accept = (evt: Event) => {
       const id = Number((evt as MessageEvent).lastEventId);
-      const wasPolling = link.polling;
       const result = noteDelivery(link, Number.isFinite(id) ? id : 0);
       link = result.link;
       if (!result.apply) return false;
       awaitingStream = false;
-      if (wasPolling) stopPoll();
+      stopPoll();
       clearDrop();
       lastBeat.current = Date.now();
       setQuiet(false);
@@ -257,6 +263,7 @@ export function useOptionStream({ symbol, expiry, exchange, segment, enabled = t
         setStatus("error");
         setError(err instanceof Error ? err.message : "Failed to load");
         startPoll();
+        connectSse();
       });
 
     return () => {

@@ -1948,11 +1948,11 @@ html.dark .is-itm {
   }
 
   .chain-scroll[data-density="focus"] .col-ltp {
-    width: 22%;
+    width: 24%;
   }
 
   .chain-scroll[data-density="focus"] .strike-cell {
-    width: 24%;
+    width: 20%;
     min-width: 0;
     font-size: 15px;
   }
@@ -2023,6 +2023,10 @@ html.dark .is-itm {
   .toolbar .feed-chip,
   .toolbar .updates-btn {
     font-size: 11px;
+  }
+
+  .chain-scroll[data-density="focus"] .quote-num {
+    font-size: 14px;
   }
 }
 
@@ -2276,8 +2280,8 @@ html.dark .inward-captions .pe-zone {
     width: 0;
     min-width: 0;
     max-width: none;
-    padding-left: 6px;
-    padding-right: 16px;
+    padding-left: 4px;
+    padding-right: 2px;
   }
 
   .identity {
@@ -2319,6 +2323,19 @@ html.dark .inward-captions .pe-zone {
 
   .rail.is-sheet:not(.is-collapsed) {
     top: 112px;
+  }
+
+  .toolbar .feed-chip {
+    gap: 4px;
+    padding: 0 5px;
+  }
+
+  .toolbar .session-pill {
+    padding: 0 6px;
+  }
+
+  .toolbar .toolbar-tools .toolbar-select[aria-label="Expiry"] {
+    flex-grow: 1.25;
   }
 
   .pin-btn {

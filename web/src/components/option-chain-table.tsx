@@ -52,6 +52,7 @@ function renderValue(key: ColumnKey, value: number | null) {
   if (key === "chng" || key === "oiChg") return formatSigned(value, key === "chng" ? 1 : 0);
   if (key === "oi" || key === "volume") return formatCompact(value);
   if (key === "delta" || key === "theta" || key === "pChg") return formatNumber(value, 2);
+  if (key === "gamma") return formatNumber(value, 4);
   return formatNumber(value, 0);
 }
 

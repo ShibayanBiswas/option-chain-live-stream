@@ -18,7 +18,7 @@ export async function GET(req: Request) {
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean)
-    .slice(0, 8);
+    .slice(0, 32);
 
   if (!symbol || expiries.length === 0) {
     return new Response(JSON.stringify({ error: "symbol and expiries are required" }), {

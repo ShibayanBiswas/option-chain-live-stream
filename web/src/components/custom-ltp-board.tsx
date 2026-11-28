@@ -72,7 +72,7 @@ export function CustomLtpBoard({
 
   const columns = chosen.map((expiry) => ({
     expiry,
-    book: primary?.expiry === expiry ? primary : extra[expiry] ?? null,
+    book: primary?.expiry === expiry ? primary : extra[expiry]?.symbol === symbol ? extra[expiry] : null,
   }));
   const loaded = columns.flatMap((column) => (column.book ? [column.book] : []));
   const spot = primary?.spot ?? loaded[0]?.spot ?? null;
@@ -128,7 +128,7 @@ export function CustomLtpBoard({
         density="custom"
         callSpan={callCols.length}
         putSpan={columns.length}
-        layoutKey={`${symbol}:${chosen.join(",")}:${strikes.length}`}
+        layoutKey={`${symbol}:${chosen.join(",")}:${strikes.length}:${loaded.length}`}
         callHead={callCols.map((column) => (
           <th key={`ce-${column.expiry}`} scope="col" className="ce-zone">{shortExpiry(column.expiry)}</th>
         ))}
