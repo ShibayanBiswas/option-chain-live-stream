@@ -2385,3 +2385,46 @@ html.dark .inward-captions .pe-zone {
   text-transform: uppercase;
   color: var(--muted);
 }
+
+/* The smallest phones (320 px) put the menus on their own row so no label is cut. */
+@media (max-width: 340px) {
+  .toolbar-tools {
+    flex-wrap: wrap;
+    height: auto;
+    row-gap: 4px;
+  }
+
+  .toolbar .toolbar-tools .toolbar-select {
+    flex: 1 1 calc(25% - 4px);
+    width: auto;
+  }
+
+  .rail.is-sheet:not(.is-collapsed) {
+    top: 160px;
+  }
+
+  .toolbar .updates-btn {
+    padding: 0 7px;
+  }
+
+  .toolbar-main .toolbar-icons {
+    gap: 2px;
+  }
+
+  .identity {
+    gap: 4px;
+  }
+
+  .identity h1,
+  .identity .spot-inline {
+    font-size: 11px;
+  }
+
+  .chain-scroll[data-density="focus"] .quote-num {
+    font-size: 12px;
+  }
+
+  .chain-scroll[data-density="focus"] .ltp-chng {
+    font-size: 10px;
+  }
+}
