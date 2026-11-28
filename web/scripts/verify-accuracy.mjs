@@ -137,11 +137,13 @@ async function rawBseChain(scrip, product) {
 }
 
 function maxPain(rows) {
-  let best = rows[0]?.strike ?? null;
+  const withOi = rows.filter((row) => (row.ce.oi || 0) + (row.pe.oi || 0) > 0);
+  if (withOi.length < 3) return null;
+  let best = withOi[0].strike;
   let bestPain = Infinity;
-  for (const candidate of rows) {
+  for (const candidate of withOi) {
     let pain = 0;
-    for (const row of rows) {
+    for (const row of withOi) {
       if (candidate.strike > row.strike) pain += (candidate.strike - row.strike) * (row.ce.oi || 0);
       if (candidate.strike < row.strike) pain += (row.strike - candidate.strike) * (row.pe.oi || 0);
     }
