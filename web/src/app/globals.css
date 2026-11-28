@@ -2338,8 +2338,8 @@ html.dark .inward-captions .pe-zone {
     flex-grow: 1.25;
   }
 
-  /* Option Chain has four menus on the row, so they take the small type the narrowest phones use. */
-  .toolbar .toolbar-tools:has([aria-label="Columns"]) .toolbar-select {
+  /* Phone menus share one row, so they take the small type the narrowest phones use. */
+  .toolbar .toolbar-tools .toolbar-select {
     font-size: 11px;
   }
 
