@@ -2338,6 +2338,11 @@ html.dark .inward-captions .pe-zone {
     flex-grow: 1.25;
   }
 
+  /* Option Chain has four menus on the row, so they take the small type the narrowest phones use. */
+  .toolbar .toolbar-tools:has([aria-label="Columns"]) .toolbar-select {
+    font-size: 11px;
+  }
+
   .pin-btn {
     flex-basis: 44px;
     width: 44px;
